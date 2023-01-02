@@ -1,18 +1,36 @@
 #pragma once
+#include <socket_proxy/libev/libev.h>
 #include <socket_proxy/stream_factory.h>
+
+/** @addtogroup stream
+ *  @{
+ */
 
 namespace jkl::sp::lnx {
 
-class stream_factory : public jkl::sp::stream_factory {
+class ev_stream_factory : public jkl::stream_factory {
  public:
-  ~stream_factory();
+  ~ev_stream_factory();
 
-  stream_ptr create_send_stream(
-      proto::ip_addr const& peer_address) override;
+  /*! \brief create send/listen stream socket
+   *
+   * Always create stream. If something bad happens return stream with failed
+   * state stream::get_detailed_error can be used to look extended error.
+   * stream::get_stream_settings will always return valid settings, hence we can
+   * recreate failed stream with settings from failed stream
+   *
+   * \return stream_ptr created stream
+   */
+  virtual stream_ptr create_stream(stream_settings* stream_set) override;
 
-  stream_ptr create_listen_stream(
-      proto::ip_addr const& self_address, in_conn_handler_cb in_conn_fun_t,
-      in_conn_handler_data_cb user_data) override;
+  /*! \brief proceed event loop.
+   */
+  virtual void proceed() override;
+
+ private:
+  struct ev_loop* _ev_loop = nullptr;
 };
 
 }  // namespace jkl::sp::lnx
+
+/** @} */  // end of stream

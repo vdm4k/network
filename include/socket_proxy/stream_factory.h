@@ -1,24 +1,33 @@
 #pragma once
-#include <protocols/ip_addr.h>
 #include <socket_proxy/stream.h>
+#include <socket_proxy/stream_settings.h>
+
+/** @addtogroup stream
+ *  @{
+ */
 
 namespace jkl {
-namespace sp {
-
-using in_conn_handler_data_cb = std::any;
-using in_conn_handler_cb = std::function<void(in_conn_handler_data_cb)>;
 
 class stream_factory {
  public:
   virtual ~stream_factory() = 0;
 
-  virtual stream_ptr create_send_stream(
-      proto::ip_addr const& peer_address) = 0;
+  /*! \brief create stream
+   *
+   * Always create stream. If something bad happens return stream with failed
+   * state - stream::get_detailed_error can be used to look extended error.
+   * stream::get_stream_settings will always return valid settings, hence we can
+   * recreate failed stream with settings from failed stream
+   *
+   *  \return stream_ptr created stream
+   */
+  virtual stream_ptr create_stream(stream_settings* stream_set) = 0;
 
-  virtual stream_ptr create_listen_stream(
-      proto::ip_addr const& self_address, in_conn_handler_cb in_conn_fun_t,
-      in_conn_handler_data_cb user_data) = 0;
+  /*! \brief proceed event loop.
+   */
+  virtual void proceed() = 0;
 };
 
-}  // namespace sp
 }  // namespace jkl
+
+/** @} */  // end of stream

@@ -1,5 +1,5 @@
 #include <ev.h>
-#include <socket_proxy/linux/libev.h>
+#include <socket_proxy/libev/libev.h>
 
 #include <climits>
 #include <string>

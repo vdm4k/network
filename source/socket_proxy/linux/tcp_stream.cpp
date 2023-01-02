@@ -1,7 +1,7 @@
 #pragma once
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
-#include <socket_proxy/linux/libev.h>
+#include <socket_proxy/libev/libev.h>
 #include <socket_proxy/linux/tcp_stream.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -26,7 +26,7 @@ void connection_established_cb(struct ev_loop *, ev_io *w, int) {
 void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
                             int /*revents*/) {
   int new_fd = -1;
-  auto *conn = reinterpret_cast<tcp_stream *>(w->data);
+  auto *conn = reinterpret_cast<tcp_listen_stream *>(w->data);
   struct sockaddr_in peer_addr = {0, 0, {0}, {0}};
   socklen_t addrlen = sizeof(peer_addr);
   while (true) {
@@ -83,31 +83,13 @@ bool tcp_stream::create_socket() {
   return rc != -1;
 }
 
-bool tcp_stream::fill_addr(proto::ip_addr const &ipaddr, uint16_t port,
+bool tcp_stream::fill_addr(jkl::proto::full_address const &ipaddr,
                            sockaddr_in &addr) {
   addr = {0, 0, {0}, {0}};
   addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = ipaddr.to_v4().get_data();
-  addr.sin_port = __builtin_bswap16(port);
+  //  addr.sin_addr.s_addr = ipaddr.to_v4().get_data();
+  addr.sin_port = __builtin_bswap16(ipaddr.get_port());
   return addr.sin_addr.s_addr != (in_addr_t)-1;
-}
-
-bool tcp_stream::connect_to_server(proto::ip_addr const &peer_addr,
-                                   uint16_t peer_port, struct ev_loop *loop) {
-  bool res = false;
-  if (!fill_addr(peer_addr, peer_port, _peer_addr)) return res;
-  if (create_socket()) {
-    init_events(loop);
-    if (connect()) {
-      res = true;
-    } else {
-      set_connection_state(state::e_failed);
-      cleanup();
-    }
-  } else {
-    set_connection_state(state::e_failed);
-  }
-  return res;
 }
 
 bool tcp_stream::create_listen_tcp_socket() {
@@ -131,30 +113,6 @@ bool tcp_stream::create_listen_tcp_socket() {
   }
 
   return true;
-}
-
-bool tcp_stream::bind_as_server(const proto::ip_addr &peer_addr,
-                                uint16_t peer_port, struct ev_loop *loop,
-                                proccess_incoming_conn_cb incom_con,
-                                std::any asoc_data) {
-  bool res{false};
-  if (!fill_addr(peer_addr, peer_port, _self_addr)) return res;
-  _incom_con_cb = incom_con;
-  _param_incom_con_cb = asoc_data;
-  if (create_listen_tcp_socket()) {
-    _loop = loop;
-    set_connection_state(state::e_listen);
-    ev::init(&_connect_io, incoming_connection_cb, _file_descr, EV_READ, this);
-    if (0 == listen(_file_descr, 14)) {
-      ev::start(_connect_io, _loop);
-      res = true;
-    } else {
-      set_detailed_error("server listen is failed");
-      set_connection_state(state::e_failed);
-      cleanup();
-    }
-  }
-  return res;
 }
 
 void tcp_stream::init_events(struct ev_loop *loop) {
@@ -251,23 +209,6 @@ void tcp_stream::send_data() {
   if (_send_data_cb) _send_data_cb(this, _param_send_data_cb);
 }
 
-bool tcp_stream::connect() {
-  bool res{false};
-  int rc =
-      ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&_peer_addr),
-                sizeof(_peer_addr));
-  if (0 == rc || EINPROGRESS == errno) {
-    ev::start(_connect_io, _loop);
-    set_connection_state(state::e_listen);
-    res = true;
-  } else {
-    if (0 != rc) {
-      set_detailed_error("coulnd't connect to server");
-    }
-  }
-  return res;
-}
-
 void tcp_stream::connection_established() {
   int err = -1;
   socklen_t len = sizeof(err);
@@ -275,7 +216,7 @@ void tcp_stream::connection_established() {
 
   if (0 == rc) {
     if (0 == err) {
-      if (_state == state::e_listen) {
+      if (_state == state::e_wait) {
         ev::stop(_connect_io, _loop);
         ev::start(_read_io, _loop);
         set_connection_state(state::e_established);
@@ -296,9 +237,59 @@ void tcp_stream::connection_established() {
   }
 }
 
-void tcp_stream::handle_incoming_connection(int file_descr,
-                                            sockaddr_in peer_addr) {
-  auto sck = std::make_unique<tcp_stream>();
+void tcp_stream::set_connection_state(state new_state) {
+  _state = new_state;
+  if (_state_changed_cb) _state_changed_cb(this, _param_state_changed_cb);
+}
+
+void tcp_stream::set_detailed_error(const std::string &str) {
+  if (errno)
+    _detailed_error = str + ", errno - " + strerror(errno);
+  else
+    _detailed_error = str;
+}
+
+bool tcp_send_stream::init(send_stream_socket_parameters *send_params,
+                           struct ev_loop *loop) {
+  bool res = false;
+  _send_stream_socket_parameters = *send_params;
+
+  if (!fill_addr(_send_stream_socket_parameters._peer_addr, _peer_addr))
+    return res;
+  if (create_socket()) {
+    init_events(loop);
+    if (connect()) {
+      res = true;
+    } else {
+      set_connection_state(state::e_failed);
+      cleanup();
+    }
+  } else {
+    set_connection_state(state::e_failed);
+  }
+  return res;
+}
+
+bool tcp_send_stream::connect() {
+  bool res{false};
+  int rc =
+      ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&_peer_addr),
+                sizeof(_peer_addr));
+  if (0 == rc || EINPROGRESS == errno) {
+    ev::start(_connect_io, _loop);
+    set_connection_state(state::e_wait);
+    res = true;
+  } else {
+    if (0 != rc) {
+      set_detailed_error("coulnd't connect to server");
+    }
+  }
+  return res;
+}
+
+void tcp_listen_stream::handle_incoming_connection(int file_descr,
+                                                   sockaddr_in peer_addr) {
+  auto sck = std::make_unique<tcp_send_stream>();
   sck->_peer_addr = peer_addr;
 
   if (-1 != file_descr) {
@@ -314,19 +305,32 @@ void tcp_stream::handle_incoming_connection(int file_descr,
     sck->set_detailed_error("couldn't accept new incomming connection");
   }
 
-  if (_incom_con_cb) _incom_con_cb(std::move(sck), _param_incom_con_cb);
+  if (_listen_stream_socket_parameters._proc_in_conn)
+    _listen_stream_socket_parameters._proc_in_conn(
+        std::move(sck), _listen_stream_socket_parameters._in_conn_handler_data);
 }
 
-void tcp_stream::set_connection_state(state new_state) {
-  _state = new_state;
-  if (_state_changed_cb) _state_changed_cb(this, _param_state_changed_cb);
-}
-
-void tcp_stream::set_detailed_error(const std::string &str) {
-  if (errno)
-    _detailed_error = str + ", errno - " + strerror(errno);
-  else
-    _detailed_error = str;
+bool tcp_listen_stream::init(listen_stream_socket_parameters *listen_param,
+                             struct ev_loop *loop) {
+  bool res{false};
+  _listen_stream_socket_parameters = *listen_param;
+  if (!fill_addr(_listen_stream_socket_parameters._listen_address, _self_addr))
+    return res;
+  if (create_listen_tcp_socket()) {
+    _loop = loop;
+    set_connection_state(state::e_wait);
+    ev::init(&_connect_io, incoming_connection_cb, _file_descr, EV_READ, this);
+    if (0 ==
+        listen(_file_descr, _listen_stream_socket_parameters._listen_backlog)) {
+      ev::start(_connect_io, _loop);
+      res = true;
+    } else {
+      set_detailed_error("server listen is failed");
+      set_connection_state(state::e_failed);
+      cleanup();
+    }
+  }
+  return res;
 }
 
 }  // namespace jkl::sp::lnx

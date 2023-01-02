@@ -1,8 +1,14 @@
 #pragma once
 
+#include <socket_proxy/stream_settings.h>
+
 #include <any>
 #include <functional>
 #include <memory>
+
+/** @defgroup stream
+ *  @{
+ */
 
 namespace jkl {
 
@@ -22,7 +28,7 @@ class stream {
    */
   enum class state : uint8_t {
     e_closed,       ///< closed - not active
-    e_listen,       ///< for server side connection in listen state
+    e_wait,         ///< for server side connection in listen state
                     ///< for client wait establishing with peer
     e_established,  ///< connection established
     e_failed        ///< connection failed, can check error with
@@ -81,6 +87,11 @@ class stream {
    * \param [in] param parameter for callback function
    */
   virtual void set_state_changed_cb(state_changed_cb cb, std::any param) = 0;
+
+  /*! \brief get actual stream settings
+   *  \return stream_settings
+   */
+  virtual stream_settings const *get_stream_settings() const = 0;
 };
 
 using stream_ptr = std::unique_ptr<stream>;
@@ -92,8 +103,8 @@ using proccess_incoming_conn_cb =
   switch (st) {
     case stream::state::e_closed:
       return "closed";
-    case stream::state::e_listen:
-      return "listen";
+    case stream::state::e_wait:
+      return "wait";
     case stream::state::e_established:
       return "established";
     case stream::state::e_failed:
@@ -104,3 +115,5 @@ using proccess_incoming_conn_cb =
 }
 
 }  // namespace jkl
+
+/** @} */  // end of stream

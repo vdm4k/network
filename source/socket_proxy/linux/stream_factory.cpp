@@ -1,19 +1,27 @@
-#pragma once
 #include <socket_proxy/linux/stream_factory.h>
+#include <socket_proxy/linux/tcp_settings.h>
+#include <socket_proxy/linux/tcp_stream.h>
 
 namespace jkl::sp::lnx {
 
-stream_factory::~stream_factory() {}
+ev_stream_factory::~ev_stream_factory() {}
 
-stream_ptr stream_factory::create_send_stream(
-    proto::ip_addr const& peer_address) {
+stream_ptr ev_stream_factory::create_stream(stream_settings* stream_set) {
+  if (auto* param = dynamic_cast<send_stream_socket_parameters*>(stream_set);
+      param) {
+    auto sck = std::make_unique<tcp_send_stream>();
+    sck->init(param, _ev_loop);
+    return sck;
+  }
+  if (auto* param = dynamic_cast<listen_stream_socket_parameters*>(stream_set);
+      param) {
+    auto sck = std::make_unique<tcp_listen_stream>();
+    sck->init(param, _ev_loop);
+    return sck;
+  }
   return nullptr;
 }
 
-stream_ptr stream_factory::create_listen_stream(
-    proto::ip_addr const& self_address, in_conn_handler_cb in_conn_fun_t,
-    in_conn_handler_data_cb user_data) {
-  return nullptr;
-}
+void ev_stream_factory::proceed() { ev::proceed(_ev_loop); }
 
 }  // namespace jkl::sp::lnx
