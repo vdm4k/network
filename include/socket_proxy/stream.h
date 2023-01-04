@@ -57,7 +57,7 @@ class stream {
 
   /*! \fn std::string const & get_detailed_error() const
    *  \brief get description about error
-   *  \return std::string description
+   *  \return std::string error description
    */
   virtual std::string const &get_detailed_error() const = 0;
 

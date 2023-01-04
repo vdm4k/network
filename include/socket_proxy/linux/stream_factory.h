@@ -10,6 +10,11 @@ namespace jkl::sp::lnx {
 
 class ev_stream_factory : public jkl::stream_factory {
  public:
+  ev_stream_factory() noexcept;
+  ev_stream_factory(ev_stream_factory const &) = delete;
+  ev_stream_factory(ev_stream_factory &&) = delete;
+  ev_stream_factory &operator=(ev_stream_factory &&) = delete;
+  ev_stream_factory &operator=(ev_stream_factory const &) = delete;
   ~ev_stream_factory();
 
   /*! \brief create send/listen stream socket
@@ -21,14 +26,14 @@ class ev_stream_factory : public jkl::stream_factory {
    *
    * \return stream_ptr created stream
    */
-  virtual stream_ptr create_stream(stream_settings* stream_set) override;
+  virtual stream_ptr create_stream(stream_settings *stream_set) override;
 
   /*! \brief proceed event loop.
    */
   virtual void proceed() override;
 
  private:
-  struct ev_loop* _ev_loop = nullptr;
+  struct ev_loop *_ev_loop = nullptr;
 };
 
 }  // namespace jkl::sp::lnx

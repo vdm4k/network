@@ -1,5 +1,5 @@
 #pragma once
-#include <protocols/full_address.h>
+#include <protocols/ip/full_address.h>
 #include <socket_proxy/stream.h>
 #include <socket_proxy/stream_settings.h>
 
@@ -21,15 +21,17 @@ struct stream_socket_parameters : public stream_settings {
  *  \brief tcp send stream parameters
  */
 struct send_stream_socket_parameters : stream_socket_parameters {
-  jkl::proto::full_address _peer_addr;                 ///< peer address
-  std::optional<jkl::proto::full_address> _self_addr;  ///< self bind address
+  jkl::proto::ip::full_address _peer_addr;  ///< peer address
+  std::optional<jkl::proto::ip::full_address>
+      _self_addr;  ///< self bind address
 };
 
 /*! \class send_stream_socket_parameters
  *  \brief tcp receive connections socket parameters
  */
 struct listen_stream_socket_parameters : stream_socket_parameters {
-  jkl::proto::full_address _listen_address;  ///< listen incomming connections
+  jkl::proto::ip::full_address
+      _listen_address;  ///< listen incomming connections
   using in_conn_handler_data_cb = std::any;
   using in_conn_handler_cb =
       std::function<void(stream_ptr&&, in_conn_handler_data_cb)>;

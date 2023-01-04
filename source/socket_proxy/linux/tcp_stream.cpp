@@ -1,74 +1,81 @@
-#pragma once
-#include <arpa/inet.h>
+﻿#include <arpa/inet.h>
+#include <ifaddrs.h>
 #include <netinet/tcp.h>
 #include <socket_proxy/libev/libev.h>
+#include <socket_proxy/linux/tcp_settings.h>
 #include <socket_proxy/linux/tcp_stream.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
 namespace jkl::sp::lnx {
 
-void receive_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<tcp_stream *>(w->data);
-  conn->receive_data();
-}
-
-void send_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<tcp_stream *>(w->data);
-  conn->send_data();
-}
-
-void connection_established_cb(struct ev_loop *, ev_io *w, int) {
-  auto *tr = reinterpret_cast<tcp_stream *>(w->data);
-  tr->connection_established();
-}
-
-void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
-                            int /*revents*/) {
-  int new_fd = -1;
-  auto *conn = reinterpret_cast<tcp_listen_stream *>(w->data);
-  struct sockaddr_in peer_addr = {0, 0, {0}, {0}};
-  socklen_t addrlen = sizeof(peer_addr);
-  while (true) {
-    new_fd = accept(w->fd, reinterpret_cast<struct sockaddr *>(&peer_addr),
-                    &addrlen);
-    if (-1 == new_fd) {
-      if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) break;
-    } else
-      break;
-  }
-  conn->handle_incoming_connection(new_fd, peer_addr);
-}
-
 tcp_stream::~tcp_stream() { cleanup(); }
+
+bool tcp_stream::get_local_address(jkl::proto::ip::address::version ver, int fd,
+                                   jkl::proto::ip::full_address &addr) {
+  if (fd > 0) {
+    switch (ver) {
+      case jkl::proto::ip::address::version::e_v4: {
+        struct sockaddr_in t_local_addr = {0, 0, {0}, {0}};
+        socklen_t addrlen = sizeof(t_local_addr);
+        getsockname(fd, (struct sockaddr *)&t_local_addr, &addrlen);
+        addr = jkl::proto::ip::full_address(
+            jkl::proto::ip::address(
+                jkl::proto::ip::v4::address(t_local_addr.sin_addr.s_addr)),
+            htons(t_local_addr.sin_port));
+        return true;
+      }
+      case jkl::proto::ip::address::version::e_v6: {
+        sockaddr_in6 t_local_addr = {0, 0, 0, {{{0}}}, 0};
+        socklen_t addrlen = sizeof(t_local_addr);
+        char addr_buf[50];
+        getsockname(fd, (struct sockaddr *)&t_local_addr, &addrlen);
+        inet_ntop(AF_INET6, &t_local_addr.sin6_addr, addr_buf,
+                  sizeof(addr_buf));
+        addr = jkl::proto::ip::full_address(
+            jkl::proto::ip::address(jkl::proto::ip::v6::address(addr_buf)),
+            htons(t_local_addr.sin6_port));
+        return true;
+      }
+      default:
+        break;
+    }
+  }
+  return false;
+}
 
 void tcp_stream::set_socket_specific_options() {
   {
     int mode = 1;
     ioctl(_file_descr, FIONBIO, &mode);
-
-    int optval = 32000;
+    stream_socket_parameters *sparam =
+        (stream_socket_parameters *)get_stream_settings();
+    if (sparam->_buffer_size) {
+      int optval = *sparam->_buffer_size;
 #ifdef SO_SNDBUF
-    if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_SNDBUF,
-                         reinterpret_cast<char const *>(&optval),
-                         sizeof(optval))) {
-    }
-#endif
-#ifdef SO_RCVBUF
-    if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_RCVBUF,
-                         reinterpret_cast<char const *>(&optval),
-                         sizeof(optval))) {
-    }
+      if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_SNDBUF,
+                           reinterpret_cast<char const *>(&optval),
+                           sizeof(optval))) {
+      }
 #endif  // SO_SNDBUF
+#ifdef SO_RCVBUF
+      if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_RCVBUF,
+                           reinterpret_cast<char const *>(&optval),
+                           sizeof(optval))) {
+      }
+#endif  // SO_RCVBUF
+    }
   }
-  /* Set the NODELAY option (Nagle-like algorithm) */
-  int optval = 1;
+  {
 #ifdef TCP_NODELAY
-  if (-1 == ::setsockopt(_file_descr, IPPROTO_TCP, TCP_NODELAY,
-                         reinterpret_cast<char const *>(&optval),
-                         sizeof(optval))) {
-  }
+    /* Set the NODELAY option */
+    int optval = 1;
+    if (-1 == ::setsockopt(_file_descr, IPPROTO_TCP, TCP_NODELAY,
+                           reinterpret_cast<char const *>(&optval),
+                           sizeof(optval))) {
+    }
 #endif  // TCP_NODELAY
+  }
 }
 
 bool tcp_stream::create_socket() {
@@ -83,158 +90,121 @@ bool tcp_stream::create_socket() {
   return rc != -1;
 }
 
-bool tcp_stream::fill_addr(jkl::proto::full_address const &ipaddr,
-                           sockaddr_in &addr) {
-  addr = {0, 0, {0}, {0}};
-  addr.sin_family = AF_INET;
-  //  addr.sin_addr.s_addr = ipaddr.to_v4().get_data();
-  addr.sin_port = __builtin_bswap16(ipaddr.get_port());
-  return addr.sin_addr.s_addr != (in_addr_t)-1;
-}
+uint32_t find_scope_id(const jkl::proto::ip::v6::address &addr) {
+  uint32_t scope_id{0};
+  struct ifaddrs *ifap{nullptr}, *ifa{nullptr};
+  getifaddrs(&ifap);
 
-bool tcp_stream::create_listen_tcp_socket() {
-  if (!create_socket()) return false;
-  int reuseaddr = 1;
-  if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_REUSEADDR,
-                       reinterpret_cast<const void *>(&reuseaddr),
-                       sizeof(int))) {
-    set_detailed_error("couldn't set option SO_REUSEADDR");
-    ::close(_file_descr);
-    _file_descr = -1;
-    return false;
+  for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+    if (ifa && ifa->ifa_addr && AF_INET6 == ifa->ifa_addr->sa_family) {
+      struct sockaddr_in6 *in6 =
+          reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_addr);
+      char addr_buf[50];
+      inet_ntop(AF_INET6, &in6->sin6_addr, addr_buf, sizeof(addr_buf));
+      jkl::proto::ip::v6::address addr_s(addr_buf);
+      if (addr == addr_s) {
+        scope_id = in6->sin6_scope_id;
+        break;
+      }
+    }
   }
 
-  if (0 != ::bind(_file_descr, reinterpret_cast<sockaddr *>(&_self_addr),
-                  sizeof(_self_addr))) {
-    set_detailed_error("couldn't bind on address");
-    ::close(_file_descr);
-    _file_descr = -1;
-    return false;
+  freeifaddrs(ifap);
+  return scope_id;
+}
+
+bool tcp_stream::bind_on_address() {
+  switch (_self_addr_full.get_address().get_version()) {
+    case jkl::proto::ip::address::version::e_v4: {
+      sockaddr_in local_addr = {0, 0, {0}, {0}};
+      if (0 < fill_sockaddr(_self_addr_full, local_addr)) {
+        if (0 == ::bind(_file_descr, reinterpret_cast<sockaddr *>(&local_addr),
+                        sizeof(local_addr)))
+          return true;
+        _detailed_error.append("couldn't bind on address - " +
+                               _self_addr_full.to_string() + ", errno - " +
+                               strerror(errno) + "\n");
+      }
+      break;
+    }
+    case jkl::proto::ip::address::version::e_v6: {
+      sockaddr_in6 local_addr = {0, 0, 0, {{{0}}}, 0};
+      if (fill_sockaddr(_self_addr_full, (sockaddr_in &)(local_addr)) > 0) {
+        if (0 == ::bind(_file_descr, reinterpret_cast<sockaddr *>(&local_addr),
+                        sizeof(local_addr)))
+          return true;
+        _detailed_error.append("couldn't bind on address - " +
+                               _self_addr_full.to_string() + ", errno - " +
+                               strerror(errno) + "\n");
+      }
+      break;
+    }
+    default:
+      _detailed_error.append(
+          "incorrect self address pass to function bind_on_address\n");
+      break;
   }
-
-  return true;
+  return false;
 }
 
-void tcp_stream::init_events(struct ev_loop *loop) {
-  _loop = loop;
-  ev::init(&_read_io, receive_data_cb, _file_descr, EV_READ, this);
-  ev::init(&_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-  ev::init(&_connect_io, connection_established_cb, _file_descr, EV_WRITE,
-           this);
-}
-
-void tcp_stream::stop_events() {
-  ev::stop(_read_io, _loop);
-  ev::stop(_write_io, _loop);
-  ev::stop(_connect_io, _loop);
+bool tcp_stream::fill_sockaddr(jkl::proto::ip::full_address const &ipaddr,
+                               sockaddr_in &addr) {
+  switch (ipaddr.get_address().get_version()) {
+    case jkl::proto::ip::address::version::e_v4: {
+      addr = {0, 0, {0}, {0}};
+      addr.sin_family = AF_INET;
+      memcpy(&addr.sin_addr.s_addr, ipaddr.get_address().get_data(),
+             jkl::proto::ip::v4::address::e_bytes_size);
+      addr.sin_port = __builtin_bswap32(ipaddr.get_port());
+      return true;
+    }
+    case jkl::proto::ip::address::version::e_v6: {
+      uint32_t lscope_id{find_scope_id(ipaddr.get_address().to_v6())};
+      if (lscope_id) {
+        sockaddr_in6 local_addr = {0, 0, 0, {{{0}}}, 0};
+        memset(&local_addr, 0, sizeof(sockaddr_in6));
+        local_addr.sin6_family = AF_INET6;
+        memcpy(&local_addr.sin6_addr, ipaddr.get_address().get_data(),
+               jkl::proto::ip::v6::address::e_bytes_size);
+        local_addr.sin6_port = __builtin_bswap32(ipaddr.get_port());
+        local_addr.sin6_scope_id = lscope_id;
+        auto *p_addr = reinterpret_cast<sockaddr_in6 *>(&addr);
+        *p_addr = local_addr;
+        return true;
+      } else {
+        _detailed_error.append("couldn't find scope_id for address - " +
+                               ipaddr.to_string());
+      }
+      break;
+    }
+    default: {
+      _detailed_error.append("incorrect address type\n");
+      break;
+    }
+  }
+  return false;
 }
 
 void tcp_stream::cleanup() {
   if (-1 != _file_descr) {
-    stop_events();
     ::close(_file_descr);
     _file_descr = -1;
   }
 }
 
-ssize_t tcp_stream::send(std::byte *data, size_t data_size) {
-  ssize_t sent{0};
-  while (true) {
-    sent = ::send(_file_descr, data, data_size, MSG_NOSIGNAL);
-    if (sent > 0) break;
-    if (ssize_t(-1) == sent) {
-      if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
-        set_detailed_error("error occured while send data");
-        set_connection_state(state::e_failed);
-        break;
-      }
-    } else {
-      set_connection_state(state::e_failed);
-      set_detailed_error("socket error occured while send data");
-      break;
-    }
-  }
-  return sent;
+jkl::proto::ip::full_address const &tcp_stream::get_self_address() const {
+  return _self_addr_full;
 }
 
-ssize_t tcp_stream::receive(std::byte *buffer, size_t buffer_size) {
-  ssize_t rec{0};
-  while (true) {
-    rec = ::recv(_file_descr, buffer, buffer_size, MSG_NOSIGNAL);
-    if (rec > 0) break;
-
-    if (0 == rec) {
-      set_detailed_error("recv return 0 bytes");
-      set_connection_state(state::e_failed);
-      break;
-    } else {
-      if (ssize_t(-1) == rec) {
-        if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
-          set_detailed_error("recv return -1");
-          set_connection_state(state::e_failed);
-          break;
-        }
-      } else {
-        set_connection_state(state::e_failed);
-        set_detailed_error("recv return error");
-        break;
-      }
-    }
-  }
-  return rec;
+std::string const &tcp_stream::get_detailed_error() const {
+  return _detailed_error;
 }
 
 tcp_stream::state tcp_stream::get_state() const { return _state; }
 
-void tcp_stream::set_received_data_cb(received_data_cb cb, std::any user_data) {
-  _received_data_cb = cb;
-  _param_received_data_cb = user_data;
-}
-
-void tcp_stream::set_send_data_cb(::jkl::send_data_cb cb, std::any user_data) {
-  _send_data_cb = cb;
-  _param_send_data_cb = user_data;
-}
-
 void tcp_stream::set_state_changed_cb(state_changed_cb cb, std::any user_data) {
   _state_changed_cb = cb;
   _param_state_changed_cb = user_data;
-}
-
-void tcp_stream::receive_data() {
-  if (_received_data_cb) _received_data_cb(this, _param_received_data_cb);
-}
-
-void tcp_stream::send_data() {
-  if (_send_data_cb) _send_data_cb(this, _param_send_data_cb);
-}
-
-void tcp_stream::connection_established() {
-  int err = -1;
-  socklen_t len = sizeof(err);
-  int rc = getsockopt(_file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
-
-  if (0 == rc) {
-    if (0 == err) {
-      if (_state == state::e_wait) {
-        ev::stop(_connect_io, _loop);
-        ev::start(_read_io, _loop);
-        set_connection_state(state::e_established);
-      } else {
-        set_detailed_error(
-            std::string("client connection established, but tcp state not in "
-                        "listen state. state is - ") +
-            connection_state_to_str(_state));
-        set_connection_state(state::e_failed);
-      }
-    } else {
-      set_detailed_error("client connection not established");
-      set_connection_state(state::e_failed);
-    }
-  } else {
-    set_detailed_error("getsockopt error");
-    set_connection_state(state::e_failed);
-  }
 }
 
 void tcp_stream::set_connection_state(state new_state) {
@@ -247,90 +217,6 @@ void tcp_stream::set_detailed_error(const std::string &str) {
     _detailed_error = str + ", errno - " + strerror(errno);
   else
     _detailed_error = str;
-}
-
-bool tcp_send_stream::init(send_stream_socket_parameters *send_params,
-                           struct ev_loop *loop) {
-  bool res = false;
-  _send_stream_socket_parameters = *send_params;
-
-  if (!fill_addr(_send_stream_socket_parameters._peer_addr, _peer_addr))
-    return res;
-  if (create_socket()) {
-    init_events(loop);
-    if (connect()) {
-      res = true;
-    } else {
-      set_connection_state(state::e_failed);
-      cleanup();
-    }
-  } else {
-    set_connection_state(state::e_failed);
-  }
-  return res;
-}
-
-bool tcp_send_stream::connect() {
-  bool res{false};
-  int rc =
-      ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&_peer_addr),
-                sizeof(_peer_addr));
-  if (0 == rc || EINPROGRESS == errno) {
-    ev::start(_connect_io, _loop);
-    set_connection_state(state::e_wait);
-    res = true;
-  } else {
-    if (0 != rc) {
-      set_detailed_error("coulnd't connect to server");
-    }
-  }
-  return res;
-}
-
-void tcp_listen_stream::handle_incoming_connection(int file_descr,
-                                                   sockaddr_in peer_addr) {
-  auto sck = std::make_unique<tcp_send_stream>();
-  sck->_peer_addr = peer_addr;
-
-  if (-1 != file_descr) {
-    sck->_file_descr = file_descr;
-    sck->_loop = _loop;
-    sck->_state = state::e_established;
-
-    set_socket_specific_options();
-    sck->init_events(_loop);
-    ev::start(sck->_read_io, _loop);
-  } else {
-    sck->_state = state::e_failed;
-    sck->set_detailed_error("couldn't accept new incomming connection");
-  }
-
-  if (_listen_stream_socket_parameters._proc_in_conn)
-    _listen_stream_socket_parameters._proc_in_conn(
-        std::move(sck), _listen_stream_socket_parameters._in_conn_handler_data);
-}
-
-bool tcp_listen_stream::init(listen_stream_socket_parameters *listen_param,
-                             struct ev_loop *loop) {
-  bool res{false};
-  _listen_stream_socket_parameters = *listen_param;
-  if (!fill_addr(_listen_stream_socket_parameters._listen_address, _self_addr))
-    return res;
-  if (create_listen_tcp_socket()) {
-    _loop = loop;
-    set_connection_state(state::e_wait);
-    ev::init(&_connect_io, incoming_connection_cb, _file_descr, EV_READ, this);
-    if (0 ==
-        listen(_file_descr, _listen_stream_socket_parameters._listen_backlog)) {
-      ev::start(_connect_io, _loop);
-      res = true;
-    } else {
-      set_detailed_error("server listen is failed");
-      set_connection_state(state::e_failed);
-      cleanup();
-    }
-  }
-  return res;
 }
 
 }  // namespace jkl::sp::lnx
