@@ -83,6 +83,7 @@ bool tcp_listen_stream::init(listen_stream_socket_parameters *listen_params,
                              struct ev_loop *loop) {
   bool res{false};
   _listen_stream_socket_parameters = *listen_params;
+  _self_addr_full = _listen_stream_socket_parameters._listen_address;
   if (!fill_sockaddr(_listen_stream_socket_parameters._listen_address,
                      _self_addr))
     return res;

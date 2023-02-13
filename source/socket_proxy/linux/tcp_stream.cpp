@@ -155,7 +155,7 @@ bool tcp_stream::fill_sockaddr(jkl::proto::ip::full_address const &ipaddr,
       addr.sin_family = AF_INET;
       memcpy(&addr.sin_addr.s_addr, ipaddr.get_address().get_data(),
              jkl::proto::ip::v4::address::e_bytes_size);
-      addr.sin_port = __builtin_bswap32(ipaddr.get_port());
+      addr.sin_port = __builtin_bswap16(ipaddr.get_port());
       return true;
     }
     case jkl::proto::ip::address::version::e_v6: {
@@ -166,7 +166,7 @@ bool tcp_stream::fill_sockaddr(jkl::proto::ip::full_address const &ipaddr,
         local_addr.sin6_family = AF_INET6;
         memcpy(&local_addr.sin6_addr, ipaddr.get_address().get_data(),
                jkl::proto::ip::v6::address::e_bytes_size);
-        local_addr.sin6_port = __builtin_bswap32(ipaddr.get_port());
+        local_addr.sin6_port = __builtin_bswap16(ipaddr.get_port());
         local_addr.sin6_scope_id = lscope_id;
         auto *p_addr = reinterpret_cast<sockaddr_in6 *>(&addr);
         *p_addr = local_addr;

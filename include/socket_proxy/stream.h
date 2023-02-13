@@ -5,6 +5,7 @@
 #include <any>
 #include <functional>
 #include <memory>
+#include <ostream>
 
 /** @defgroup stream
  *  @{
@@ -112,6 +113,14 @@ using proccess_incoming_conn_cb =
     default:
       return "unknown";
   }
+}
+
+/*!
+ * \brief print in out stream
+ * \return std::ostream
+ */
+inline std::ostream &operator<<(std::ostream &out, stream::state st) {
+  return out << connection_state_to_str(st);
 }
 
 }  // namespace jkl

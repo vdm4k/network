@@ -10,7 +10,7 @@ namespace jkl {
 
 class stream_factory {
  public:
-  virtual ~stream_factory() = 0;
+  virtual ~stream_factory() {}
 
   /*! \brief create stream
    *

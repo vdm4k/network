@@ -56,13 +56,6 @@ class tcp_send_stream : public tcp_stream {
    */
   void set_send_data_cb(send_data_cb cb, std::any param) override;
 
-  /*! \brief set callback on data receive
-   *  \param [in] set_state_changed_cb pointer on callback function if nullptr -
-   * non active
-   * \param [in] param parameter for callback function
-   */
-  void set_state_changed_cb(state_changed_cb cb, std::any param) override;
-
   /*! \brief get actual stream settings
    *  \return stream_settings
    */

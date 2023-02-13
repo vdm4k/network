@@ -11,6 +11,7 @@ file(GLOB_RECURSE H_FILES ${${PROJECT_NAME}_SOURCE_DIR}/include/*.h)
 
 add_library(${PROJECT_NAME} ${CPP_FILES} ${H_FILES})
 add_library(jkl::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+add_library(socket_proxy::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
