@@ -8,7 +8,7 @@
 
 #include "CLI/CLI.hpp"
 
-bool print_debug_info = true;
+bool print_debug_info = false;
 size_t data_size = 1500;
 const size_t max_data_size = 65000;
 std::byte send_data[max_data_size];
