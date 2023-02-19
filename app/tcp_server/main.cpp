@@ -21,8 +21,12 @@ void received_data_cb(jkl::stream *stream, std::any data_received) {
     if (print_debug_info)
       std::cout << "receive message - " << std::string((char *)data, size)
                 << std::endl;
-  } else
+  } else {
+    if (print_debug_info)
+      std::cout << "error message - " << stream->get_detailed_error()
+                << std::endl;
     return;
+  }
   ssize_t const sent = stream->send(data, size);
   if (sent <= 0) {
     if (print_debug_info)
@@ -38,12 +42,19 @@ void state_changed_cb(jkl::stream *stream, std::any) {
 struct common_data {
   std::vector<jkl::stream_ptr> _streams;
   size_t _count = 0;
+  jkl::sp::lnx::ev_stream_factory *_manager;
 };
 
 auto in_socket_fun =
     [](jkl::stream_ptr &&stream,
        jkl::sp::lnx::listen_stream_socket_parameters::in_conn_handler_data_cb
            data) {
+      if (jkl::stream::state::e_closed == stream->get_state() ||
+          jkl::stream::state::e_failed == stream->get_state()) {
+        std::cerr << "fail to create incomming connection "
+                  << stream->get_detailed_error() << std::endl;
+        return;
+      }
       if (print_debug_info) {
         auto *linux_stream =
             dynamic_cast<jkl::sp::lnx::tcp_send_stream *>(stream.get());
@@ -55,6 +66,7 @@ auto in_socket_fun =
       auto *cdata = std::any_cast<common_data *>(data);
       stream->set_received_data_cb(received_data_cb, &cdata->_count);
       stream->set_state_changed_cb(state_changed_cb, nullptr);
+      cdata->_manager->bind(stream);
       cdata->_streams.push_back(std::move(stream));
     };
 
@@ -85,6 +97,7 @@ int main(int argc, char **argv) {
   std::atomic_bool work(true);
 
   common_data cdata;
+  cdata._manager = &manager;
   params._listen_address = {server_address, server_port};
   params._proc_in_conn = in_socket_fun;
   params._in_conn_handler_data = &cdata;
@@ -95,6 +108,7 @@ int main(int argc, char **argv) {
               << listen_stream->get_detailed_error() << std::endl;
     return -1;
   }
+  manager.bind(listen_stream);
 
   auto endTime =
       std::chrono::system_clock::now() + std::chrono::seconds(test_time);

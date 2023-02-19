@@ -53,8 +53,8 @@ class tcp_stream : public stream {
   void set_detailed_error(const std::string &str);
   bool create_socket();
   void set_socket_specific_options();
-  bool get_local_address(jkl::proto::ip::address::version ver, int fd,
-                         jkl::proto::ip::full_address &addr);
+  static bool get_local_address(jkl::proto::ip::address::version ver, int fd,
+                                jkl::proto::ip::full_address &addr);
   void cleanup();
   bool bind_on_address();
 

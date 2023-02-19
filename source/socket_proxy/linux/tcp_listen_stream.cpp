@@ -55,18 +55,14 @@ bool tcp_listen_stream::create_listen_socket() {
 }
 
 void tcp_listen_stream::handle_incoming_connection(int file_descr,
-                                                   sockaddr_in peer_addr) {
+                                                   sockaddr_in &peer_addr) {
   auto sck = std::make_unique<tcp_send_stream>();
   sck->_peer_addr = peer_addr;
 
   if (-1 != file_descr) {
     sck->_file_descr = file_descr;
-    sck->_loop = _loop;
     sck->set_connection_state(state::e_established);
-
-    set_socket_specific_options();
-    sck->init_events(_loop);
-    ev::start(sck->_read_io, _loop);
+    sck->set_socket_specific_options();
     get_local_address(_self_addr_full.get_address().get_version(),
                       sck->_file_descr, sck->_self_addr_full);
   } else {
@@ -79,8 +75,13 @@ void tcp_listen_stream::handle_incoming_connection(int file_descr,
         std::move(sck), _listen_stream_socket_parameters._in_conn_handler_data);
 }
 
-bool tcp_listen_stream::init(listen_stream_socket_parameters *listen_params,
-                             struct ev_loop *loop) {
+void tcp_listen_stream::assign_loop(struct ev_loop *loop) {
+  _loop = loop;
+  ev::init(_connect_io, incoming_connection_cb, _file_descr, EV_READ, this);
+  ev::start(_connect_io, _loop);
+}
+
+bool tcp_listen_stream::init(listen_stream_socket_parameters *listen_params) {
   bool res{false};
   _listen_stream_socket_parameters = *listen_params;
   _self_addr_full = _listen_stream_socket_parameters._listen_address;
@@ -88,12 +89,9 @@ bool tcp_listen_stream::init(listen_stream_socket_parameters *listen_params,
                      _self_addr))
     return res;
   if (create_listen_socket()) {
-    _loop = loop;
     set_connection_state(state::e_wait);
-    ev::init(&_connect_io, incoming_connection_cb, _file_descr, EV_READ, this);
     if (0 ==
         listen(_file_descr, _listen_stream_socket_parameters._listen_backlog)) {
-      ev::start(_connect_io, _loop);
       res = true;
     } else {
       set_detailed_error("server listen is failed");

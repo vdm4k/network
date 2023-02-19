@@ -12,16 +12,26 @@ stream_ptr ev_stream_factory::create_stream(stream_settings* stream_set) {
   if (auto* param = dynamic_cast<send_stream_socket_parameters*>(stream_set);
       param) {
     auto sck = std::make_unique<tcp_send_stream>();
-    sck->init(param, _ev_loop);
+    sck->init(param);
     return sck;
   }
   if (auto* param = dynamic_cast<listen_stream_socket_parameters*>(stream_set);
       param) {
     auto sck = std::make_unique<tcp_listen_stream>();
-    sck->init(param, _ev_loop);
+    sck->init(param);
     return sck;
   }
   return nullptr;
+}
+
+void ev_stream_factory::bind(stream_ptr& stream) {
+  if (auto* st = dynamic_cast<tcp_listen_stream*>(stream.get()); st) {
+    st->assign_loop(_ev_loop);
+    return;
+  }
+  if (auto* st = dynamic_cast<tcp_send_stream*>(stream.get()); st) {
+    st->assign_loop(_ev_loop);
+  }
 }
 
 void ev_stream_factory::proceed() { ev::proceed(_ev_loop); }

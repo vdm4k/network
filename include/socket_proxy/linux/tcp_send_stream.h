@@ -69,18 +69,18 @@ class tcp_send_stream : public tcp_stream {
    *  \param [in] pointer on event loop
    *  \return true if inited. otherwise false (cause in get_detailed_error )
    */
-  bool init(send_stream_socket_parameters *send_params, struct ev_loop *loop);
+  bool init(send_stream_socket_parameters *send_params);
+
+  void assign_loop(struct ev_loop *loop);
 
  private:
   friend void connection_established_cb(struct ev_loop *, ev_io *w, int);
 
-  void init_events(struct ev_loop *loop);
   bool connect();
   void stop_events();
   void connection_established();
   void receive_data();
   void send_data();
-  void set_socket_specific_options();
 
   friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
   friend void send_data_cb(struct ev_loop *, ev_io *w, int);
@@ -89,7 +89,7 @@ class tcp_send_stream : public tcp_stream {
 
   struct ev_loop *_loop = nullptr;
   sockaddr_in _peer_addr;
-  ev_io _connect_io;
+  jkl::proto::ip::full_address _peer_addr_full;
   ev_io _read_io;
   ev_io _write_io;
   std::string _error;
@@ -100,8 +100,6 @@ class tcp_send_stream : public tcp_stream {
   state_changed_cb _state_changed_cb;
   std::any _param_state_changed_cb;
 
-  jkl::proto::ip::full_address _peer_addr_full;
-  state _state = state::e_closed;
   send_stream_socket_parameters _send_stream_socket_parameters;
 
   sockaddr_in _self_addr;

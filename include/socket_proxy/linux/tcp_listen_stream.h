@@ -18,14 +18,6 @@ class tcp_listen_stream : public tcp_stream {
   tcp_listen_stream &operator=(tcp_listen_stream &&) = delete;
   tcp_listen_stream &operator=(tcp_listen_stream const &) = delete;
   ~tcp_listen_stream();
-  /*!
-   *  \brief init listen stream
-   *  \param [in] listen_params pointer on parameters
-   *  \param [in] pointer on event loop
-   *  \return true if inited. otherwise false (cause in get_detailed_error )
-   */
-  bool init(listen_stream_socket_parameters *listen_params,
-            struct ev_loop *loop);
 
   /*!
    *  \brief couldn't send data in listen stream => always return 0
@@ -64,10 +56,20 @@ class tcp_listen_stream : public tcp_stream {
     return &_listen_stream_socket_parameters;
   }
 
+  /*!
+   *  \brief init listen stream
+   *  \param [in] listen_params pointer on parameters
+   *  \param [in] pointer on event loop
+   *  \return true if inited. otherwise false (cause in get_detailed_error )
+   */
+  bool init(listen_stream_socket_parameters *listen_params);
+
+  void assign_loop(struct ev_loop *loop);
+
  private:
   friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
                                      int /*revents*/);
-  void handle_incoming_connection(int file_descr, sockaddr_in peer_addr);
+  void handle_incoming_connection(int file_descr, sockaddr_in &peer_addr);
   bool create_listen_socket();
   void stop_events();
 

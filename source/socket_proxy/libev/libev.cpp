@@ -29,13 +29,13 @@ void stop(struct ev_io &active, struct ev_loop *loop) {
   }
 }
 
-void init(ev_io *watcher, io_callback_t callback, int fd, int flags,
+void init(ev_io &watcher, io_callback_t callback, int fd, int flags,
           void *connection) {
-  memset(watcher, 0, sizeof(*watcher));
-  watcher->fd = fd;
-  watcher->cb = callback;
-  watcher->events = flags | EV__IOFDSET;
-  watcher->data = connection;
+  memset(&watcher, 0, sizeof(watcher));
+  watcher.fd = fd;
+  watcher.cb = callback;
+  watcher.events = flags | EV__IOFDSET;
+  watcher.data = connection;
 }
 
 void proceed(struct ev_loop *loop) { ev_loop(loop, EVRUN_ONCE | EVRUN_NOWAIT); }

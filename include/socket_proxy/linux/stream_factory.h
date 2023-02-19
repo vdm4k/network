@@ -26,11 +26,19 @@ class ev_stream_factory : public jkl::stream_factory {
    *
    * \return stream_ptr created stream
    */
-  virtual stream_ptr create_stream(stream_settings *stream_set) override;
+  stream_ptr create_stream(stream_settings *stream_set) override;
 
-  /*! \brief proceed event loop.
+  /*! \brief bind stream to specific factory
+   *
+   *  We always need to bind created stream to factory
    */
-  virtual void proceed() override;
+  void bind(stream_ptr &stream) override;
+
+  /*! \brief proceed event loop
+   *
+   *  Need to bind stream to factory before we can handle it
+   */
+  void proceed() override;
 
  private:
   struct ev_loop *_ev_loop = nullptr;

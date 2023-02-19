@@ -11,7 +11,7 @@ void start(ev_io &active, struct ev_loop *loop);
 void stop(ev_io &active, struct ev_loop *loop);
 
 using io_callback_t = void (*)(struct ev_loop *loop, ev_io *watcher, int flags);
-void init(ev_io *watcher, io_callback_t callback, int fd, int flags,
+void init(ev_io &watcher, io_callback_t callback, int fd, int flags,
           void *connection);
 
 }  // namespace jkl::sp::ev

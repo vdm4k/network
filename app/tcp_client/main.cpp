@@ -52,14 +52,19 @@ void thread_fun(jkl::proto::ip::address const &server_addr,
 
   while (work.load(std::memory_order_acquire)) {
     if (stream_pool.size() < connections_per_thread) {
-      auto s_data =
-          std::make_unique<stream_data>(true, manager.create_stream(&params));
-      s_data->stream->set_received_data_cb(received_data_cb,
-                                           &s_data->data_received);
-      s_data->stream->set_state_changed_cb(state_changed_cb, nullptr);
-      if (print_send_success)
-        s_data->stream->set_send_data_cb(send_data_cb, nullptr);
-      stream_pool.push_back(std::move(s_data));
+      auto new_stream = manager.create_stream(&params);
+      if (jkl::stream::state::e_established == new_stream->get_state() ||
+          jkl::stream::state::e_wait == new_stream->get_state()) {
+        manager.bind(new_stream);
+        auto s_data =
+            std::make_unique<stream_data>(true, std::move(new_stream));
+        s_data->stream->set_received_data_cb(received_data_cb,
+                                             &s_data->data_received);
+        s_data->stream->set_state_changed_cb(state_changed_cb, nullptr);
+        if (print_send_success)
+          s_data->stream->set_send_data_cb(send_data_cb, nullptr);
+        stream_pool.push_back(std::move(s_data));
+      }
     }
 
     for (size_t i = 0;
