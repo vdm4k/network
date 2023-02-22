@@ -75,8 +75,6 @@ auto in_socket_fun =
       cdata->_streams.push_back(std::move(stream));
     };
 
-void *memo = nullptr;
-
 int main(int argc, char **argv) {
   CLI::App app{"tcp_server"};
   std::string server_address_s;
@@ -115,9 +113,6 @@ int main(int argc, char **argv) {
     return -1;
   }
   manager.bind(listen_stream);
-
-  memo = malloc(100);
-  memo = nullptr;
 
   auto endTime =
       std::chrono::system_clock::now() + std::chrono::seconds(test_time);
