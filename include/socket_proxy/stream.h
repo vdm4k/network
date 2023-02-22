@@ -68,6 +68,12 @@ class stream {
    */
   virtual state get_state() const = 0;
 
+  /*! \fn bool is_active() const
+   *  \brief check if stream in active state
+   *  \return bool
+   */
+  virtual bool is_active() const = 0;
+
   /*! \brief set callback on data receive
    *  \param [in] received_data_cb pointer on callback function if nullptr - non
    * active

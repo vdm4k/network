@@ -14,7 +14,7 @@ class stream_factory {
 
   /*! \brief create stream (Always create stream)
    *
-   * Success created stream need to bind to any factory
+   * Success created stream needed to be bind to any factory
    * If something bad happened we return stream with failed
    * state - stream::get_detailed_error this can be used for look extended
    * error. stream::get_stream_settings will always return valid settings, hence

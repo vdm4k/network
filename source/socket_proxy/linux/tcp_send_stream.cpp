@@ -26,11 +26,14 @@ void tcp_send_stream::stop_events() {
 }
 
 void tcp_send_stream::assign_loop(struct ev_loop *loop) {
+  stop_events();
   _loop = loop;
   ev::init(_read_io, receive_data_cb, _file_descr, EV_READ, this);
   if (state::e_established == get_state()) {
     ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-    if (_send_data_cb) ev::start(_write_io, _loop);
+    if (_send_data_cb) {
+      ev::start(_write_io, _loop);
+    }
     ev::start(_read_io, _loop);
   } else {
     ev::init(_write_io, connection_established_cb, _file_descr, EV_WRITE, this);
@@ -41,8 +44,7 @@ void tcp_send_stream::assign_loop(struct ev_loop *loop) {
 bool tcp_send_stream::init(send_stream_socket_parameters *send_params) {
   bool res = false;
   _send_stream_socket_parameters = *send_params;
-  _peer_addr_full = _send_stream_socket_parameters._peer_addr;
-  if (!fill_sockaddr(_peer_addr_full, _peer_addr)) return res;
+
   if (create_socket()) {
     if (connect()) {
       res = true;
@@ -67,7 +69,9 @@ void tcp_send_stream::connection_established() {
       if (get_state() == state::e_wait) {
         ev::stop(_write_io, _loop);
         ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-        if (_send_data_cb) ev::start(_write_io, _loop);
+        if (_send_data_cb) {
+          ev::start(_write_io, _loop);
+        }
         ev::start(_read_io, _loop);
         set_connection_state(state::e_established);
       } else {
@@ -99,8 +103,8 @@ ssize_t tcp_send_stream::send(std::byte *data, size_t data_size) {
         break;
       }
     } else {
-      set_connection_state(state::e_failed);
       set_detailed_error("socket error occured while send data");
+      set_connection_state(state::e_failed);
       break;
     }
   }
@@ -125,8 +129,8 @@ ssize_t tcp_send_stream::receive(std::byte *buffer, size_t buffer_size) {
           break;
         }
       } else {
-        set_connection_state(state::e_failed);
         set_detailed_error("recv return error");
+        set_connection_state(state::e_failed);
         break;
       }
     }
@@ -136,9 +140,12 @@ ssize_t tcp_send_stream::receive(std::byte *buffer, size_t buffer_size) {
 
 bool tcp_send_stream::connect() {
   bool res{false};
+  sockaddr_in peer_addr;
+  if (!fill_sockaddr(_send_stream_socket_parameters._peer_addr, peer_addr))
+    return res;
   int rc =
-      ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&_peer_addr),
-                sizeof(_peer_addr));
+      ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&peer_addr),
+                sizeof(peer_addr));
   if (0 == rc || EINPROGRESS == errno) {
     set_connection_state(state::e_wait);
     res = true;
@@ -148,10 +155,6 @@ bool tcp_send_stream::connect() {
     }
   }
   return res;
-}
-
-jkl::proto::ip::full_address const &tcp_send_stream::get_peer_address() const {
-  return _peer_addr_full;
 }
 
 void tcp_send_stream::set_received_data_cb(received_data_cb cb,
@@ -168,6 +171,11 @@ void tcp_send_stream::set_send_data_cb(jkl::send_data_cb cb,
     ev::start(_write_io, _loop);
   else
     ev::stop(_write_io, _loop);
+}
+
+bool tcp_send_stream::is_active() const {
+  auto st = get_state();
+  return st == state::e_wait || st == state::e_established;
 }
 
 void tcp_send_stream::receive_data() {

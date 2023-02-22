@@ -36,12 +36,6 @@ class tcp_send_stream : public tcp_stream {
    */
   ssize_t receive(std::byte *data, size_t data_size) override;
 
-  /*! \fn faddresses const& get_peer_address() const
-   *  \brief
-   *  \return return peer address
-   */
-  jkl::proto::ip::full_address const &get_peer_address() const;
-
   /*! \brief set callback on data receive
    *  \param [in] received_data_cb pointer on callback function if nullptr - non
    * active
@@ -62,6 +56,12 @@ class tcp_send_stream : public tcp_stream {
   stream_settings const *get_stream_settings() const override {
     return &_send_stream_socket_parameters;
   }
+
+  /*! \fn bool is_active() const
+   *  \brief check if stream in active state
+   *  \return bool
+   */
+  bool is_active() const override;
 
   /*!
    *  \brief init send stream
@@ -88,11 +88,9 @@ class tcp_send_stream : public tcp_stream {
   friend class tcp_listen_stream;
 
   struct ev_loop *_loop = nullptr;
-  sockaddr_in _peer_addr;
-  jkl::proto::ip::full_address _peer_addr_full;
+
   ev_io _read_io;
   ev_io _write_io;
-  std::string _error;
   received_data_cb _received_data_cb;
   std::any _param_received_data_cb;
   send_data_cb _send_data_cb;
@@ -101,9 +99,6 @@ class tcp_send_stream : public tcp_stream {
   std::any _param_state_changed_cb;
 
   send_stream_socket_parameters _send_stream_socket_parameters;
-
-  sockaddr_in _self_addr;
-  std::string _detailed_error;
 };
 
 }  // namespace jkl::sp::lnx

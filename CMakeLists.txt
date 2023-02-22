@@ -15,24 +15,20 @@ add_library(socket_proxy::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_compile_options(${PROJECT_NAME} PRIVATE  -Wall -Wextra -Wpedantic  -Wno-vla -Wno-unused-local-typedefs)
+target_compile_options(${PROJECT_NAME} PRIVATE  -Wall -Wextra -Wpedantic -Wno-vla -Wno-unused-local-typedefs)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 
 #sanitizer
-if(ASAN)
-  list(APPEND uv_defines __ASAN__=1)
-  if(CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang")
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
-    set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
-  elseif(MSVC)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /fsanitize=address")
-  else()
-    message(SEND_ERROR "AddressSanitizer support requires clang, gcc, or msvc. Try again with -DCMAKE_C_COMPILER.")
-  endif()
+if(NOT DEFINED SANITIZER)
+    option(SANITIZER "Enable address sanitizer" OFF)
+endif()
+
+if(SANITIZER)
+    target_compile_options(socket_proxy INTERFACE -fsanitize=address -fPIC)
+    target_link_options(socket_proxy INTERFACE -fsanitize=address)
 endif()
 
 #app

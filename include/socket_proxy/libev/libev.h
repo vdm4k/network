@@ -6,7 +6,7 @@ namespace jkl::sp::ev {
 struct ev_loop *init();
 void proceed(struct ev_loop *loop);
 void clean_up(struct ev_loop *&loop);
-bool is_active(ev_io const *io_active);
+bool is_active(ev_io const &io_active);
 void start(ev_io &active, struct ev_loop *loop);
 void stop(ev_io &active, struct ev_loop *loop);
 

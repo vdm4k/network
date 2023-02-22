@@ -53,8 +53,20 @@ class tcp_listen_stream : public tcp_stream {
    *  \return stream_settings
    */
   stream_settings const *get_stream_settings() const override {
-    return &_listen_stream_socket_parameters;
+    return &_params;
   }
+
+  /*! \fn bool is_active() const
+   *  \brief check if stream in active state
+   *  \return bool
+   */
+  bool is_active() const override;
+
+  /*! \fn faddresses const& get_self_address() const
+   *  \brief
+   *  \return return self address
+   */
+  jkl::proto::ip::full_address const &get_self_address() const;
 
   /*!
    *  \brief init listen stream
@@ -69,13 +81,15 @@ class tcp_listen_stream : public tcp_stream {
  private:
   friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
                                      int /*revents*/);
-  void handle_incoming_connection(int file_descr, sockaddr_in &peer_addr);
+  void handle_incoming_connection(int file_descr,
+                                  proto::ip::full_address const &peer_addr,
+                                  proto::ip::full_address const &self_addr);
   bool create_listen_socket();
   void stop_events();
 
   ev_io _connect_io;
   struct ev_loop *_loop = nullptr;
-  listen_stream_socket_parameters _listen_stream_socket_parameters;
+  listen_stream_socket_parameters _params;
 };
 
 }  // namespace jkl::sp::lnx

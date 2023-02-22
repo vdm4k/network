@@ -15,16 +15,16 @@ void clean_up(struct ev_loop *&loop) {
   loop = nullptr;
 }
 
-bool is_active(struct ev_io const *io_active) { return 0 != io_active->active; }
+bool is_active(struct ev_io const &io_active) { return 0 != io_active.active; }
 
 void start(struct ev_io &active, struct ev_loop *loop) {
-  if (!is_active(&active)) {
+  if (!is_active(active)) {
     ev_io_start(loop, &active);
   }
 }
 
 void stop(struct ev_io &active, struct ev_loop *loop) {
-  if (is_active(&active)) {
+  if (is_active(active)) {
     ev_io_stop(loop, &active);
   }
 }

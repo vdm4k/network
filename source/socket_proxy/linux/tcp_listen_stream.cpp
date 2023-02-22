@@ -8,23 +8,64 @@ void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
                             int /*revents*/) {
   int new_fd = -1;
   auto *conn = reinterpret_cast<tcp_listen_stream *>(w->data);
-  struct sockaddr_in peer_addr = {0, 0, {0}, {0}};
-  socklen_t addrlen = sizeof(peer_addr);
-  while (true) {
-    new_fd = accept(w->fd, reinterpret_cast<struct sockaddr *>(&peer_addr),
-                    &addrlen);
-    if (-1 == new_fd) {
-      if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) break;
-    } else
+
+  jkl::proto::ip::full_address peer_addr;
+  switch (conn->get_self_address().get_address().get_version()) {
+    case jkl::proto::ip::address::version::e_v4: {
+      struct sockaddr_in t_peer_addr = {0, 0, {0}, {0}};
+      socklen_t addrlen = sizeof(t_peer_addr);
+      while (true) {
+        new_fd = accept(
+            w->fd, reinterpret_cast<struct sockaddr *>(&t_peer_addr), &addrlen);
+        if (-1 == new_fd) {
+          if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) break;
+        } else
+          break;
+      }
+
+      if (-1 != new_fd) {
+        peer_addr = jkl::proto::ip::full_address(
+            jkl::proto::ip::v4::address(t_peer_addr.sin_addr.s_addr),
+            htons(t_peer_addr.sin_port));
+      }
+      break;
+    }
+    case jkl::proto::ip::address::version::e_v6: {
+      sockaddr_in6 t_peer_addr = {0, 0, 0, {{{0}}}, 0};
+      socklen_t addrlen = sizeof(t_peer_addr);
+      while (true) {
+        new_fd = accept(
+            w->fd, reinterpret_cast<struct sockaddr *>(&t_peer_addr), &addrlen);
+        if (-1 == new_fd) {
+          if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) break;
+        } else
+          break;
+      }
+      if (-1 != new_fd) {
+        char addr_buf[50];
+        inet_ntop(AF_INET6, &t_peer_addr.sin6_addr, addr_buf, sizeof(addr_buf));
+        peer_addr =
+            jkl::proto::ip::full_address(jkl::proto::ip::v6::address(addr_buf),
+                                         htons(t_peer_addr.sin6_port));
+      }
+      break;
+    }
+    default:
       break;
   }
-  conn->handle_incoming_connection(new_fd, peer_addr);
+
+  jkl::proto::ip::full_address self_address;
+  if (-1 != new_fd) {
+    tcp_listen_stream::get_local_address(peer_addr.get_address().get_version(),
+                                         new_fd, self_address);
+  }
+  conn->handle_incoming_connection(new_fd, peer_addr, self_address);
 }
 
 tcp_listen_stream::~tcp_listen_stream() { stop_events(); }
 
 ssize_t tcp_listen_stream::send(std::byte * /*data*/, size_t /*data_size*/) {
-  set_detailed_error("couldn't send data in listen stream");
+  set_detailed_error("couldn't send data by listen stream");
   return 0;
 }
 
@@ -39,6 +80,10 @@ void tcp_listen_stream::set_received_data_cb(received_data_cb /*cb*/,
 void tcp_listen_stream::set_send_data_cb(send_data_cb /*cb*/,
                                          std::any /*param*/) {}
 
+bool tcp_listen_stream::is_active() const {
+  return get_state() == state::e_wait;
+}
+
 bool tcp_listen_stream::create_listen_socket() {
   if (!create_socket()) return false;
   int reuseaddr = 1;
@@ -51,28 +96,27 @@ bool tcp_listen_stream::create_listen_socket() {
     return false;
   }
 
-  return bind_on_address();
+  return bind_on_address(_params._listen_address);
 }
 
-void tcp_listen_stream::handle_incoming_connection(int file_descr,
-                                                   sockaddr_in &peer_addr) {
+void tcp_listen_stream::handle_incoming_connection(
+    int file_descr, jkl::proto::ip::full_address const &peer_addr,
+    proto::ip::full_address const &self_addr) {
   auto sck = std::make_unique<tcp_send_stream>();
-  sck->_peer_addr = peer_addr;
 
   if (-1 != file_descr) {
+    sck->_send_stream_socket_parameters._peer_addr = peer_addr;
+    sck->_send_stream_socket_parameters._self_addr = self_addr;
     sck->_file_descr = file_descr;
     sck->set_connection_state(state::e_established);
     sck->set_socket_specific_options();
-    get_local_address(_self_addr_full.get_address().get_version(),
-                      sck->_file_descr, sck->_self_addr_full);
   } else {
     sck->set_connection_state(state::e_failed);
     sck->set_detailed_error("couldn't accept new incomming connection");
   }
 
-  if (_listen_stream_socket_parameters._proc_in_conn)
-    _listen_stream_socket_parameters._proc_in_conn(
-        std::move(sck), _listen_stream_socket_parameters._in_conn_handler_data);
+  if (_params._proc_in_conn)
+    _params._proc_in_conn(std::move(sck), _params._in_conn_handler_data);
 }
 
 void tcp_listen_stream::assign_loop(struct ev_loop *loop) {
@@ -81,17 +125,17 @@ void tcp_listen_stream::assign_loop(struct ev_loop *loop) {
   ev::start(_connect_io, _loop);
 }
 
+jkl::proto::ip::full_address const &tcp_listen_stream::get_self_address()
+    const {
+  return _params._listen_address;
+}
+
 bool tcp_listen_stream::init(listen_stream_socket_parameters *listen_params) {
   bool res{false};
-  _listen_stream_socket_parameters = *listen_params;
-  _self_addr_full = _listen_stream_socket_parameters._listen_address;
-  if (!fill_sockaddr(_listen_stream_socket_parameters._listen_address,
-                     _self_addr))
-    return res;
+  _params = *listen_params;
   if (create_listen_socket()) {
     set_connection_state(state::e_wait);
-    if (0 ==
-        listen(_file_descr, _listen_stream_socket_parameters._listen_backlog)) {
+    if (0 == listen(_file_descr, _params._listen_backlog)) {
       res = true;
     } else {
       set_detailed_error("server listen is failed");

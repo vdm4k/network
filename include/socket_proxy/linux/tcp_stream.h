@@ -20,12 +20,6 @@ class tcp_stream : public stream {
   tcp_stream &operator=(tcp_stream const &) = delete;
   ~tcp_stream() override;
 
-  /*! \fn faddresses const& get_self_address() const
-   *  \brief
-   *  \return return self address
-   */
-  jkl::proto::ip::full_address const &get_self_address() const;
-
   /*! \fn std::string const & get_detailed_error() const
    *  \brief get description about error
    *  \return std::string description
@@ -56,11 +50,9 @@ class tcp_stream : public stream {
   static bool get_local_address(jkl::proto::ip::address::version ver, int fd,
                                 jkl::proto::ip::full_address &addr);
   void cleanup();
-  bool bind_on_address();
+  bool bind_on_address(const proto::ip::full_address &self_address);
 
   int _file_descr = -1;
-  jkl::proto::ip::full_address _self_addr_full;
-  sockaddr_in _self_addr;
 
  private:
   state_changed_cb _state_changed_cb;

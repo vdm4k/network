@@ -7,15 +7,21 @@
 #include <thread>
 
 #include "CLI/CLI.hpp"
-#include "socket_proxy/linux/tcp_send_stream.h"
 
 bool print_debug_info = false;
 size_t data_size = 65000;
 
-void received_data_cb(jkl::stream *stream, std::any data_received) {
+struct common_data {
+  std::vector<jkl::stream_ptr> _streams;
+  std::set<jkl::stream *> _need_to_handle;
+  size_t _count = 0;
+  jkl::sp::lnx::ev_stream_factory *_manager;
+};
+
+void received_data_cb(jkl::stream *stream, std::any data_com) {
   std::byte data[data_size];
-  size_t *count = std::any_cast<size_t *>(data_received);
-  (*count)++;
+  common_data *cdata = std::any_cast<common_data *>(data_com);
+  cdata->_count++;
   ssize_t size = stream->receive(data, data_size);
   if (size > 0) {
     if (print_debug_info)
@@ -25,50 +31,51 @@ void received_data_cb(jkl::stream *stream, std::any data_received) {
     if (print_debug_info)
       std::cout << "error message - " << stream->get_detailed_error()
                 << std::endl;
+    cdata->_need_to_handle.insert(stream);
     return;
   }
   ssize_t const sent = stream->send(data, size);
   if (sent <= 0) {
     if (print_debug_info)
       std::cout << "send error - " << stream->get_detailed_error() << std::endl;
+    cdata->_need_to_handle.insert(stream);
   }
 }
 
-void state_changed_cb(jkl::stream *stream, std::any) {
+void state_changed_cb(jkl::stream *stream, std::any data_com) {
   if (print_debug_info)
     std::cout << "state_changed_cb " << stream->get_state() << std::endl;
+  if (!stream->is_active()) {
+    common_data *cdata = std::any_cast<common_data *>(data_com);
+    cdata->_need_to_handle.insert(stream);
+  }
 }
-
-struct common_data {
-  std::vector<jkl::stream_ptr> _streams;
-  size_t _count = 0;
-  jkl::sp::lnx::ev_stream_factory *_manager;
-};
 
 auto in_socket_fun =
     [](jkl::stream_ptr &&stream,
        jkl::sp::lnx::listen_stream_socket_parameters::in_conn_handler_data_cb
            data) {
-      if (jkl::stream::state::e_closed == stream->get_state() ||
-          jkl::stream::state::e_failed == stream->get_state()) {
+      if (!stream->is_active()) {
         std::cerr << "fail to create incomming connection "
                   << stream->get_detailed_error() << std::endl;
         return;
       }
       if (print_debug_info) {
         auto *linux_stream =
-            dynamic_cast<jkl::sp::lnx::tcp_send_stream *>(stream.get());
-        std::cout << "incoming connection from - "
-                  << linux_stream->get_peer_address().to_string() << ", to - "
-                  << linux_stream->get_self_address().to_string() << std::endl;
+            dynamic_cast<jkl::sp::lnx::send_stream_socket_parameters const *>(
+                stream->get_stream_settings());
+        std::cout << "incoming connection from - " << *linux_stream->_self_addr
+                  << ", to - " << linux_stream->_peer_addr << std::endl;
       }
 
       auto *cdata = std::any_cast<common_data *>(data);
-      stream->set_received_data_cb(received_data_cb, &cdata->_count);
-      stream->set_state_changed_cb(state_changed_cb, nullptr);
+      stream->set_received_data_cb(received_data_cb, data);
+      stream->set_state_changed_cb(state_changed_cb, data);
       cdata->_manager->bind(stream);
       cdata->_streams.push_back(std::move(stream));
     };
+
+void *memo = nullptr;
 
 int main(int argc, char **argv) {
   CLI::App app{"tcp_server"};
@@ -102,13 +109,15 @@ int main(int argc, char **argv) {
   params._proc_in_conn = in_socket_fun;
   params._in_conn_handler_data = &cdata;
   auto listen_stream = manager.create_stream(&params);
-  if (jkl::stream::state::e_closed == listen_stream->get_state() ||
-      jkl::stream::state::e_failed == listen_stream->get_state()) {
+  if (!listen_stream->is_active()) {
     std::cerr << "couldn't create listen stream, cause - "
               << listen_stream->get_detailed_error() << std::endl;
     return -1;
   }
   manager.bind(listen_stream);
+
+  memo = malloc(100);
+  memo = nullptr;
 
   auto endTime =
       std::chrono::system_clock::now() + std::chrono::seconds(test_time);
@@ -116,8 +125,22 @@ int main(int argc, char **argv) {
   size_t message_proceed = 0;
   std::cout << "server start" << std::endl;
   while (std::chrono::system_clock::now() < endTime &&
-         jkl::stream::state::e_wait == listen_stream->get_state()) {
+         listen_stream->is_active()) {
     manager.proceed();
+    if (!cdata._need_to_handle.empty()) {
+      auto &to_handle = cdata._need_to_handle;
+      while (!to_handle.empty()) {
+        auto beg = to_handle.begin();
+        for (auto it = cdata._streams.begin();
+             !(*beg)->is_active() && it != cdata._streams.end(); ++it) {
+          if (it->get() == *beg) {
+            cdata._streams.erase(it);
+            break;
+          }
+        }
+        to_handle.erase(beg);
+      }
+    }
     if (cdata._count) {
       message_proceed += cdata._count;
       cdata._count = 0;

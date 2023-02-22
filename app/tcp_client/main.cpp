@@ -53,8 +53,7 @@ void thread_fun(jkl::proto::ip::address const &server_addr,
   while (work.load(std::memory_order_acquire)) {
     if (stream_pool.size() < connections_per_thread) {
       auto new_stream = manager.create_stream(&params);
-      if (jkl::stream::state::e_established == new_stream->get_state() ||
-          jkl::stream::state::e_wait == new_stream->get_state()) {
+      if (new_stream->is_active()) {
         manager.bind(new_stream);
         auto s_data =
             std::make_unique<stream_data>(true, std::move(new_stream));
@@ -73,8 +72,7 @@ void thread_fun(jkl::proto::ip::address const &server_addr,
       if (jkl::stream::state::e_wait == send_stream->get_state() ||
           !stream_pool[i]->data_received)
         continue;
-      if (jkl::stream::state::e_failed == send_stream->get_state() ||
-          jkl::stream::state::e_closed == send_stream->get_state()) {
+      if (!send_stream->is_active()) {
         std::cerr << "error - " << send_stream->get_detailed_error()
                   << std::endl;
         stream_pool.erase(stream_pool.begin() + i);
