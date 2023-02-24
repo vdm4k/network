@@ -1,7 +1,8 @@
 #pragma once
 #include <socket_proxy/libev/libev.h>
-#include <socket_proxy/linux/tcp/settings.h>
 
+#include "send_settings.h"
+#include "send_statistic.h"
 #include "stream.h"
 
 /** @addtogroup stream
@@ -10,7 +11,7 @@
 
 namespace jkl::sp::lnx::tcp {
 
-class send_stream : public tcp_stream {
+class send_stream : public stream {
  public:
   send_stream() = default;
   send_stream(send_stream const &) = delete;
@@ -53,9 +54,12 @@ class send_stream : public tcp_stream {
   /*! \brief get actual stream settings
    *  \return stream_settings
    */
-  stream_settings const *get_stream_settings() const override {
-    return &_send_stream_socket_parameters;
-  }
+  stream_settings const *get_settings() const override { return &_parameters; }
+
+  /*! \brief get actual stream statistic
+   *  \return stream_statistic
+   */
+  stream_statistic const *get_statistic() const override { return &_statistic; }
 
   /*! \fn bool is_active() const
    *  \brief check if stream in active state
@@ -98,7 +102,8 @@ class send_stream : public tcp_stream {
   state_changed_cb _state_changed_cb;
   std::any _param_state_changed_cb;
 
-  send_stream_parameters _send_stream_socket_parameters;
+  send_stream_parameters _parameters;
+  send_statistic _statistic;
 };
 
 }  // namespace jkl::sp::lnx::tcp

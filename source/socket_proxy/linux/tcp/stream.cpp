@@ -32,7 +32,7 @@ uint32_t find_scope_id(const jkl::proto::ip::v6::address &addr) {
   return scope_id;
 }
 
-bool tcp_stream::get_local_address(jkl::proto::ip::address::version ver, int fd,
+bool stream::get_local_address(jkl::proto::ip::address::version ver, int fd,
                                    jkl::proto::ip::full_address &addr) {
   if (fd > 0) {
     switch (ver) {
@@ -65,7 +65,7 @@ bool tcp_stream::get_local_address(jkl::proto::ip::address::version ver, int fd,
   return false;
 }
 
-bool tcp_stream::fill_sockaddr(jkl::proto::ip::full_address const &ipaddr,
+bool stream::fill_sockaddr(jkl::proto::ip::full_address const &ipaddr,
                                sockaddr_in &addr) {
   switch (ipaddr.get_address().get_version()) {
     case jkl::proto::ip::address::version::e_v4: {
@@ -103,14 +103,14 @@ bool tcp_stream::fill_sockaddr(jkl::proto::ip::full_address const &ipaddr,
   return false;
 }
 
-tcp_stream::~tcp_stream() { cleanup(); }
+stream::~stream() { cleanup(); }
 
-void tcp_stream::set_socket_specific_options() {
+void stream::set_socket_specific_options() {
   {
     int mode = 1;
     ioctl(_file_descr, FIONBIO, &mode);
     stream_socket_parameters *sparam =
-        (stream_socket_parameters *)get_stream_settings();
+        (stream_socket_parameters *)get_settings();
     if (sparam->_buffer_size) {
       int optval = *sparam->_buffer_size;
 #ifdef SO_SNDBUF
@@ -139,7 +139,7 @@ void tcp_stream::set_socket_specific_options() {
   }
 }
 
-bool tcp_stream::create_socket() {
+bool stream::create_socket() {
   int rc = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (-1 != rc) {
     _file_descr = rc;
@@ -151,7 +151,7 @@ bool tcp_stream::create_socket() {
   return rc != -1;
 }
 
-bool tcp_stream::bind_on_address(
+bool stream::bind_on_address(
     jkl::proto::ip::full_address const &self_address) {
   switch (self_address.get_address().get_version()) {
     case jkl::proto::ip::address::version::e_v4: {
@@ -186,30 +186,30 @@ bool tcp_stream::bind_on_address(
   return false;
 }
 
-void tcp_stream::cleanup() {
+void stream::cleanup() {
   if (-1 != _file_descr) {
     ::close(_file_descr);
     _file_descr = -1;
   }
 }
 
-std::string const &tcp_stream::get_detailed_error() const {
+std::string const &stream::get_detailed_error() const {
   return _detailed_error;
 }
 
-tcp_stream::state tcp_stream::get_state() const { return _state; }
+stream::state stream::get_state() const { return _state; }
 
-void tcp_stream::set_state_changed_cb(state_changed_cb cb, std::any user_data) {
+void stream::set_state_changed_cb(state_changed_cb cb, std::any user_data) {
   _state_changed_cb = cb;
   _param_state_changed_cb = user_data;
 }
 
-void tcp_stream::set_connection_state(state new_state) {
+void stream::set_connection_state(state new_state) {
   _state = new_state;
   if (_state_changed_cb) _state_changed_cb(this, _param_state_changed_cb);
 }
 
-void tcp_stream::set_detailed_error(const std::string &str) {
+void stream::set_detailed_error(const std::string &str) {
   if (errno)
     _detailed_error = str + ", errno - " + strerror(errno);
   else

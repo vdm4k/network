@@ -1,6 +1,7 @@
 #include <protocols/ip/full_address.h>
 #include <socket_proxy/linux/stream_factory.h>
-#include <socket_proxy/linux/tcp/settings.h>
+#include <socket_proxy/linux/tcp/listen_settings.h>
+#include <socket_proxy/linux/tcp/send_settings.h>
 
 #include <atomic>
 #include <iostream>
@@ -9,6 +10,7 @@
 #include <unordered_set>
 
 #include "CLI/CLI.hpp"
+#include "socket_proxy/linux/tcp/listen_statistic.h"
 
 bool print_debug_info = false;
 size_t data_size = 65000;
@@ -53,26 +55,27 @@ void state_changed_cb(jkl::stream *stream, std::any data_com) {
   }
 }
 
-auto in_socket_fun = [](jkl::stream_ptr &&stream,
-                        jkl::sp::lnx::tcp::listen_stream_parameters::
-                            in_conn_handler_data_cb data) {
-  if (!stream->is_active()) {
-    std::cerr << "fail to create incomming connection "
-              << stream->get_detailed_error() << std::endl;
-    return;
-  }
-  auto *linux_stream =
-      dynamic_cast<jkl::sp::lnx::tcp::send_stream_parameters const *>(
-          stream->get_stream_settings());
-  std::cout << "incoming connection from - " << linux_stream->_peer_addr
-            << ", to - " << *linux_stream->_self_addr << std::endl;
+auto in_socket_fun =
+    [](jkl::stream_ptr &&stream,
+       jkl::sp::lnx::tcp::listen_stream_parameters::in_conn_handler_data_cb
+           data) {
+      if (!stream->is_active()) {
+        std::cerr << "fail to create incomming connection "
+                  << stream->get_detailed_error() << std::endl;
+        return;
+      }
+      auto *linux_stream =
+          dynamic_cast<jkl::sp::lnx::tcp::send_stream_parameters const *>(
+              stream->get_settings());
+      std::cout << "incoming connection from - " << linux_stream->_peer_addr
+                << ", to - " << *linux_stream->_self_addr << std::endl;
 
-  auto *cdata = std::any_cast<data_per_thread *>(data);
-  stream->set_received_data_cb(received_data_cb, data);
-  stream->set_state_changed_cb(state_changed_cb, data);
-  cdata->_manager->bind(stream);
-  cdata->_streams[stream.get()] = std::move(stream);
-};
+      auto *cdata = std::any_cast<data_per_thread *>(data);
+      stream->set_received_data_cb(received_data_cb, data);
+      stream->set_state_changed_cb(state_changed_cb, data);
+      cdata->_manager->bind(stream);
+      cdata->_streams[stream.get()] = std::move(stream);
+    };
 
 int main(int argc, char **argv) {
   CLI::App app{"tcp_server"};
@@ -116,8 +119,10 @@ int main(int argc, char **argv) {
   auto endTime =
       std::chrono::system_clock::now() + std::chrono::seconds(test_time);
 
+  jkl::sp::lnx::tcp::listen_statistic stat;
   size_t message_proceed = 0;
   std::cout << "server start" << std::endl;
+
   while (std::chrono::system_clock::now() < endTime &&
          listen_stream->is_active()) {
     manager.proceed();
@@ -136,7 +141,18 @@ int main(int argc, char **argv) {
     }
   }
 
+  auto const *stream_stat =
+      static_cast<jkl::sp::lnx::tcp::listen_statistic const *>(
+          listen_stream->get_statistic());
+  stat._failed_to_accept_connections +=
+      stream_stat->_failed_to_accept_connections;
+  stat._success_accept_connections += stream_stat->_success_accept_connections;
+
   work = false;
   std::cout << "server stoped" << std::endl;
   std::cout << "message proceed - " << message_proceed << std::endl;
+  std::cout << "success accept connections - "
+            << stat._success_accept_connections << std::endl;
+  std::cout << "failed to accept connections - "
+            << stat._failed_to_accept_connections << std::endl;
 }

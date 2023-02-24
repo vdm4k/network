@@ -1,11 +1,12 @@
 #pragma once
 
-#include <socket_proxy/stream_settings.h>
-
 #include <any>
 #include <functional>
 #include <memory>
 #include <ostream>
+
+#include "stream_settings.h"
+#include "stream_statistic.h"
 
 /** @defgroup stream
  *  @{
@@ -98,7 +99,12 @@ class stream {
   /*! \brief get actual stream settings
    *  \return stream_settings
    */
-  virtual stream_settings const *get_stream_settings() const = 0;
+  virtual stream_settings const *get_settings() const = 0;
+
+  /*! \brief get actual stream settings
+   *  \return stream_statistic *
+   */
+  virtual stream_statistic const *get_statistic() const = 0;
 };
 
 using stream_ptr = std::unique_ptr<stream>;

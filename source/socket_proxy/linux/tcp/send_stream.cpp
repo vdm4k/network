@@ -43,7 +43,7 @@ void send_stream::assign_loop(struct ev_loop *loop) {
 
 bool send_stream::init(send_stream_parameters *send_params) {
   bool res = false;
-  _send_stream_socket_parameters = *send_params;
+  _parameters = *send_params;
 
   if (create_socket()) {
     if (connect()) {
@@ -141,7 +141,7 @@ ssize_t send_stream::receive(std::byte *buffer, size_t buffer_size) {
 bool send_stream::connect() {
   bool res{false};
   sockaddr_in peer_addr;
-  if (!fill_sockaddr(_send_stream_socket_parameters._peer_addr, peer_addr))
+  if (!fill_sockaddr(_parameters._peer_addr, peer_addr))
     return res;
   int rc =
       ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&peer_addr),

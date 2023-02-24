@@ -11,14 +11,14 @@
 
 namespace jkl::sp::lnx::tcp {
 
-class tcp_stream : public stream {
+class stream : public jkl::stream {
  public:
-  tcp_stream() = default;
-  tcp_stream(tcp_stream const &) = delete;
-  tcp_stream(tcp_stream &&) = delete;
-  tcp_stream &operator=(tcp_stream &&) = delete;
-  tcp_stream &operator=(tcp_stream const &) = delete;
-  ~tcp_stream() override;
+  stream() = default;
+  stream(stream const &) = delete;
+  stream(stream &&) = delete;
+  stream &operator=(stream &&) = delete;
+  stream &operator=(stream const &) = delete;
+  ~stream() override;
 
   /*! \fn std::string const & get_detailed_error() const
    *  \brief get description about error
@@ -61,7 +61,7 @@ class tcp_stream : public stream {
   state _state = state::e_closed;
 };
 
-using stream_socket_ptr = std::unique_ptr<tcp_stream>;
+using stream_socket_ptr = std::unique_ptr<stream>;
 
 }  // namespace jkl::sp::lnx::tcp
 

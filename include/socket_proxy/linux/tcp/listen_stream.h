@@ -1,7 +1,8 @@
 #pragma once
 #include <socket_proxy/libev/libev.h>
 
-#include "settings.h"
+#include "listen_settings.h"
+#include "listen_statistic.h"
 #include "stream.h"
 
 /** @addtogroup stream
@@ -10,7 +11,7 @@
 
 namespace jkl::sp::lnx::tcp {
 
-class listen_stream : public tcp_stream {
+class listen_stream : public stream {
  public:
   listen_stream() = default;
   listen_stream(listen_stream const &) = delete;
@@ -52,9 +53,12 @@ class listen_stream : public tcp_stream {
   /*! \brief get actual stream settings
    *  \return stream_settings
    */
-  stream_settings const *get_stream_settings() const override {
-    return &_params;
-  }
+  stream_settings const *get_settings() const override { return &_parameters; }
+
+  /*! \brief get actual stream statistic
+   *  \return stream_statistic
+   */
+  stream_statistic const *get_statistic() const override { return &_statistic; }
 
   /*! \fn bool is_active() const
    *  \brief check if stream in active state
@@ -89,7 +93,8 @@ class listen_stream : public tcp_stream {
 
   ev_io _connect_io;
   struct ev_loop *_loop = nullptr;
-  listen_stream_parameters _params;
+  listen_stream_parameters _parameters;
+  listen_statistic _statistic;
 };
 
 }  // namespace jkl::sp::lnx::tcp

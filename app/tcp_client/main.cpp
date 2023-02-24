@@ -1,6 +1,6 @@
 #include <protocols/ip/full_address.h>
 #include <socket_proxy/linux/stream_factory.h>
-#include <socket_proxy/linux/tcp/settings.h>
+#include <socket_proxy/linux/tcp/send_settings.h>
 
 #include <atomic>
 #include <iostream>
