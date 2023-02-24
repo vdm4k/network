@@ -1,23 +1,23 @@
 #pragma once
 #include <socket_proxy/libev/libev.h>
-#include <socket_proxy/linux/tcp_settings.h>
+#include <socket_proxy/linux/tcp/settings.h>
 
-#include "tcp_stream.h"
+#include "stream.h"
 
 /** @addtogroup stream
  *  @{
  */
 
-namespace jkl::sp::lnx {
+namespace jkl::sp::lnx::tcp {
 
-class tcp_send_stream : public tcp_stream {
+class send_stream : public tcp_stream {
  public:
-  tcp_send_stream() = default;
-  tcp_send_stream(tcp_send_stream const &) = delete;
-  tcp_send_stream(tcp_send_stream &&) = delete;
-  tcp_send_stream &operator=(tcp_send_stream &&) = delete;
-  tcp_send_stream &operator=(tcp_send_stream const &) = delete;
-  ~tcp_send_stream() override;
+  send_stream() = default;
+  send_stream(send_stream const &) = delete;
+  send_stream(send_stream &&) = delete;
+  send_stream &operator=(send_stream &&) = delete;
+  send_stream &operator=(send_stream const &) = delete;
+  ~send_stream() override;
   /*! \fn send_result send(void const * ptr, size_t len)
    *  \brief send data
    *  \param [in] ptr pointer on data
@@ -69,7 +69,7 @@ class tcp_send_stream : public tcp_stream {
    *  \param [in] pointer on event loop
    *  \return true if inited. otherwise false (cause in get_detailed_error )
    */
-  bool init(send_stream_socket_parameters *send_params);
+  bool init(send_stream_parameters *send_params);
 
   void assign_loop(struct ev_loop *loop);
 
@@ -85,7 +85,7 @@ class tcp_send_stream : public tcp_stream {
   friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
   friend void send_data_cb(struct ev_loop *, ev_io *w, int);
 
-  friend class tcp_listen_stream;
+  friend class listen_stream;
 
   struct ev_loop *_loop = nullptr;
 
@@ -98,9 +98,9 @@ class tcp_send_stream : public tcp_stream {
   state_changed_cb _state_changed_cb;
   std::any _param_state_changed_cb;
 
-  send_stream_socket_parameters _send_stream_socket_parameters;
+  send_stream_parameters _send_stream_socket_parameters;
 };
 
-}  // namespace jkl::sp::lnx
+}  // namespace jkl::sp::lnx::tcp
 
 /** @} */  // end of stream

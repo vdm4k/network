@@ -1,23 +1,23 @@
 #pragma once
 #include <socket_proxy/libev/libev.h>
 
-#include "tcp_settings.h"
-#include "tcp_stream.h"
+#include "settings.h"
+#include "stream.h"
 
 /** @addtogroup stream
  *  @{
  */
 
-namespace jkl::sp::lnx {
+namespace jkl::sp::lnx::tcp {
 
-class tcp_listen_stream : public tcp_stream {
+class listen_stream : public tcp_stream {
  public:
-  tcp_listen_stream() = default;
-  tcp_listen_stream(tcp_listen_stream const &) = delete;
-  tcp_listen_stream(tcp_listen_stream &&) = delete;
-  tcp_listen_stream &operator=(tcp_listen_stream &&) = delete;
-  tcp_listen_stream &operator=(tcp_listen_stream const &) = delete;
-  ~tcp_listen_stream();
+  listen_stream() = default;
+  listen_stream(listen_stream const &) = delete;
+  listen_stream(listen_stream &&) = delete;
+  listen_stream &operator=(listen_stream &&) = delete;
+  listen_stream &operator=(listen_stream const &) = delete;
+  ~listen_stream();
 
   /*!
    *  \brief couldn't send data in listen stream => always return 0
@@ -74,7 +74,7 @@ class tcp_listen_stream : public tcp_stream {
    *  \param [in] pointer on event loop
    *  \return true if inited. otherwise false (cause in get_detailed_error )
    */
-  bool init(listen_stream_socket_parameters *listen_params);
+  bool init(listen_stream_parameters *listen_params);
 
   void assign_loop(struct ev_loop *loop);
 
@@ -89,9 +89,9 @@ class tcp_listen_stream : public tcp_stream {
 
   ev_io _connect_io;
   struct ev_loop *_loop = nullptr;
-  listen_stream_socket_parameters _params;
+  listen_stream_parameters _params;
 };
 
-}  // namespace jkl::sp::lnx
+}  // namespace jkl::sp::lnx::tcp
 
 /** @} */  // end of stream

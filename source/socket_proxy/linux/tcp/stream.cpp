@@ -2,12 +2,12 @@
 #include <ifaddrs.h>
 #include <netinet/tcp.h>
 #include <socket_proxy/libev/libev.h>
-#include <socket_proxy/linux/tcp_settings.h>
-#include <socket_proxy/linux/tcp_stream.h>
+#include <socket_proxy/linux/tcp/settings.h>
+#include <socket_proxy/linux/tcp/stream.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-namespace jkl::sp::lnx {
+namespace jkl::sp::lnx::tcp {
 
 uint32_t find_scope_id(const jkl::proto::ip::v6::address &addr) {
   uint32_t scope_id{0};
@@ -216,4 +216,4 @@ void tcp_stream::set_detailed_error(const std::string &str) {
     _detailed_error = str;
 }
 
-}  // namespace jkl::sp::lnx
+}  // namespace jkl::sp::lnx::tcp

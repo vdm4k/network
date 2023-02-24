@@ -11,7 +11,7 @@
  *  @{
  */
 
-namespace jkl::sp::lnx {
+namespace jkl::sp::lnx::tcp {
 
 struct stream_socket_parameters : public stream_settings {
   std::optional<size_t> _buffer_size;  ///< send/receive buffer size
@@ -20,7 +20,7 @@ struct stream_socket_parameters : public stream_settings {
 /*! \class send_stream_socket_parameters
  *  \brief tcp send stream parameters
  */
-struct send_stream_socket_parameters : stream_socket_parameters {
+struct send_stream_parameters : stream_socket_parameters {
   jkl::proto::ip::full_address _peer_addr;  ///< peer address
   std::optional<jkl::proto::ip::full_address>
       _self_addr;  ///< self bind address
@@ -29,7 +29,7 @@ struct send_stream_socket_parameters : stream_socket_parameters {
 /*! \class send_stream_socket_parameters
  *  \brief tcp receive connections socket parameters
  */
-struct listen_stream_socket_parameters : stream_socket_parameters {
+struct listen_stream_parameters : stream_socket_parameters {
   jkl::proto::ip::full_address
       _listen_address;  ///< listen incomming connections
   using in_conn_handler_data_cb = std::any;
@@ -40,6 +40,6 @@ struct listen_stream_socket_parameters : stream_socket_parameters {
   uint16_t _listen_backlog = 14;  ///< listen backlog parameter
 };
 
-}  // namespace jkl::sp::lnx
+}  // namespace jkl::sp::lnx::tcp
 
 /** @} */  // end of stream

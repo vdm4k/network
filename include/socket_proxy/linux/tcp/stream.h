@@ -9,7 +9,7 @@
  *  @{
  */
 
-namespace jkl::sp::lnx {
+namespace jkl::sp::lnx::tcp {
 
 class tcp_stream : public stream {
  public:
@@ -63,6 +63,6 @@ class tcp_stream : public stream {
 
 using stream_socket_ptr = std::unique_ptr<tcp_stream>;
 
-}  // namespace jkl::sp::lnx
+}  // namespace jkl::sp::lnx::tcp
 
 /** @} */  // end of stream

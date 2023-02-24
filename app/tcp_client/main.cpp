@@ -1,6 +1,6 @@
 #include <protocols/ip/full_address.h>
 #include <socket_proxy/linux/stream_factory.h>
-#include <socket_proxy/linux/tcp_settings.h>
+#include <socket_proxy/linux/tcp/settings.h>
 
 #include <atomic>
 #include <iostream>
@@ -69,7 +69,7 @@ void thread_fun(jkl::proto::ip::address const &server_addr,
                 std::atomic_bool &work, size_t connections_per_thread,
                 size_t th_num) {
   jkl::sp::lnx::ev_stream_factory manager;
-  jkl::sp::lnx::send_stream_socket_parameters params;
+  jkl::sp::lnx::tcp::send_stream_parameters params;
   params._peer_addr = {server_addr, server_port};
   fillTestData(th_num);
   std::unordered_set<jkl::stream *> _need_to_handle;

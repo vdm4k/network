@@ -1,6 +1,6 @@
 #include <protocols/ip/full_address.h>
 #include <socket_proxy/linux/stream_factory.h>
-#include <socket_proxy/linux/tcp_settings.h>
+#include <socket_proxy/linux/tcp/settings.h>
 
 #include <atomic>
 #include <iostream>
@@ -53,27 +53,26 @@ void state_changed_cb(jkl::stream *stream, std::any data_com) {
   }
 }
 
-auto in_socket_fun =
-    [](jkl::stream_ptr &&stream,
-       jkl::sp::lnx::listen_stream_socket_parameters::in_conn_handler_data_cb
-           data) {
-      if (!stream->is_active()) {
-        std::cerr << "fail to create incomming connection "
-                  << stream->get_detailed_error() << std::endl;
-        return;
-      }
-      auto *linux_stream =
-          dynamic_cast<jkl::sp::lnx::send_stream_socket_parameters const *>(
-              stream->get_stream_settings());
-      std::cout << "incoming connection from - " << linux_stream->_peer_addr
-                << ", to - " << *linux_stream->_self_addr << std::endl;
+auto in_socket_fun = [](jkl::stream_ptr &&stream,
+                        jkl::sp::lnx::tcp::listen_stream_parameters::
+                            in_conn_handler_data_cb data) {
+  if (!stream->is_active()) {
+    std::cerr << "fail to create incomming connection "
+              << stream->get_detailed_error() << std::endl;
+    return;
+  }
+  auto *linux_stream =
+      dynamic_cast<jkl::sp::lnx::tcp::send_stream_parameters const *>(
+          stream->get_stream_settings());
+  std::cout << "incoming connection from - " << linux_stream->_peer_addr
+            << ", to - " << *linux_stream->_self_addr << std::endl;
 
-      auto *cdata = std::any_cast<data_per_thread *>(data);
-      stream->set_received_data_cb(received_data_cb, data);
-      stream->set_state_changed_cb(state_changed_cb, data);
-      cdata->_manager->bind(stream);
-      cdata->_streams[stream.get()] = std::move(stream);
-    };
+  auto *cdata = std::any_cast<data_per_thread *>(data);
+  stream->set_received_data_cb(received_data_cb, data);
+  stream->set_state_changed_cb(state_changed_cb, data);
+  cdata->_manager->bind(stream);
+  cdata->_streams[stream.get()] = std::move(stream);
+};
 
 int main(int argc, char **argv) {
   CLI::App app{"tcp_server"};
@@ -98,7 +97,7 @@ int main(int argc, char **argv) {
   }
 
   jkl::sp::lnx::ev_stream_factory manager;
-  jkl::sp::lnx::listen_stream_socket_parameters params;
+  jkl::sp::lnx::tcp::listen_stream_parameters params;
   std::atomic_bool work(true);
 
   data_per_thread cdata;

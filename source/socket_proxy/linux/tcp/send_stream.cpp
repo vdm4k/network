@@ -1,31 +1,31 @@
 #include <socket_proxy/libev/libev.h>
-#include <socket_proxy/linux/tcp_send_stream.h>
+#include <socket_proxy/linux/tcp/send_stream.h>
 
-namespace jkl::sp::lnx {
+namespace jkl::sp::lnx::tcp {
 
-tcp_send_stream::~tcp_send_stream() { stop_events(); }
+send_stream::~send_stream() { stop_events(); }
 
 void receive_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<tcp_send_stream *>(w->data);
+  auto *conn = reinterpret_cast<send_stream *>(w->data);
   conn->receive_data();
 }
 
 void send_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<tcp_send_stream *>(w->data);
+  auto *conn = reinterpret_cast<send_stream *>(w->data);
   conn->send_data();
 }
 
 void connection_established_cb(struct ev_loop *, ev_io *w, int) {
-  auto *tr = reinterpret_cast<tcp_send_stream *>(w->data);
+  auto *tr = reinterpret_cast<send_stream *>(w->data);
   tr->connection_established();
 }
 
-void tcp_send_stream::stop_events() {
+void send_stream::stop_events() {
   ev::stop(_read_io, _loop);
   ev::stop(_write_io, _loop);
 }
 
-void tcp_send_stream::assign_loop(struct ev_loop *loop) {
+void send_stream::assign_loop(struct ev_loop *loop) {
   stop_events();
   _loop = loop;
   ev::init(_read_io, receive_data_cb, _file_descr, EV_READ, this);
@@ -41,7 +41,7 @@ void tcp_send_stream::assign_loop(struct ev_loop *loop) {
   }
 }
 
-bool tcp_send_stream::init(send_stream_socket_parameters *send_params) {
+bool send_stream::init(send_stream_parameters *send_params) {
   bool res = false;
   _send_stream_socket_parameters = *send_params;
 
@@ -59,7 +59,7 @@ bool tcp_send_stream::init(send_stream_socket_parameters *send_params) {
   return res;
 }
 
-void tcp_send_stream::connection_established() {
+void send_stream::connection_established() {
   int err = -1;
   socklen_t len = sizeof(err);
   int rc = getsockopt(_file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
@@ -91,7 +91,7 @@ void tcp_send_stream::connection_established() {
   }
 }
 
-ssize_t tcp_send_stream::send(std::byte *data, size_t data_size) {
+ssize_t send_stream::send(std::byte *data, size_t data_size) {
   ssize_t sent{0};
   while (true) {
     sent = ::send(_file_descr, data, data_size, MSG_NOSIGNAL);
@@ -111,7 +111,7 @@ ssize_t tcp_send_stream::send(std::byte *data, size_t data_size) {
   return sent;
 }
 
-ssize_t tcp_send_stream::receive(std::byte *buffer, size_t buffer_size) {
+ssize_t send_stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec{0};
   while (true) {
     rec = ::recv(_file_descr, buffer, buffer_size, MSG_NOSIGNAL);
@@ -138,7 +138,7 @@ ssize_t tcp_send_stream::receive(std::byte *buffer, size_t buffer_size) {
   return rec;
 }
 
-bool tcp_send_stream::connect() {
+bool send_stream::connect() {
   bool res{false};
   sockaddr_in peer_addr;
   if (!fill_sockaddr(_send_stream_socket_parameters._peer_addr, peer_addr))
@@ -157,13 +157,13 @@ bool tcp_send_stream::connect() {
   return res;
 }
 
-void tcp_send_stream::set_received_data_cb(received_data_cb cb,
+void send_stream::set_received_data_cb(received_data_cb cb,
                                            std::any user_data) {
   _received_data_cb = cb;
   _param_received_data_cb = user_data;
 }
 
-void tcp_send_stream::set_send_data_cb(jkl::send_data_cb cb,
+void send_stream::set_send_data_cb(jkl::send_data_cb cb,
                                        std::any user_data) {
   _send_data_cb = cb;
   _param_send_data_cb = user_data;
@@ -173,17 +173,17 @@ void tcp_send_stream::set_send_data_cb(jkl::send_data_cb cb,
     ev::stop(_write_io, _loop);
 }
 
-bool tcp_send_stream::is_active() const {
+bool send_stream::is_active() const {
   auto st = get_state();
   return st == state::e_wait || st == state::e_established;
 }
 
-void tcp_send_stream::receive_data() {
+void send_stream::receive_data() {
   if (_received_data_cb) _received_data_cb(this, _param_received_data_cb);
 }
 
-void tcp_send_stream::send_data() {
+void send_stream::send_data() {
   if (_send_data_cb) _send_data_cb(this, _param_send_data_cb);
 }
 
-}  // namespace jkl::sp::lnx
+}  // namespace jkl::sp::lnx::tcp
