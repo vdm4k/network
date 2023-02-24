@@ -76,13 +76,13 @@ void tcp_send_stream::connection_established() {
         set_connection_state(state::e_established);
       } else {
         set_detailed_error(
-            std::string("client connection established, but tcp state not in "
+            std::string("connection established, but tcp state not in "
                         "listen state. state is - ") +
             connection_state_to_str(get_state()));
         set_connection_state(state::e_failed);
       }
     } else {
-      set_detailed_error("client connection not established");
+      set_detailed_error("connection not established");
       set_connection_state(state::e_failed);
     }
   } else {

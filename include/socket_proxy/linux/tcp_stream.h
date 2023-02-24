@@ -43,7 +43,7 @@ class tcp_stream : public stream {
                      sockaddr_in &addr);
 
  protected:
-  void set_connection_state(state st);
+  void set_connection_state(state new_state);
   void set_detailed_error(const std::string &str);
   bool create_socket();
   void set_socket_specific_options();

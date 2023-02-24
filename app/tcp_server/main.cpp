@@ -5,22 +5,24 @@
 #include <atomic>
 #include <iostream>
 #include <thread>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "CLI/CLI.hpp"
 
 bool print_debug_info = false;
 size_t data_size = 65000;
 
-struct common_data {
-  std::vector<jkl::stream_ptr> _streams;
-  std::set<jkl::stream *> _need_to_handle;
+struct data_per_thread {
+  std::unordered_set<jkl::stream *> _need_to_handle;
+  std::unordered_map<jkl::stream *, jkl::stream_ptr> _streams;
   size_t _count = 0;
   jkl::sp::lnx::ev_stream_factory *_manager;
 };
 
 void received_data_cb(jkl::stream *stream, std::any data_com) {
   std::byte data[data_size];
-  common_data *cdata = std::any_cast<common_data *>(data_com);
+  data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
   cdata->_count++;
   ssize_t size = stream->receive(data, data_size);
   if (size > 0) {
@@ -46,7 +48,7 @@ void state_changed_cb(jkl::stream *stream, std::any data_com) {
   if (print_debug_info)
     std::cout << "state_changed_cb " << stream->get_state() << std::endl;
   if (!stream->is_active()) {
-    common_data *cdata = std::any_cast<common_data *>(data_com);
+    data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
     cdata->_need_to_handle.insert(stream);
   }
 }
@@ -60,19 +62,17 @@ auto in_socket_fun =
                   << stream->get_detailed_error() << std::endl;
         return;
       }
-      if (print_debug_info) {
-        auto *linux_stream =
-            dynamic_cast<jkl::sp::lnx::send_stream_socket_parameters const *>(
-                stream->get_stream_settings());
-        std::cout << "incoming connection from - " << *linux_stream->_self_addr
-                  << ", to - " << linux_stream->_peer_addr << std::endl;
-      }
+      auto *linux_stream =
+          dynamic_cast<jkl::sp::lnx::send_stream_socket_parameters const *>(
+              stream->get_stream_settings());
+      std::cout << "incoming connection from - " << linux_stream->_peer_addr
+                << ", to - " << *linux_stream->_self_addr << std::endl;
 
-      auto *cdata = std::any_cast<common_data *>(data);
+      auto *cdata = std::any_cast<data_per_thread *>(data);
       stream->set_received_data_cb(received_data_cb, data);
       stream->set_state_changed_cb(state_changed_cb, data);
       cdata->_manager->bind(stream);
-      cdata->_streams.push_back(std::move(stream));
+      cdata->_streams[stream.get()] = std::move(stream);
     };
 
 int main(int argc, char **argv) {
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
   jkl::sp::lnx::listen_stream_socket_parameters params;
   std::atomic_bool work(true);
 
-  common_data cdata;
+  data_per_thread cdata;
   cdata._manager = &manager;
   params._listen_address = {server_address, server_port};
   params._proc_in_conn = in_socket_fun;
@@ -123,17 +123,10 @@ int main(int argc, char **argv) {
          listen_stream->is_active()) {
     manager.proceed();
     if (!cdata._need_to_handle.empty()) {
-      auto &to_handle = cdata._need_to_handle;
-      while (!to_handle.empty()) {
-        auto beg = to_handle.begin();
-        for (auto it = cdata._streams.begin();
-             !(*beg)->is_active() && it != cdata._streams.end(); ++it) {
-          if (it->get() == *beg) {
-            cdata._streams.erase(it);
-            break;
-          }
-        }
-        to_handle.erase(beg);
+      auto it = cdata._need_to_handle.begin();
+      if (!(*it)->is_active()) {
+        cdata._streams.erase((*it));
+        cdata._need_to_handle.erase(it);
       }
     }
     if (cdata._count) {

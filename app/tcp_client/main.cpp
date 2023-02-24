@@ -5,16 +5,29 @@
 #include <atomic>
 #include <iostream>
 #include <thread>
+#include <unordered_set>
 
 #include "CLI/CLI.hpp"
 
 bool print_debug_info = false;
 size_t data_size = 1500;
 const size_t max_data_size = 65000;
-std::byte send_data[max_data_size];
+thread_local std::byte send_data[max_data_size];
 
-void received_data_cb(jkl::stream *stream, std::any data_received) {
-  bool *flag = std::any_cast<bool *>(data_received);
+struct cb_data {
+  bool *data_received = nullptr;
+  std::unordered_set<jkl::stream *> *_need_to_handle = nullptr;
+};
+
+struct per_stream_data {
+  per_stream_data(bool received, jkl::stream_ptr &&ptr)
+      : data_received(received), stream(std::move(ptr)) {}
+  bool data_received;
+  jkl::stream_ptr stream;
+};
+
+void received_data_cb(jkl::stream *stream, std::any data_com) {
+  cb_data cdata = std::any_cast<cb_data>(data_com);
   std::byte data[data_size];
   ssize_t size = stream->receive(data, data_size);
   if (size > 0) {
@@ -22,33 +35,46 @@ void received_data_cb(jkl::stream *stream, std::any data_received) {
       std::cout << "receive message - " << std::string((char *)data, data_size)
                 << std::endl;
   }
-  *flag = true;
+  *cdata.data_received = true;
 }
 
-void state_changed_cb(jkl::stream *stream, std::any) {
+void state_changed_cb(jkl::stream *stream, std::any data_com) {
   if (print_debug_info)
-    std::cout << "state_changed_cb " << stream->get_state() << std::endl;
+    std::cout << "state_changed_cb " << stream->get_state() << ", "
+              << stream->get_detailed_error() << std::endl;
+  if (!stream->is_active()) {
+    cb_data cdata = std::any_cast<cb_data>(data_com);
+    cdata._need_to_handle->insert(stream);
+  }
 }
 
-void send_data_cb(jkl::stream *stream, std::any) {
-  if (print_debug_info) std::cout << "data_sended " << std::endl;
+void send_data_cb(jkl::stream *stream, std::any data_com) {
+  if (print_debug_info) {
+    std::cout << "data_sended " << std::endl;
+  }
 }
 
-struct stream_data {
-  stream_data(bool received, jkl::stream_ptr &&ptr)
-      : data_received(received), stream(std::move(ptr)) {}
-  bool data_received;
-  jkl::stream_ptr stream;
-};
+void fillTestData(int thread_number) {
+  memset(send_data, 1, sizeof(send_data));
+  char data[] = {'c', 'l', 'i', 'e', 'n', 't', ' ', 'h', 'e', 'l',
+                 'l', 'o', '!', ' ', 'f', 'r', 'o', 'm', ' ', 't',
+                 'h', 'r', 'e', 'a', 'd', ' ', '-', ' '};
+  auto num = std::to_string(thread_number);
+  memcpy(send_data, data, sizeof(data));
+  memcpy(send_data + sizeof(data), num.c_str(), num.size());
+}
 
 void thread_fun(jkl::proto::ip::address const &server_addr,
                 uint16_t server_port, bool print_send_success,
-                std::atomic_bool &work, size_t connections_per_thread) {
+                std::atomic_bool &work, size_t connections_per_thread,
+                size_t th_num) {
   jkl::sp::lnx::ev_stream_factory manager;
   jkl::sp::lnx::send_stream_socket_parameters params;
   params._peer_addr = {server_addr, server_port};
-
-  std::vector<std::unique_ptr<stream_data>> stream_pool;
+  fillTestData(th_num);
+  std::unordered_set<jkl::stream *> _need_to_handle;
+  std::unordered_map<jkl::stream *, std::unique_ptr<per_stream_data>>
+      stream_pool;
 
   while (work.load(std::memory_order_acquire)) {
     if (stream_pool.size() < connections_per_thread) {
@@ -56,48 +82,38 @@ void thread_fun(jkl::proto::ip::address const &server_addr,
       if (new_stream->is_active()) {
         manager.bind(new_stream);
         auto s_data =
-            std::make_unique<stream_data>(true, std::move(new_stream));
-        s_data->stream->set_received_data_cb(received_data_cb,
-                                             &s_data->data_received);
-        s_data->stream->set_state_changed_cb(state_changed_cb, nullptr);
+            std::make_unique<per_stream_data>(true, std::move(new_stream));
+        cb_data cb_data{&s_data->data_received, &_need_to_handle};
+        s_data->stream->set_received_data_cb(received_data_cb, cb_data);
+        s_data->stream->set_state_changed_cb(state_changed_cb, cb_data);
         if (print_send_success)
           s_data->stream->set_send_data_cb(send_data_cb, nullptr);
-        stream_pool.push_back(std::move(s_data));
+        stream_pool[s_data->stream.get()] = std::move(s_data);
       }
     }
 
-    for (size_t i = 0;
-         i < stream_pool.size() && work.load(std::memory_order_acquire); ++i) {
-      auto &send_stream = stream_pool[i]->stream;
-      if (jkl::stream::state::e_wait == send_stream->get_state() ||
-          !stream_pool[i]->data_received)
+    for (auto &sp : stream_pool) {
+      auto &per_stream_data = sp.second;
+      auto &send_stream = per_stream_data->stream;
+      if (jkl::stream::state::e_established != send_stream->get_state() ||
+          !per_stream_data->data_received)
         continue;
-      if (!send_stream->is_active()) {
-        std::cerr << "error - " << send_stream->get_detailed_error()
-                  << std::endl;
-        stream_pool.erase(stream_pool.begin() + i);
-        break;
-      }
 
-      stream_pool[i]->data_received = false;
+      per_stream_data->data_received = false;
       manager.proceed();
-      ssize_t const sent = send_stream->send(send_data, data_size);
-      if (sent <= 0) {
-        if (print_debug_info)
-          std::cerr << send_stream->get_detailed_error() << std::endl;
-        stream_pool.erase(stream_pool.begin() + i);
-        break;
+      send_stream->send(send_data, data_size);
+    }
+
+    if (!_need_to_handle.empty()) {
+      auto it = _need_to_handle.begin();
+      if (!(*it)->is_active()) {
+        stream_pool.erase((*it));
+        _need_to_handle.erase(it);
       }
     }
+
     manager.proceed();
   }
-}
-
-void fillTestData() {
-  memset(send_data, 1, sizeof(send_data));
-  char data[] = {'c', 'l', 'i', 'e', 'n', 't', ' ',
-                 'h', 'e', 'l', 'l', 'o', '!'};
-  memcpy(send_data, data, sizeof(data));
 }
 
 int main(int argc, char **argv) {
@@ -129,13 +145,12 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  fillTestData();
   std::atomic_bool work(true);
   std::vector<std::thread> worker_pool;
   for (size_t i = 0; i < threads_count; ++i) {
     worker_pool.push_back(std::thread(thread_fun, server_address, server_port,
                                       print_send_success, std::ref(work),
-                                      connections_per_thread));
+                                      connections_per_thread, i));
   }
 
   std::this_thread::sleep_for(std::chrono::seconds(test_time));
