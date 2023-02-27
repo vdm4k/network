@@ -1,7 +1,8 @@
 #include <protocols/ip/full_address.h>
 #include <socket_proxy/linux/stream_factory.h>
-#include <socket_proxy/linux/tcp/listen_settings.h>
-#include <socket_proxy/linux/tcp/send_settings.h>
+#include <socket_proxy/linux/tcp/listen/settings.h>
+#include <socket_proxy/linux/tcp/listen/statistic.h>
+#include <socket_proxy/linux/tcp/send/settings.h>
 
 #include <atomic>
 #include <iostream>
@@ -10,7 +11,6 @@
 #include <unordered_set>
 
 #include "CLI/CLI.hpp"
-#include "socket_proxy/linux/tcp/listen_statistic.h"
 
 bool print_debug_info = false;
 size_t data_size = 65000;
@@ -57,15 +57,14 @@ void state_changed_cb(jkl::stream *stream, std::any data_com) {
 
 auto in_socket_fun =
     [](jkl::stream_ptr &&stream,
-       jkl::sp::lnx::tcp::listen_stream_parameters::in_conn_handler_data_cb
-           data) {
+       jkl::sp::lnx::tcp::listen::settings::in_conn_handler_data_cb data) {
       if (!stream->is_active()) {
         std::cerr << "fail to create incomming connection "
                   << stream->get_detailed_error() << std::endl;
         return;
       }
       auto *linux_stream =
-          dynamic_cast<jkl::sp::lnx::tcp::send_stream_parameters const *>(
+          dynamic_cast<jkl::sp::lnx::tcp::send::settings const *>(
               stream->get_settings());
       std::cout << "incoming connection from - " << linux_stream->_peer_addr
                 << ", to - " << *linux_stream->_self_addr << std::endl;
@@ -100,15 +99,15 @@ int main(int argc, char **argv) {
   }
 
   jkl::sp::lnx::ev_stream_factory manager;
-  jkl::sp::lnx::tcp::listen_stream_parameters params;
+  jkl::sp::lnx::tcp::listen::settings settings;
   std::atomic_bool work(true);
 
   data_per_thread cdata;
   cdata._manager = &manager;
-  params._listen_address = {server_address, server_port};
-  params._proc_in_conn = in_socket_fun;
-  params._in_conn_handler_data = &cdata;
-  auto listen_stream = manager.create_stream(&params);
+  settings._listen_address = {server_address, server_port};
+  settings._proc_in_conn = in_socket_fun;
+  settings._in_conn_handler_data = &cdata;
+  auto listen_stream = manager.create_stream(&settings);
   if (!listen_stream->is_active()) {
     std::cerr << "couldn't create listen stream, cause - "
               << listen_stream->get_detailed_error() << std::endl;
@@ -119,7 +118,7 @@ int main(int argc, char **argv) {
   auto endTime =
       std::chrono::system_clock::now() + std::chrono::seconds(test_time);
 
-  jkl::sp::lnx::tcp::listen_statistic stat;
+  jkl::sp::lnx::tcp::listen::statistic stat;
   size_t message_proceed = 0;
   std::cout << "server start" << std::endl;
 
@@ -142,7 +141,7 @@ int main(int argc, char **argv) {
   }
 
   auto const *stream_stat =
-      static_cast<jkl::sp::lnx::tcp::listen_statistic const *>(
+      static_cast<jkl::sp::lnx::tcp::listen::statistic const *>(
           listen_stream->get_statistic());
   stat._failed_to_accept_connections +=
       stream_stat->_failed_to_accept_connections;

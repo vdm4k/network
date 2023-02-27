@@ -1,22 +1,21 @@
 #pragma once
 #include <protocols/ip/full_address.h>
+#include <socket_proxy/linux/tcp/settings.h>
 #include <socket_proxy/stream.h>
 
 #include <any>
 #include <functional>
 
-#include "settings.h"
-
 /** @addtogroup stream
  *  @{
  */
 
-namespace jkl::sp::lnx::tcp {
+namespace jkl::sp::lnx::tcp::listen {
 
 /*! \class send_stream_socket_parameters
  *  \brief tcp receive connections socket parameters
  */
-struct listen_stream_parameters : stream_socket_parameters {
+struct settings : stream_settings {
   jkl::proto::ip::full_address
       _listen_address;  ///< listen incomming connections
   using in_conn_handler_data_cb = std::any;
@@ -27,6 +26,6 @@ struct listen_stream_parameters : stream_socket_parameters {
   uint16_t _listen_backlog = 14;  ///< listen backlog parameter
 };
 
-}  // namespace jkl::sp::lnx::tcp
+}  // namespace jkl::sp::lnx::tcp::listen
 
 /** @} */  // end of stream

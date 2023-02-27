@@ -1,24 +1,24 @@
 #pragma once
 #include <socket_proxy/libev/libev.h>
+#include <socket_proxy/linux/tcp/stream.h>
 
-#include "listen_settings.h"
-#include "listen_statistic.h"
-#include "stream.h"
+#include "settings.h"
+#include "statistic.h"
 
 /** @addtogroup stream
  *  @{
  */
 
-namespace jkl::sp::lnx::tcp {
+namespace jkl::sp::lnx::tcp::listen {
 
-class listen_stream : public stream {
+class stream : public jkl::sp::lnx::tcp::stream {
  public:
-  listen_stream() = default;
-  listen_stream(listen_stream const &) = delete;
-  listen_stream(listen_stream &&) = delete;
-  listen_stream &operator=(listen_stream &&) = delete;
-  listen_stream &operator=(listen_stream const &) = delete;
-  ~listen_stream();
+  stream() = default;
+  stream(stream const &) = delete;
+  stream(stream &&) = delete;
+  stream &operator=(stream &&) = delete;
+  stream &operator=(stream const &) = delete;
+  ~stream();
 
   /*!
    *  \brief couldn't send data in listen stream => always return 0
@@ -53,7 +53,7 @@ class listen_stream : public stream {
   /*! \brief get actual stream settings
    *  \return stream_settings
    */
-  stream_settings const *get_settings() const override { return &_parameters; }
+  stream_settings const *get_settings() const override { return &_settings; }
 
   /*! \brief get actual stream statistic
    *  \return stream_statistic
@@ -78,7 +78,7 @@ class listen_stream : public stream {
    *  \param [in] pointer on event loop
    *  \return true if inited. otherwise false (cause in get_detailed_error )
    */
-  bool init(listen_stream_parameters *listen_params);
+  bool init(settings *listen_params);
 
   void assign_loop(struct ev_loop *loop);
 
@@ -93,10 +93,10 @@ class listen_stream : public stream {
 
   ev_io _connect_io;
   struct ev_loop *_loop = nullptr;
-  listen_stream_parameters _parameters;
-  listen_statistic _statistic;
+  settings _settings;
+  statistic _statistic;
 };
 
-}  // namespace jkl::sp::lnx::tcp
+}  // namespace jkl::sp::lnx::tcp::listen
 
 /** @} */  // end of stream

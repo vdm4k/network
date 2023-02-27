@@ -1,6 +1,7 @@
 #include <protocols/ip/full_address.h>
 #include <socket_proxy/linux/stream_factory.h>
-#include <socket_proxy/linux/tcp/send_settings.h>
+#include <socket_proxy/linux/tcp/send/settings.h>
+#include <socket_proxy/linux/tcp/send/statistic.h>
 
 #include <atomic>
 #include <iostream>
@@ -24,6 +25,14 @@ struct per_stream_data {
       : data_received(received), stream(std::move(ptr)) {}
   bool data_received;
   jkl::stream_ptr stream;
+};
+
+struct per_thread_data {
+  std::unique_ptr<jkl::sp::lnx::ev_stream_factory> _manager;
+  std::unordered_map<jkl::stream *, std::unique_ptr<per_stream_data>>
+      _stream_pool;
+  std::thread _thread;
+  jkl::sp::lnx::tcp::send::statistic _stat;
 };
 
 void received_data_cb(jkl::stream *stream, std::any data_com) {
@@ -64,21 +73,22 @@ void fillTestData(int thread_number) {
   memcpy(send_data + sizeof(data), num.c_str(), num.size());
 }
 
-void thread_fun(jkl::proto::ip::address const &server_addr,
-                uint16_t server_port, bool print_send_success,
-                std::atomic_bool &work, size_t connections_per_thread,
-                size_t th_num) {
-  jkl::sp::lnx::ev_stream_factory manager;
-  jkl::sp::lnx::tcp::send_stream_parameters params;
-  params._peer_addr = {server_addr, server_port};
+void thread_fun(
+    jkl::proto::ip::address const &server_addr, uint16_t server_port,
+    bool print_send_success, std::atomic_bool &work,
+    size_t connections_per_thread, size_t th_num,
+    jkl::sp::lnx::tcp::send::statistic &stat,
+    jkl::sp::lnx::ev_stream_factory &manager,
+    std::unordered_map<jkl::stream *, std::unique_ptr<per_stream_data>>
+        &stream_pool) {
+  jkl::sp::lnx::tcp::send::settings settings;
+  settings._peer_addr = {server_addr, server_port};
   fillTestData(th_num);
   std::unordered_set<jkl::stream *> _need_to_handle;
-  std::unordered_map<jkl::stream *, std::unique_ptr<per_stream_data>>
-      stream_pool;
 
   while (work.load(std::memory_order_acquire)) {
     if (stream_pool.size() < connections_per_thread) {
-      auto new_stream = manager.create_stream(&params);
+      auto new_stream = manager.create_stream(&settings);
       if (new_stream->is_active()) {
         manager.bind(new_stream);
         auto s_data =
@@ -107,6 +117,8 @@ void thread_fun(jkl::proto::ip::address const &server_addr,
     if (!_need_to_handle.empty()) {
       auto it = _need_to_handle.begin();
       if (!(*it)->is_active()) {
+        stat += *static_cast<jkl::sp::lnx::tcp::send::statistic const *>(
+            (*it)->get_statistic());
         stream_pool.erase((*it));
         _need_to_handle.erase(it);
       }
@@ -145,15 +157,38 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  std::cout << "client start" << std::endl;
   std::atomic_bool work(true);
-  std::vector<std::thread> worker_pool;
+  std::vector<per_thread_data> worker_pool;
   for (size_t i = 0; i < threads_count; ++i) {
-    worker_pool.push_back(std::thread(thread_fun, server_address, server_port,
-                                      print_send_success, std::ref(work),
-                                      connections_per_thread, i));
+    worker_pool.emplace_back();
+    auto &last = worker_pool.back();
+    last._manager = std::make_unique<jkl::sp::lnx::ev_stream_factory>();
+    last._thread =
+        std::thread(thread_fun, server_address, server_port, print_send_success,
+                    std::ref(work), connections_per_thread, i,
+                    std::ref(worker_pool.back()._stat),
+                    std::ref(*worker_pool.back()._manager),
+                    std::ref(worker_pool.back()._stream_pool));
   }
 
   std::this_thread::sleep_for(std::chrono::seconds(test_time));
   work = false;
-  for (auto &thr : worker_pool) thr.join();
+  jkl::sp::lnx::tcp::send::statistic stat;
+  for (auto &wrk : worker_pool) {
+    wrk._thread.join();
+    stat += wrk._stat;
+    for (auto &strm : wrk._stream_pool) {
+      stat += *static_cast<jkl::sp::lnx::tcp::send::statistic const *>(
+          strm.first->get_statistic());
+    }
+  }
+
+  std::cout << "client stoped" << std::endl;
+  std::cout << "success_send_data - " << stat._success_send_data << std::endl;
+  std::cout << "retry_send_data - " << stat._retry_send_data << std::endl;
+  std::cout << "failed_send_data - " << stat._failed_send_data << std::endl;
+  std::cout << "success_recv_data - " << stat._success_recv_data << std::endl;
+  std::cout << "retry_recv_data - " << stat._retry_recv_data << std::endl;
+  std::cout << "failed_recv_data - " << stat._failed_recv_data << std::endl;
 }

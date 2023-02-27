@@ -1,24 +1,28 @@
 #pragma once
 #include <socket_proxy/libev/libev.h>
+#include <socket_proxy/linux/tcp/stream.h>
 
-#include "send_settings.h"
-#include "send_statistic.h"
-#include "stream.h"
+#include "settings.h"
+#include "statistic.h"
 
 /** @addtogroup stream
  *  @{
  */
 
-namespace jkl::sp::lnx::tcp {
+namespace jkl::sp::lnx::tcp::listen {
+class stream;
+}  // namespace jkl::sp::lnx::tcp::listen
 
-class send_stream : public stream {
+namespace jkl::sp::lnx::tcp::send {
+
+class stream : public jkl::sp::lnx::tcp::stream {
  public:
-  send_stream() = default;
-  send_stream(send_stream const &) = delete;
-  send_stream(send_stream &&) = delete;
-  send_stream &operator=(send_stream &&) = delete;
-  send_stream &operator=(send_stream const &) = delete;
-  ~send_stream() override;
+  stream() = default;
+  stream(stream const &) = delete;
+  stream(stream &&) = delete;
+  stream &operator=(stream &&) = delete;
+  stream &operator=(stream const &) = delete;
+  ~stream() override;
   /*! \fn send_result send(void const * ptr, size_t len)
    *  \brief send data
    *  \param [in] ptr pointer on data
@@ -54,7 +58,7 @@ class send_stream : public stream {
   /*! \brief get actual stream settings
    *  \return stream_settings
    */
-  stream_settings const *get_settings() const override { return &_parameters; }
+  stream_settings const *get_settings() const override { return &_settings; }
 
   /*! \brief get actual stream statistic
    *  \return stream_statistic
@@ -73,7 +77,7 @@ class send_stream : public stream {
    *  \param [in] pointer on event loop
    *  \return true if inited. otherwise false (cause in get_detailed_error )
    */
-  bool init(send_stream_parameters *send_params);
+  bool init(settings *send_params);
 
   void assign_loop(struct ev_loop *loop);
 
@@ -89,7 +93,7 @@ class send_stream : public stream {
   friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
   friend void send_data_cb(struct ev_loop *, ev_io *w, int);
 
-  friend class listen_stream;
+  friend class jkl::sp::lnx::tcp::listen::stream;
 
   struct ev_loop *_loop = nullptr;
 
@@ -102,10 +106,10 @@ class send_stream : public stream {
   state_changed_cb _state_changed_cb;
   std::any _param_state_changed_cb;
 
-  send_stream_parameters _parameters;
-  send_statistic _statistic;
+  settings _settings;
+  statistic _statistic;
 };
 
-}  // namespace jkl::sp::lnx::tcp
+}  // namespace jkl::sp::lnx::tcp::send
 
 /** @} */  // end of stream

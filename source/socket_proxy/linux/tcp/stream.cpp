@@ -109,8 +109,8 @@ void stream::set_socket_specific_options() {
   {
     int mode = 1;
     ioctl(_file_descr, FIONBIO, &mode);
-    stream_socket_parameters *sparam =
-        (stream_socket_parameters *)get_settings();
+    stream_settings *sparam =
+        (stream_settings *)get_settings();
     if (sparam->_buffer_size) {
       int optval = *sparam->_buffer_size;
 #ifdef SO_SNDBUF

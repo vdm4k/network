@@ -1,13 +1,13 @@
 #include <socket_proxy/libev/libev.h>
-#include <socket_proxy/linux/tcp/listen_stream.h>
-#include <socket_proxy/linux/tcp/send_stream.h>
+#include <socket_proxy/linux/tcp/listen/stream.h>
+#include <socket_proxy/linux/tcp/send/stream.h>
 
-namespace jkl::sp::lnx::tcp {
+namespace jkl::sp::lnx::tcp::listen {
 
 void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
                             int /*revents*/) {
   int new_fd = -1;
-  auto *conn = reinterpret_cast<listen_stream *>(w->data);
+  auto *conn = reinterpret_cast<stream *>(w->data);
 
   jkl::proto::ip::full_address peer_addr;
   switch (conn->get_self_address().get_address().get_version()) {
@@ -56,32 +56,32 @@ void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
 
   jkl::proto::ip::full_address self_address;
   if (-1 != new_fd) {
-    listen_stream::get_local_address(peer_addr.get_address().get_version(),
-                                     new_fd, self_address);
+    stream::get_local_address(peer_addr.get_address().get_version(), new_fd,
+                              self_address);
   }
   conn->handle_incoming_connection(new_fd, peer_addr, self_address);
 }
 
-listen_stream::~listen_stream() { stop_events(); }
+stream::~stream() { stop_events(); }
 
-ssize_t listen_stream::send(std::byte * /*data*/, size_t /*data_size*/) {
+ssize_t stream::send(std::byte * /*data*/, size_t /*data_size*/) {
   set_detailed_error("couldn't send data by listen stream");
   return 0;
 }
 
-ssize_t listen_stream::receive(std::byte * /*data*/, size_t /*data_size*/) {
+ssize_t stream::receive(std::byte * /*data*/, size_t /*data_size*/) {
   set_detailed_error("couldn't receive data in listen stream");
   return 0;
 }
 
-void listen_stream::set_received_data_cb(received_data_cb /*cb*/,
-                                         std::any /*param*/) {}
+void stream::set_received_data_cb(received_data_cb /*cb*/, std::any /*param*/) {
+}
 
-void listen_stream::set_send_data_cb(send_data_cb /*cb*/, std::any /*param*/) {}
+void stream::set_send_data_cb(send_data_cb /*cb*/, std::any /*param*/) {}
 
-bool listen_stream::is_active() const { return get_state() == state::e_wait; }
+bool stream::is_active() const { return get_state() == state::e_wait; }
 
-bool listen_stream::create_listen_socket() {
+bool stream::create_listen_socket() {
   if (!create_socket()) return false;
   int reuseaddr = 1;
   if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_REUSEADDR,
@@ -93,18 +93,18 @@ bool listen_stream::create_listen_socket() {
     return false;
   }
 
-  return bind_on_address(_parameters._listen_address);
+  return bind_on_address(_settings._listen_address);
 }
 
-void listen_stream::handle_incoming_connection(
+void stream::handle_incoming_connection(
     int file_descr, jkl::proto::ip::full_address const &peer_addr,
     proto::ip::full_address const &self_addr) {
-  auto sck = std::make_unique<send_stream>();
+  auto sck = std::make_unique<send::stream>();
 
   if (-1 != file_descr) {
     _statistic._success_accept_connections++;
-    sck->_parameters._peer_addr = peer_addr;
-    sck->_parameters._self_addr = self_addr;
+    sck->_settings._peer_addr = peer_addr;
+    sck->_settings._self_addr = self_addr;
     sck->_file_descr = file_descr;
     sck->set_connection_state(state::e_established);
     sck->set_socket_specific_options();
@@ -114,27 +114,26 @@ void listen_stream::handle_incoming_connection(
     sck->set_detailed_error("couldn't accept new incomming connection");
   }
 
-  if (_parameters._proc_in_conn)
-    _parameters._proc_in_conn(std::move(sck),
-                              _parameters._in_conn_handler_data);
+  if (_settings._proc_in_conn)
+    _settings._proc_in_conn(std::move(sck), _settings._in_conn_handler_data);
 }
 
-void listen_stream::assign_loop(struct ev_loop *loop) {
+void stream::assign_loop(struct ev_loop *loop) {
   _loop = loop;
   ev::init(_connect_io, incoming_connection_cb, _file_descr, EV_READ, this);
   ev::start(_connect_io, _loop);
 }
 
-jkl::proto::ip::full_address const &listen_stream::get_self_address() const {
-  return _parameters._listen_address;
+jkl::proto::ip::full_address const &stream::get_self_address() const {
+  return _settings._listen_address;
 }
 
-bool listen_stream::init(listen_stream_parameters *listen_params) {
+bool stream::init(settings *listen_params) {
   bool res{false};
-  _parameters = *listen_params;
+  _settings = *listen_params;
   if (create_listen_socket()) {
     set_connection_state(state::e_wait);
-    if (0 == listen(_file_descr, _parameters._listen_backlog)) {
+    if (0 == ::listen(_file_descr, _settings._listen_backlog)) {
       res = true;
     } else {
       set_detailed_error("server listen is failed");
@@ -145,6 +144,6 @@ bool listen_stream::init(listen_stream_parameters *listen_params) {
   return res;
 }
 
-void listen_stream::stop_events() { ev::stop(_connect_io, _loop); }
+void stream::stop_events() { ev::stop(_connect_io, _loop); }
 
-}  // namespace jkl::sp::lnx::tcp
+}  // namespace jkl::sp::lnx::tcp::listen

@@ -9,7 +9,7 @@
 
 namespace jkl::sp::lnx::tcp {
 
-struct stream_socket_parameters : public stream_settings {
+struct stream_settings : public jkl::stream_settings {
   std::optional<size_t> _buffer_size;  ///< send/receive buffer size
 };
 

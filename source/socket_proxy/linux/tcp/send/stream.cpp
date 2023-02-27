@@ -1,31 +1,31 @@
 #include <socket_proxy/libev/libev.h>
-#include <socket_proxy/linux/tcp/send_stream.h>
+#include <socket_proxy/linux/tcp/send/stream.h>
 
-namespace jkl::sp::lnx::tcp {
+namespace jkl::sp::lnx::tcp::send {
 
-send_stream::~send_stream() { stop_events(); }
+stream::~stream() { stop_events(); }
 
 void receive_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<send_stream *>(w->data);
+  auto *conn = reinterpret_cast<stream *>(w->data);
   conn->receive_data();
 }
 
 void send_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<send_stream *>(w->data);
+  auto *conn = reinterpret_cast<stream *>(w->data);
   conn->send_data();
 }
 
 void connection_established_cb(struct ev_loop *, ev_io *w, int) {
-  auto *tr = reinterpret_cast<send_stream *>(w->data);
+  auto *tr = reinterpret_cast<stream *>(w->data);
   tr->connection_established();
 }
 
-void send_stream::stop_events() {
+void stream::stop_events() {
   ev::stop(_read_io, _loop);
   ev::stop(_write_io, _loop);
 }
 
-void send_stream::assign_loop(struct ev_loop *loop) {
+void stream::assign_loop(struct ev_loop *loop) {
   stop_events();
   _loop = loop;
   ev::init(_read_io, receive_data_cb, _file_descr, EV_READ, this);
@@ -41,9 +41,9 @@ void send_stream::assign_loop(struct ev_loop *loop) {
   }
 }
 
-bool send_stream::init(send_stream_parameters *send_params) {
+bool stream::init(settings *send_params) {
   bool res = false;
-  _parameters = *send_params;
+  _settings = *send_params;
 
   if (create_socket()) {
     if (connect()) {
@@ -59,7 +59,7 @@ bool send_stream::init(send_stream_parameters *send_params) {
   return res;
 }
 
-void send_stream::connection_established() {
+void stream::connection_established() {
   int err = -1;
   socklen_t len = sizeof(err);
   int rc = getsockopt(_file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
@@ -91,11 +91,14 @@ void send_stream::connection_established() {
   }
 }
 
-ssize_t send_stream::send(std::byte *data, size_t data_size) {
+ssize_t stream::send(std::byte *data, size_t data_size) {
   ssize_t sent{0};
   while (true) {
     sent = ::send(_file_descr, data, data_size, MSG_NOSIGNAL);
-    if (sent > 0) break;
+    if (sent > 0) {
+      ++_statistic._success_send_data;
+      return sent;
+    }
     if (ssize_t(-1) == sent) {
       if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
         set_detailed_error("error occured while send data");
@@ -107,15 +110,20 @@ ssize_t send_stream::send(std::byte *data, size_t data_size) {
       set_connection_state(state::e_failed);
       break;
     }
+    ++_statistic._retry_send_data;
   }
+  ++_statistic._failed_send_data;
   return sent;
 }
 
-ssize_t send_stream::receive(std::byte *buffer, size_t buffer_size) {
+ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec{0};
   while (true) {
     rec = ::recv(_file_descr, buffer, buffer_size, MSG_NOSIGNAL);
-    if (rec > 0) break;
+    if (rec > 0) {
+      ++_statistic._success_recv_data;
+      return rec;
+    }
 
     if (0 == rec) {
       set_detailed_error("recv return 0 bytes");
@@ -134,15 +142,16 @@ ssize_t send_stream::receive(std::byte *buffer, size_t buffer_size) {
         break;
       }
     }
+    ++_statistic._retry_recv_data;
   }
+  ++_statistic._failed_recv_data;
   return rec;
 }
 
-bool send_stream::connect() {
+bool stream::connect() {
   bool res{false};
   sockaddr_in peer_addr;
-  if (!fill_sockaddr(_parameters._peer_addr, peer_addr))
-    return res;
+  if (!fill_sockaddr(_settings._peer_addr, peer_addr)) return res;
   int rc =
       ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&peer_addr),
                 sizeof(peer_addr));
@@ -157,14 +166,13 @@ bool send_stream::connect() {
   return res;
 }
 
-void send_stream::set_received_data_cb(received_data_cb cb,
-                                           std::any user_data) {
+void stream::set_received_data_cb(received_data_cb cb,
+                                       std::any user_data) {
   _received_data_cb = cb;
   _param_received_data_cb = user_data;
 }
 
-void send_stream::set_send_data_cb(jkl::send_data_cb cb,
-                                       std::any user_data) {
+void stream::set_send_data_cb(jkl::send_data_cb cb, std::any user_data) {
   _send_data_cb = cb;
   _param_send_data_cb = user_data;
   if (_send_data_cb)
@@ -173,17 +181,17 @@ void send_stream::set_send_data_cb(jkl::send_data_cb cb,
     ev::stop(_write_io, _loop);
 }
 
-bool send_stream::is_active() const {
+bool stream::is_active() const {
   auto st = get_state();
   return st == state::e_wait || st == state::e_established;
 }
 
-void send_stream::receive_data() {
+void stream::receive_data() {
   if (_received_data_cb) _received_data_cb(this, _param_received_data_cb);
 }
 
-void send_stream::send_data() {
+void stream::send_data() {
   if (_send_data_cb) _send_data_cb(this, _param_send_data_cb);
 }
 
-}  // namespace jkl::sp::lnx::tcp
+}  // namespace jkl::sp::lnx::tcp::send
