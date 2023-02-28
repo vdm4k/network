@@ -2,18 +2,21 @@
 #include <socket_proxy/stream_statistic.h>
 #include <stdint.h>
 
-/** @addtogroup stream
+namespace jkl::sp::lnx::tcp::send {
+/** @addtogroup ev_stream
  *  @{
  */
 
-namespace jkl::sp::lnx::tcp::send {
+/**
+ * \brief statistic for send stream
+ */
 struct statistic : public stream_statistic {
-  uint64_t _success_send_data = 0;
-  uint64_t _retry_send_data = 0;
-  uint64_t _failed_send_data = 0;
-  uint64_t _success_recv_data = 0;
-  uint64_t _retry_recv_data = 0;
-  uint64_t _failed_recv_data = 0;
+  uint64_t _success_send_data = 0;  ///< success sended data
+  uint64_t _retry_send_data = 0;    ///< retry send
+  uint64_t _failed_send_data = 0;   ///< failed to send
+  uint64_t _success_recv_data = 0;  ///< success receive data
+  uint64_t _retry_recv_data = 0;    ///< retry receive
+  uint64_t _failed_recv_data = 0;   ///< failed to receive
 
   statistic& operator+=(const statistic& rhs) {
     _success_send_data += rhs._success_send_data;
@@ -27,4 +30,4 @@ struct statistic : public stream_statistic {
 };
 }  // namespace jkl::sp::lnx::tcp::send
 
-/** @} */  // end of stream
+/** @} */  // end of ev_stream

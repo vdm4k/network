@@ -5,52 +5,74 @@
 #include "settings.h"
 #include "statistic.h"
 
-/** @addtogroup stream
- *  @{
- */
-
 namespace jkl::sp::lnx::tcp::listen {
 class stream;
 }  // namespace jkl::sp::lnx::tcp::listen
 
 namespace jkl::sp::lnx::tcp::send {
+/** @addtogroup ev_stream
+ *  @{
+ */
 
+/**
+ * \brief send stream
+ */
 class stream : public jkl::sp::lnx::tcp::stream {
  public:
+  /**
+   * \brief default constructor
+   */
   stream() = default;
+
+  /**
+   * \brief disabled copy ctor
+   *
+   * We can't copy and handle event loop
+   */
   stream(stream const &) = delete;
+
+  /**
+   * \brief disabled move ctor
+   *
+   * Can be too complex
+   */
   stream(stream &&) = delete;
+
+  /**
+   * \brief disabled move assign operator
+   *
+   * Can be too complex
+   */
   stream &operator=(stream &&) = delete;
-  stream &operator=(stream const &) = delete;
+
   ~stream() override;
-  /*! \fn send_result send(void const * ptr, size_t len)
-   *  \brief send data
-   *  \param [in] ptr pointer on data
-   *  \param [in] len data lenght
-   *  \return send_result if send_result is positive - sended data size
-   *      otherwise send_result interpet as error
+
+  /*! \brief send data
+   *  \param [in] data pointer on data
+   *  \param [in] data_size data lenght
+   *  \return ssize_t if ssize_t is positive - sended data size otherwise
+   *  ssize_t interpet as error
    */
   ssize_t send(std::byte *data, size_t data_size) override;
 
-  /*! \fn receive_result receive(uint8_t *data, size_t size)
-   *  \brief receive data
-   *  \param [in] ptr pointer on buffer
-   *  \param [in] len buffer lenght
-   *  \return receive_result if receive_result is positive - received data size
-   *      otherwise receive_result interpet as error
+  /*! \brief receive data
+   *  \param [in] data pointer on buffer
+   *  \param [in] data_size buffer lenght
+   *  \return ssize_t if ssize_t is positive - received data size otherwise
+   * ssize_t interpet as error
    */
   ssize_t receive(std::byte *data, size_t data_size) override;
 
   /*! \brief set callback on data receive
-   *  \param [in] received_data_cb pointer on callback function if nullptr - non
-   * active
+   *  \param [in] cb pointer on callback function. If we send
+   * nullptr, we switch off handling this type of events
    * \param [in] param parameter for callback function
    */
   void set_received_data_cb(received_data_cb cb, std::any param) override;
 
   /*! \brief set callback on data receive
-   *  \param [in] send_data_cb pointer on callback function if nullptr - non
-   * active
+   *  \param [in] cb pointer on callback function. If we send
+   * nullptr, we switch off handling this type of events
    * \param [in] param parameter for callback function
    */
   void set_send_data_cb(send_data_cb cb, std::any param) override;
@@ -65,8 +87,11 @@ class stream : public jkl::sp::lnx::tcp::stream {
    */
   stream_statistic const *get_statistic() const override { return &_statistic; }
 
-  /*! \fn bool is_active() const
-   *  \brief check if stream in active state
+  /*! \brief reset actual statistic
+   */
+  void reset_statistic() override;
+
+  /*! brief check if stream in active state
    *  \return bool
    */
   bool is_active() const override;
@@ -74,11 +99,14 @@ class stream : public jkl::sp::lnx::tcp::stream {
   /*!
    *  \brief init send stream
    *  \param [in] send_params pointer on parameters
-   *  \param [in] pointer on event loop
    *  \return true if inited. otherwise false (cause in get_detailed_error )
    */
   bool init(settings *send_params);
 
+  /*!
+   *  \brief assign event loop to current stream
+   *  \param [in] loop pointer on loop
+   */
   void assign_loop(struct ev_loop *loop);
 
  private:
@@ -112,4 +140,4 @@ class stream : public jkl::sp::lnx::tcp::stream {
 
 }  // namespace jkl::sp::lnx::tcp::send
 
-/** @} */  // end of stream
+/** @} */  // end of ev_stream

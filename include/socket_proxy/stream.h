@@ -8,11 +8,10 @@
 #include "stream_settings.h"
 #include "stream_statistic.h"
 
+namespace jkl {
 /** @defgroup stream
  *  @{
  */
-
-namespace jkl {
 
 class stream;
 
@@ -23,6 +22,9 @@ using send_data_cb =
 using state_changed_cb =
     std::function<void(stream *, std::any)>;  ///< callback on state change
 
+/**
+ * \brief stream interface
+ */
 class stream {
  public:
   /*!
@@ -31,7 +33,7 @@ class stream {
   enum class state : uint8_t {
     e_closed,       ///< closed - not active
     e_wait,         ///< for server side connection in listen state
-                    ///< for client wait establishing with peer
+                    ///< for client side wait for connection with server
     e_established,  ///< connection established
     e_failed        ///< connection failed, can check error with
                     ///< get_detailed_error
@@ -39,78 +41,92 @@ class stream {
 
   virtual ~stream() = default;
 
-  /*! \fn send_result send(void const * ptr, size_t len)
-   *  \brief send data
-   *  \param [in] ptr pointer on data
-   *  \param [in] len data lenght
-   *  \return send_result if send_result is positive - sended data size
-   *      otherwise send_result interpet as error
+  /*! \brief send data
+   *  \param [in] data pointer on data
+   *  \param [in] data_size data lenght
+   *  \return ssize_t if ssize_t is positive - sended data size otherwise
+   *  ssize_t interpet as error
    */
   virtual ssize_t send(std::byte *data, size_t data_size) = 0;
 
-  /*! \fn receive_result receive(uint8_t *data, size_t size)
-   *  \brief receive data
-   *  \param [in] ptr pointer on buffer
-   *  \param [in] len buffer lenght
-   *  \return receive_result if receive_result is positive - received data size
-   *      otherwise receive_result interpet as error
+  /*! \brief receive data
+   *  \param [in] data pointer on buffer
+   *  \param [in] data_size buffer lenght
+   *  \return ssize_t if ssize_t is positive - received data size otherwise
+   * ssize_t interpet as error
    */
   virtual ssize_t receive(std::byte *data, size_t data_size) = 0;
 
-  /*! \fn std::string const & get_detailed_error() const
-   *  \brief get description about error
+  /*! \brief get detailed description about error
    *  \return std::string error description
    */
   virtual std::string const &get_detailed_error() const = 0;
 
-  /*! \fn connection_state get_state() const
-   *  \brief socket state
+  /*! \brief socket state
    *  \return connection_state
    */
   virtual state get_state() const = 0;
 
-  /*! \fn bool is_active() const
-   *  \brief check if stream in active state
+  /*! \brief check if stream is in active state
    *  \return bool
    */
   virtual bool is_active() const = 0;
 
   /*! \brief set callback on data receive
-   *  \param [in] received_data_cb pointer on callback function if nullptr - non
-   * active
+   *  \param [in] cb pointer on callback function. If we send
+   * nullptr, we switch off handling this type of events
    * \param [in] param parameter for callback function
    */
   virtual void set_received_data_cb(received_data_cb cb, std::any param) = 0;
 
   /*! \brief set callback on data receive
-   *  \param [in] send_data_cb pointer on callback function if nullptr - non
-   * active
+   *  \param [in] cb pointer on callback function. If we send
+   * nullptr, we switch off handling this type of events
    * \param [in] param parameter for callback function
    */
   virtual void set_send_data_cb(send_data_cb cb, std::any param) = 0;
 
   /*! \brief set callback on data receive
-   *  \param [in] set_state_changed_cb pointer on callback function if nullptr -
-   * non active
-   * \param [in] param parameter for callback function
+   *  \param [in] cb pointer on callback function. If we send
+   * nullptr, we switch off handling this type of events
+   * \param [in] param parameter for callback
+   * function
    */
   virtual void set_state_changed_cb(state_changed_cb cb, std::any param) = 0;
 
   /*! \brief get actual stream settings
-   *  \return stream_settings
+   *
+   *  will always return a pointer on valid settings, hence we can
+   *  recreate failed stream with settings from failed stream
+   *
+   *  example (
+   *  stream_ptr failed_stream;
+   *  failed_stream =
+   * stream_factory::create_stream(failed_stream->get_settings());
+   *  )
+   *
+   * \return * stream_settings
    */
   virtual stream_settings const *get_settings() const = 0;
 
-  /*! \brief get actual stream settings
+  /*! \brief get actual stream statistic. need to cast to specific statistic
    *  \return stream_statistic *
    */
   virtual stream_statistic const *get_statistic() const = 0;
+
+  /*! \brief reset actual statistic
+   */
+  virtual void reset_statistic() = 0;
 };
 
+/*!
+ * @brief stream pointer type
+ */
 using stream_ptr = std::unique_ptr<stream>;
-using proccess_incoming_conn_cb =
-    std::function<void(stream_ptr &&new_stream, std::any asoc_data)>;
 
+/*!
+ * @brief convert state to const char * representation
+ */
 [[maybe_unused]] static inline const char *connection_state_to_str(
     stream::state st) {
   switch (st) {
@@ -128,7 +144,7 @@ using proccess_incoming_conn_cb =
 }
 
 /*!
- * \brief print in out stream
+ * \brief print state in out stream
  * \return std::ostream
  */
 inline std::ostream &operator<<(std::ostream &out, stream::state st) {

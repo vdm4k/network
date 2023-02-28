@@ -4,21 +4,18 @@
 
 #include <optional>
 
-/** @addtogroup stream
+namespace jkl::sp::lnx::tcp::send {
+/** @addtogroup ev_stream
  *  @{
  */
 
-namespace jkl::sp::lnx::tcp::send {
-
-/*! \class send_stream_socket_parameters
- *  \brief tcp send stream parameters
+/*!\brief tcp send stream settings
  */
 struct settings : stream_settings {
-  jkl::proto::ip::full_address _peer_addr;  ///< peer address
-  std::optional<jkl::proto::ip::full_address>
-      _self_addr;  ///< self bind address
+  jkl::proto::ip::full_address _peer_addr;                 ///< peer address
+  std::optional<jkl::proto::ip::full_address> _self_addr;  ///< self address
 };
 
 }  // namespace jkl::sp::lnx::tcp::send
 
-/** @} */  // end of stream
+/** @} */  // end of ev_stream

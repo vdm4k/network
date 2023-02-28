@@ -6,26 +6,24 @@
 #include <any>
 #include <functional>
 
-/** @addtogroup stream
+namespace jkl::sp::lnx::tcp::listen {
+/** @addtogroup ev_stream
  *  @{
  */
 
-namespace jkl::sp::lnx::tcp::listen {
-
-/*! \class send_stream_socket_parameters
- *  \brief tcp receive connections socket parameters
+/*! \brief tcp receive connections settings
  */
 struct settings : stream_settings {
   jkl::proto::ip::full_address
-      _listen_address;  ///< listen incomming connections
+      _listen_address;  ///< address for incomming connections
   using in_conn_handler_data_cb = std::any;
   using in_conn_handler_cb =
       std::function<void(stream_ptr&&, in_conn_handler_data_cb)>;
-  in_conn_handler_cb _proc_in_conn;  ///< incomming connections handler
+  in_conn_handler_cb _proc_in_conn;  ///< callback for incomming connections
   in_conn_handler_data_cb _in_conn_handler_data;
   uint16_t _listen_backlog = 14;  ///< listen backlog parameter
 };
 
 }  // namespace jkl::sp::lnx::tcp::listen
 
-/** @} */  // end of stream
+/** @} */  // end of ev_stream

@@ -1,13 +1,12 @@
 #pragma once
 
-/** @defgroup stream
+namespace jkl {
+/** @addtogroup stream
  *  @{
  */
 
-namespace jkl {
-
-/*! \class stream_statistic
- *  \brief base class for all stream statistic
+/**
+ * \brief stream statistic interface
  */
 struct stream_statistic {
   virtual ~stream_statistic(){};
@@ -15,4 +14,4 @@ struct stream_statistic {
 
 }  // namespace jkl
 
-/** @} */  // end of stream
+/** @} */  // end of tratata2

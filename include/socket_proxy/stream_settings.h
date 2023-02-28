@@ -1,13 +1,12 @@
 #pragma once
 
-/** @defgroup stream
+namespace jkl {
+/** @addtogroup stream
  *  @{
  */
 
-namespace jkl {
-
-/*! \class stream_settings
- *  \brief base class for all stream settings
+/**
+ * \brief stream settings interface
  */
 class stream_settings {
  public:
@@ -16,4 +15,4 @@ class stream_settings {
 
 }  // namespace jkl
 
-/** @} */  // end of stream
+/** @} */  // end of socket_proxy

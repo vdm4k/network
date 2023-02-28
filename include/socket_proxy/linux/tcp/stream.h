@@ -5,40 +5,74 @@
 
 #include <string>
 
-/** @addtogroup stream
+namespace jkl::sp::lnx::tcp {
+/** @addtogroup ev_stream
  *  @{
  */
 
-namespace jkl::sp::lnx::tcp {
-
+/**
+ * \brief common stream for listen/send stream
+ */
 class stream : public jkl::stream {
  public:
+  /**
+   * \brief default constructor
+   */
   stream() = default;
+
+  /**
+   * \brief disabled copy ctor
+   *
+   * Can be too complex
+   */
   stream(stream const &) = delete;
+
+  /**
+   * \brief disabled move ctor
+   *
+   * Can be too complex
+   */
   stream(stream &&) = delete;
+
+  /**
+   * \brief disabled move assign operator
+   *
+   * Can be too complex
+   */
   stream &operator=(stream &&) = delete;
+
+  /**
+   * \brief disabled assign operator
+   *
+   * Can be too complex
+   */
   stream &operator=(stream const &) = delete;
+
   ~stream() override;
 
-  /*! \fn std::string const & get_detailed_error() const
-   *  \brief get description about error
-   *  \return std::string description
+  /*! \brief get detailed description about error
+   *  \return std::string error description
    */
   std::string const &get_detailed_error() const override;
 
-  /*! \fn connection_state get_state() const
-   *  \brief socket state
+  /*! \brief socket state
    *  \return connection_state
    */
   state get_state() const override;
 
   /*! \brief set callback on data receive
-   *  \param [in] set_state_changed_cb pointer on callback function if nullptr -
-   * non active
-   * \param [in] param parameter for callback function
+   *  \param [in] cb pointer on callback function. If we send
+   * nullptr, we switch off handling this type of events
+   * \param [in] param parameter for callback
+   * function
    */
   void set_state_changed_cb(state_changed_cb cb, std::any param) override;
 
+  /*! \brief fill sockaddr_in structure from full address
+   * \param [in] faddr full address
+   * \param [out] addr filled address
+   * \return true on success
+   */
   bool fill_sockaddr(jkl::proto::ip::full_address const &faddr,
                      sockaddr_in &addr);
 
@@ -65,4 +99,4 @@ using stream_socket_ptr = std::unique_ptr<stream>;
 
 }  // namespace jkl::sp::lnx::tcp
 
-/** @} */  // end of stream
+/** @} */  // end of ev_stream

@@ -81,6 +81,11 @@ void stream::set_send_data_cb(send_data_cb /*cb*/, std::any /*param*/) {}
 
 bool stream::is_active() const { return get_state() == state::e_wait; }
 
+void stream::reset_statistic() {
+  _statistic._success_accept_connections = 0;
+  _statistic._failed_to_accept_connections = 0;
+}
+
 bool stream::create_listen_socket() {
   if (!create_socket()) return false;
   int reuseaddr = 1;

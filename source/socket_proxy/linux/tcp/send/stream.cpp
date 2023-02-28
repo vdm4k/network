@@ -166,8 +166,7 @@ bool stream::connect() {
   return res;
 }
 
-void stream::set_received_data_cb(received_data_cb cb,
-                                       std::any user_data) {
+void stream::set_received_data_cb(received_data_cb cb, std::any user_data) {
   _received_data_cb = cb;
   _param_received_data_cb = user_data;
 }
@@ -184,6 +183,15 @@ void stream::set_send_data_cb(jkl::send_data_cb cb, std::any user_data) {
 bool stream::is_active() const {
   auto st = get_state();
   return st == state::e_wait || st == state::e_established;
+}
+
+void stream::reset_statistic() {
+  _statistic._success_send_data = 0;
+  _statistic._retry_send_data = 0;
+  _statistic._failed_send_data = 0;
+  _statistic._success_recv_data = 0;
+  _statistic._retry_recv_data = 0;
+  _statistic._failed_recv_data = 0;
 }
 
 void stream::receive_data() {
