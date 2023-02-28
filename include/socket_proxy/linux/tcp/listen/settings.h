@@ -16,12 +16,12 @@ namespace jkl::sp::lnx::tcp::listen {
 struct settings : stream_settings {
   jkl::proto::ip::full_address
       _listen_address;  ///< address for incomming connections
-  using in_conn_handler_data_cb = std::any;
-  using in_conn_handler_cb =
-      std::function<void(stream_ptr&&, in_conn_handler_data_cb)>;
+  using in_conn_handler_data_cb = std::any;  ///< data type for user data
+  using in_conn_handler_cb = std::function<void(
+      stream_ptr&&, in_conn_handler_data_cb)>;  ///< callback type
   in_conn_handler_cb _proc_in_conn;  ///< callback for incomming connections
-  in_conn_handler_data_cb _in_conn_handler_data;
-  uint16_t _listen_backlog = 14;  ///< listen backlog parameter
+  in_conn_handler_data_cb _in_conn_handler_data;  ///< user data
+  uint16_t _listen_backlog = 14;                  ///< listen backlog parameter
 };
 
 }  // namespace jkl::sp::lnx::tcp::listen

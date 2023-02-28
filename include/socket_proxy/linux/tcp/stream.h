@@ -77,25 +77,51 @@ class stream : public jkl::stream {
                      sockaddr_in &addr);
 
  protected:
+  /*! \brief set state for stream
+   * \param [in] new_state new state
+   */
   void set_connection_state(state new_state);
-  void set_detailed_error(const std::string &str);
+
+  /*! \brief set detailed error for stream
+   * \param [in] err error description
+   */
+  void set_detailed_error(const std::string &err);
+
+  /*! \brief create new stream socket
+   */
   bool create_socket();
+
+  /*! \brief set stream socket options like send/receive buffers size
+   */
   void set_socket_specific_options();
+
+  /*! \brief get ip address for active file descriptor
+   * \param [in] ver version of ip protocol
+   * \param [in] fd file descriptor
+   * \param [out] addr address to fill
+   * \result true if success
+   */
   static bool get_local_address(jkl::proto::ip::address::version ver, int fd,
                                 jkl::proto::ip::full_address &addr);
+
+  /*! \brief cleanup current stream
+   */
   void cleanup();
+
+  /*! \brief bind current stream on specific address
+   *  \param [in] self_address address to bind
+   *  \result true if success
+   */
   bool bind_on_address(const proto::ip::full_address &self_address);
 
-  int _file_descr = -1;
+  int _file_descr = -1;  ///< file descriptor
 
  private:
-  state_changed_cb _state_changed_cb;
-  std::any _param_state_changed_cb;
-  std::string _detailed_error;
-  state _state = state::e_closed;
+  state_changed_cb _state_changed_cb;  ///< state changed callback
+  std::any _param_state_changed_cb;    ///< user data for state changed callback
+  std::string _detailed_error;         ///< error description ( if set error )
+  state _state = state::e_closed;      ///< current state
 };
-
-using stream_socket_ptr = std::unique_ptr<stream>;
 
 }  // namespace jkl::sp::lnx::tcp
 

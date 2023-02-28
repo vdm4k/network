@@ -49,6 +49,7 @@ class ev_stream_factory : public jkl::stream_factory {
   ~ev_stream_factory();
 
   /*! \brief create stream
+   *  [in] stream_set pointer on settings
    *
    * Always create stream.
    * If success created stream we need to bind stream to factory
@@ -62,6 +63,7 @@ class ev_stream_factory : public jkl::stream_factory {
   stream_ptr create_stream(stream_settings *stream_set) override;
 
   /*! \brief bind stream
+   *  [in] stream
    *
    * We always need to bind created stream to factory. Only after that we start
    * to handle all events
