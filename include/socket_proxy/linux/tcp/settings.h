@@ -3,7 +3,7 @@
 
 #include <optional>
 
-namespace jkl::sp::lnx::tcp {
+namespace jkl::sp::tcp {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -15,6 +15,6 @@ struct stream_settings : public jkl::stream_settings {
   std::optional<size_t> _buffer_size;  ///< send/receive buffer size
 };
 
-}  // namespace jkl::sp::lnx::tcp
+}  // namespace jkl::sp::tcp
 
 /** @} */  // end of ev_stream

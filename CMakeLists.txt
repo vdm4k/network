@@ -1,32 +1,78 @@
 cmake_minimum_required(VERSION 3.14.0)
 project(socket_proxy VERSION 0.0.2 DESCRIPTION "socket proxy library" LANGUAGES CXX)
 
-include("${CMAKE_SOURCE_DIR}/third_party/libev.cmake")
+# core cpp files
+set(CPP_FILES
+    include/socket_proxy/stream_settings.h
+    include/socket_proxy/libev/libev.h
+    include/socket_proxy/stream_factory.h
+    include/socket_proxy/stream.h
+    include/socket_proxy/linux/stream_factory.h
+    include/socket_proxy/linux/tcp/settings.h
+    include/socket_proxy/linux/tcp/stream.h
+    include/socket_proxy/linux/tcp/listen
+    include/socket_proxy/linux/tcp/listen/settings.h
+    include/socket_proxy/linux/tcp/listen/statistic.h
+    include/socket_proxy/linux/tcp/listen/stream.h
+    include/socket_proxy/linux/tcp/send/settings.h
+    include/socket_proxy/linux/tcp/send/statistic.h
+    include/socket_proxy/linux/tcp/send/stream.h
+    include/socket_proxy/stream_statistic.h
+)
 
+# core cpp files
+set(H_FILES
+    source/socket_proxy/libev/libev.cpp
+    source/socket_proxy/linux/tcp/stream.cpp
+    source/socket_proxy/linux/tcp/listen/stream.cpp
+    source/socket_proxy/linux/tcp/send/stream.cpp
+    source/socket_proxy/linux/stream_factory.cpp
+)
+
+# SSL
+option(WITH_SSL       "Builds with ssl" OFF)
+if(WITH_SSL)
+    add_definitions(-DWITH_SSL)
+    find_package(OpenSSL REQUIRED)
+
+    set(CPP_FILES ${CPP_FILES}
+        include/socket_proxy/linux/ssl/listen/settings.h
+        include/socket_proxy/linux/ssl/listen/statistic.h
+        include/socket_proxy/linux/ssl/listen/stream.h
+    )
+
+    set(H_FILES ${H_FILES}
+        source/socket_proxy/linux/ssl/listen/stream.cpp
+    )
+
+    set(ADDITIONAL_DEPS
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+endif()
+
+
+include("${CMAKE_SOURCE_DIR}/third_party/libev.cmake")
 find_package(Threads REQUIRED)
 add_subdirectory("third_party/protocols/")
 
-file(GLOB_RECURSE CPP_FILES ${${PROJECT_NAME}_SOURCE_DIR}/source/*.cpp)
-file(GLOB_RECURSE H_FILES ${${PROJECT_NAME}_SOURCE_DIR}/include/*.h)
-
 add_library(${PROJECT_NAME} ${CPP_FILES} ${H_FILES})
 add_library(jkl::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-add_library(socket_proxy::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_compile_options(${PROJECT_NAME} PRIVATE  -Wall -Wextra -Wpedantic -Wno-vla -Wno-unused-local-typedefs)
 
+# TODO: maybe we need to add only not secure (without SSL)
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 
 #sanitizer
-if(NOT DEFINED SANITIZER)
+if(NOT DEFINED WITH_SANITIZER)
     option(SANITIZER "Enable address sanitizer" OFF)
 endif()
 
-if(SANITIZER)
+if(WITH_SANITIZER)
     target_compile_options(socket_proxy INTERFACE -fsanitize=address -fPIC)
     target_link_options(socket_proxy INTERFACE -fsanitize=address)
 endif()
@@ -37,7 +83,7 @@ if(WITH_APP)
     add_subdirectory(app)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC jkl::protocols Threads::Threads ev::ev)
+target_link_libraries(${PROJECT_NAME} PUBLIC jkl::protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS})
 
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")

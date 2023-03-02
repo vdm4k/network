@@ -2,7 +2,7 @@
 #include <socket_proxy/libev/libev.h>
 #include <socket_proxy/stream_factory.h>
 
-namespace jkl::sp::lnx {
+namespace jkl::sp {
 /** @defgroup ev_stream
  *  @{
  */
@@ -81,6 +81,6 @@ class ev_stream_factory : public jkl::stream_factory {
   struct ev_loop *_ev_loop = nullptr;
 };
 
-}  // namespace jkl::sp::lnx
+}  // namespace jkl::sp
 
 /** @} */  // end of ev_stream

@@ -5,7 +5,7 @@
 
 #include <string>
 
-namespace jkl::sp::lnx::tcp {
+namespace jkl::sp::tcp {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -123,6 +123,6 @@ class stream : public jkl::stream {
   state _state = state::e_closed;      ///< current state
 };
 
-}  // namespace jkl::sp::lnx::tcp
+}  // namespace jkl::sp::tcp
 
 /** @} */  // end of ev_stream

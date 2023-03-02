@@ -1,8 +1,33 @@
 #include <socket_proxy/libev/libev.h>
-#include <socket_proxy/linux/tcp/listen/stream.h>
+#include <socket_proxy/linux/ssl/listen/stream.h>
 #include <socket_proxy/linux/tcp/send/stream.h>
 
-namespace jkl::sp::tcp::listen {
+//#include <openssl/bio.h>
+#include <openssl/ssl.h>
+//#include <openssl/err.h>
+//#include <openssl/pem.h>
+//#include <openssl/x509.h>
+//#include <openssl/x509_vfy.h>
+
+namespace jkl::sp::tcp::ssl::listen {
+
+void init_SSL() {
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
+    (defined(LIBRESSL_VERSION_NUMBER) &&      \
+     LIBRESSL_VERSION_NUMBER < 0x20700000L)
+  static std::once_flag flag;
+  std::call_once(flag, []() {
+    OpenSSL_add_all_algorithms();
+    ERR_load_BIO_strings();
+    ERR_load_crypto_strings();
+    SSL_load_error_strings(); /* readable error messages */
+    SSL_library_init();       /* initialize library */
+  });
+#endif  // ENABLE_SSL
+  // ssl sctp использует для отправки сообщений sendmsg без флагов
+  // => у нас могут появлятся SIGPIPE
+  signal(SIGPIPE, SIG_IGN);
+}
 
 void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
                             int /*revents*/) {
@@ -64,23 +89,6 @@ void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
 
 stream::~stream() { stop_events(); }
 
-ssize_t stream::send(std::byte * /*data*/, size_t /*data_size*/) {
-  set_detailed_error("couldn't send data by listen stream");
-  return 0;
-}
-
-ssize_t stream::receive(std::byte * /*data*/, size_t /*data_size*/) {
-  set_detailed_error("couldn't receive data in listen stream");
-  return 0;
-}
-
-void stream::set_received_data_cb(received_data_cb /*cb*/, std::any /*param*/) {
-}
-
-void stream::set_send_data_cb(send_data_cb /*cb*/, std::any /*param*/) {}
-
-bool stream::is_active() const { return get_state() == state::e_wait; }
-
 void stream::reset_statistic() {
   _statistic._success_accept_connections = 0;
   _statistic._failed_to_accept_connections = 0;
@@ -88,6 +96,7 @@ void stream::reset_statistic() {
 
 bool stream::create_listen_socket() {
   if (!create_socket()) return false;
+
   int reuseaddr = 1;
   if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_REUSEADDR,
                        reinterpret_cast<const void *>(&reuseaddr),
@@ -106,19 +115,6 @@ void stream::handle_incoming_connection(
     proto::ip::full_address const &self_addr) {
   auto sck = std::make_unique<send::stream>();
 
-  if (-1 != file_descr) {
-    _statistic._success_accept_connections++;
-    sck->_settings._peer_addr = peer_addr;
-    sck->_settings._self_addr = self_addr;
-    sck->_file_descr = file_descr;
-    sck->set_connection_state(state::e_established);
-    sck->set_socket_specific_options();
-  } else {
-    _statistic._failed_to_accept_connections++;
-    sck->set_connection_state(state::e_failed);
-    sck->set_detailed_error("couldn't accept new incomming connection");
-  }
-
   if (_settings._proc_in_conn)
     _settings._proc_in_conn(std::move(sck), _settings._in_conn_handler_data);
 }
@@ -136,15 +132,22 @@ jkl::proto::ip::full_address const &stream::get_self_address() const {
 bool stream::init(settings *listen_params) {
   bool res{false};
   _settings = *listen_params;
-  if (!create_listen_socket()) return res;
 
-  if (0 == ::listen(_file_descr, _settings._listen_backlog)) {
-    set_connection_state(state::e_wait);
-    res = true;
-  } else {
-    set_detailed_error("server listen is failed");
-    set_connection_state(state::e_failed);
-    cleanup();
+#if OPENSSL_VERSION_NUMBER >= 0x10100000
+  _ctx = SSL_CTX_new(TLS_method());
+#else
+  ssl_context = SSL_CTX_new(TLSv1_2_method());
+#endif
+
+  unsigned long ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
+
+  if (!_settings._enable_sslv2) {
+    ssl_opts =
+        (SSL_OP_NO_SSLv2 |
+         SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);  // Disabling SSLv2
+                                                          // will leave v3 and
+                                                          // TSLv1 for
+                                                          // negotiation
   }
 
   return res;
@@ -152,4 +155,4 @@ bool stream::init(settings *listen_params) {
 
 void stream::stop_events() { ev::stop(_connect_io, _loop); }
 
-}  // namespace jkl::sp::tcp::listen
+}  // namespace jkl::sp::tcp::ssl::listen

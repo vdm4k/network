@@ -2,7 +2,7 @@
 #include <socket_proxy/stream_statistic.h>
 #include <stdint.h>
 
-namespace jkl::sp::lnx::tcp::send {
+namespace jkl::sp::tcp::send {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -28,6 +28,6 @@ struct statistic : public stream_statistic {
     return *this;
   }
 };
-}  // namespace jkl::sp::lnx::tcp::send
+}  // namespace jkl::sp::tcp::send
 
 /** @} */  // end of ev_stream

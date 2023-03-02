@@ -4,7 +4,7 @@
 
 #include <optional>
 
-namespace jkl::sp::lnx::tcp::send {
+namespace jkl::sp::tcp::send {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -16,6 +16,6 @@ struct settings : stream_settings {
   std::optional<jkl::proto::ip::full_address> _self_addr;  ///< self address
 };
 
-}  // namespace jkl::sp::lnx::tcp::send
+}  // namespace jkl::sp::tcp::send
 
 /** @} */  // end of ev_stream

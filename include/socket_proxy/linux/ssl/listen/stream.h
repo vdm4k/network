@@ -5,7 +5,10 @@
 #include "settings.h"
 #include "statistic.h"
 
-namespace jkl::sp::tcp::listen {
+typedef struct ssl_st SSL;
+typedef struct ssl_ctx_st SSL_CTX;
+
+namespace jkl::sp::tcp::ssl::listen {
 
 /** @addtogroup ev_stream
  *  @{
@@ -44,37 +47,6 @@ class stream : public jkl::sp::tcp::stream {
 
   ~stream();
 
-  /*!
-   *  \brief couldn't send data in listen stream. if call this function
-   * stream::get_detailed_error will be set \param [in] ptr pointer on data
-   *  \param [in] len data lenght
-   *  \return always return 0
-   */
-  ssize_t send(std::byte * /*data*/, size_t /*data_size*/) override;
-
-  /*!
-   *  \brief couldn't receive data in listen stream if call this function
-   * stream::get_detailed_error will be set \param [in] ptr pointer on data
-   *  \param [in] ptr pointer on buffer
-   *  \param [in] len buffer lenght
-   *  \return always return 0
-   */
-  ssize_t receive(std::byte * /*data*/, size_t /*data_size*/) override;
-
-  /*! \brief set callback on data receive ( don't do anything )
-   *  \param [in] cb pointer on callback function if nullptr - non
-   * active
-   * \param [in] param parameter for callback function
-   */
-  void set_received_data_cb(received_data_cb cb, std::any param) override;
-
-  /*! \brief set callback on data receive ( don't do anything )
-   *  \param [in] cb pointer on callback function if nullptr - non
-   * active
-   * \param [in] param parameter for callback function
-   */
-  void set_send_data_cb(send_data_cb cb, std::any param) override;
-
   /*! \brief get actual stream settings
    *  \return stream_settings
    */
@@ -88,11 +60,6 @@ class stream : public jkl::sp::tcp::stream {
   /*! \brief reset actual statistic
    */
   void reset_statistic() override;
-
-  /*! \brief check if stream in active state
-   *  \return bool
-   */
-  bool is_active() const override;
 
   /*! \brief get self address
    *  \return return self address
@@ -121,12 +88,14 @@ class stream : public jkl::sp::tcp::stream {
   bool create_listen_socket();
   void stop_events();
 
-  ev_io _connect_io;                ///< wait connection event
-  struct ev_loop *_loop = nullptr;  ///< pointer on base event loop
-  settings _settings;               ///< current settings
-  statistic _statistic;             ///< statistics
+  ev_io _connect_io;
+  struct ev_loop *_loop = nullptr;
+  settings _settings;
+  statistic _statistic;
+
+  SSL_CTX *_ctx = nullptr;
 };
 
-}  // namespace jkl::sp::tcp::listen
+}  // namespace jkl::sp::tcp::ssl::listen
 
 /** @} */  // end of ev_stream

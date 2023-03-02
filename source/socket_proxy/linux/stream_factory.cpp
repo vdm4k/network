@@ -3,7 +3,7 @@
 #include <socket_proxy/linux/tcp/send/stream.h>
 #include <socket_proxy/linux/tcp/settings.h>
 
-namespace jkl::sp::lnx {
+namespace jkl::sp {
 ev_stream_factory::ev_stream_factory() noexcept : _ev_loop{ev::init()} {}
 
 ev_stream_factory::~ev_stream_factory() { ev::clean_up(_ev_loop); }
@@ -34,4 +34,4 @@ void ev_stream_factory::bind(stream_ptr& stream) {
 
 void ev_stream_factory::proceed() { ev::proceed(_ev_loop); }
 
-}  // namespace jkl::sp::lnx
+}  // namespace jkl::sp

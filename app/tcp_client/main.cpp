@@ -28,11 +28,11 @@ struct per_stream_data {
 };
 
 struct per_thread_data {
-  std::unique_ptr<jkl::sp::lnx::ev_stream_factory> _manager;
+  std::unique_ptr<jkl::sp::ev_stream_factory> _manager;
   std::unordered_map<jkl::stream *, std::unique_ptr<per_stream_data>>
       _stream_pool;
   std::thread _thread;
-  jkl::sp::lnx::tcp::send::statistic _stat;
+  jkl::sp::tcp::send::statistic _stat;
 };
 
 void received_data_cb(jkl::stream *stream, std::any data_com) {
@@ -77,11 +77,11 @@ void thread_fun(
     jkl::proto::ip::address const &server_addr, uint16_t server_port,
     bool print_send_success, std::atomic_bool &work,
     size_t connections_per_thread, size_t th_num,
-    jkl::sp::lnx::tcp::send::statistic &stat,
-    jkl::sp::lnx::ev_stream_factory &manager,
+    jkl::sp::tcp::send::statistic &stat,
+    jkl::sp::ev_stream_factory &manager,
     std::unordered_map<jkl::stream *, std::unique_ptr<per_stream_data>>
         &stream_pool) {
-  jkl::sp::lnx::tcp::send::settings settings;
+  jkl::sp::tcp::send::settings settings;
   settings._peer_addr = {server_addr, server_port};
   fillTestData(th_num);
   std::unordered_set<jkl::stream *> _need_to_handle;
@@ -117,7 +117,7 @@ void thread_fun(
     if (!_need_to_handle.empty()) {
       auto it = _need_to_handle.begin();
       if (!(*it)->is_active()) {
-        stat += *static_cast<jkl::sp::lnx::tcp::send::statistic const *>(
+        stat += *static_cast<jkl::sp::tcp::send::statistic const *>(
             (*it)->get_statistic());
         stream_pool.erase((*it));
         _need_to_handle.erase(it);
@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i < threads_count; ++i) {
     worker_pool.emplace_back();
     auto &last = worker_pool.back();
-    last._manager = std::make_unique<jkl::sp::lnx::ev_stream_factory>();
+    last._manager = std::make_unique<jkl::sp::ev_stream_factory>();
     last._thread =
         std::thread(thread_fun, server_address, server_port, print_send_success,
                     std::ref(work), connections_per_thread, i,
@@ -174,12 +174,12 @@ int main(int argc, char **argv) {
 
   std::this_thread::sleep_for(std::chrono::seconds(test_time));
   work = false;
-  jkl::sp::lnx::tcp::send::statistic stat;
+  jkl::sp::tcp::send::statistic stat;
   for (auto &wrk : worker_pool) {
     wrk._thread.join();
     stat += wrk._stat;
     for (auto &strm : wrk._stream_pool) {
-      stat += *static_cast<jkl::sp::lnx::tcp::send::statistic const *>(
+      stat += *static_cast<jkl::sp::tcp::send::statistic const *>(
           strm.first->get_statistic());
     }
   }

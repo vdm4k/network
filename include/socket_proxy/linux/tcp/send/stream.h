@@ -5,11 +5,11 @@
 #include "settings.h"
 #include "statistic.h"
 
-namespace jkl::sp::lnx::tcp::listen {
+namespace jkl::sp::tcp::listen {
 class stream;
-}  // namespace jkl::sp::lnx::tcp::listen
+}  // namespace jkl::sp::tcp::listen
 
-namespace jkl::sp::lnx::tcp::send {
+namespace jkl::sp::tcp::send {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -17,7 +17,7 @@ namespace jkl::sp::lnx::tcp::send {
 /**
  * \brief send stream
  */
-class stream : public jkl::sp::lnx::tcp::stream {
+class stream : public jkl::sp::tcp::stream {
  public:
   /**
    * \brief default constructor
@@ -121,23 +121,21 @@ class stream : public jkl::sp::lnx::tcp::stream {
   friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
   friend void send_data_cb(struct ev_loop *, ev_io *w, int);
 
-  friend class jkl::sp::lnx::tcp::listen::stream;
+  friend class jkl::sp::tcp::listen::stream;
 
-  struct ev_loop *_loop = nullptr;
-
-  ev_io _read_io;
-  ev_io _write_io;
-  received_data_cb _received_data_cb;
-  std::any _param_received_data_cb;
-  send_data_cb _send_data_cb;
-  std::any _param_send_data_cb;
-  state_changed_cb _state_changed_cb;
-  std::any _param_state_changed_cb;
-
-  settings _settings;
-  statistic _statistic;
+  ev_io _read_io;                      ///< wait read event
+  ev_io _write_io;                     ///< wait write event
+  struct ev_loop *_loop = nullptr;     ///< pointer on base event loop
+  received_data_cb _received_data_cb;  ///< receive data callback
+  std::any _param_received_data_cb;    ///< user data for receive data callback
+  send_data_cb _send_data_cb;          ///< send data callback
+  std::any _param_send_data_cb;        ///< user data for send data callback
+  state_changed_cb _state_changed_cb;  ///< state change callback
+  std::any _param_state_changed_cb;    ///< user data for state change callback
+  settings _settings;                  ///< current settings
+  statistic _statistic;                ///< statistics
 };
 
-}  // namespace jkl::sp::lnx::tcp::send
+}  // namespace jkl::sp::tcp::send
 
 /** @} */  // end of ev_stream

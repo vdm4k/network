@@ -2,7 +2,7 @@
 #include <socket_proxy/stream_statistic.h>
 #include <stdint.h>
 
-namespace jkl::sp::lnx::tcp::listen {
+namespace jkl::sp::tcp::listen {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -16,6 +16,6 @@ struct statistic : public stream_statistic {
   uint64_t _failed_to_accept_connections =
       0;  ///< fail to accept connection. reason in stream::get_detailed_error
 };
-}  // namespace jkl::sp::lnx::tcp::listen
+}  // namespace jkl::sp::tcp::listen
 
 /** @} */  // end of ev_stream

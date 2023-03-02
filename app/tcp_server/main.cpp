@@ -19,7 +19,7 @@ struct data_per_thread {
   std::unordered_set<jkl::stream *> _need_to_handle;
   std::unordered_map<jkl::stream *, jkl::stream_ptr> _streams;
   size_t _count = 0;
-  jkl::sp::lnx::ev_stream_factory *_manager;
+  jkl::sp::ev_stream_factory *_manager;
 };
 
 void received_data_cb(jkl::stream *stream, std::any data_com) {
@@ -57,14 +57,14 @@ void state_changed_cb(jkl::stream *stream, std::any data_com) {
 
 auto in_socket_fun =
     [](jkl::stream_ptr &&stream,
-       jkl::sp::lnx::tcp::listen::settings::in_conn_handler_data_cb data) {
+       jkl::sp::tcp::listen::settings::in_conn_handler_data_cb data) {
       if (!stream->is_active()) {
         std::cerr << "fail to create incomming connection "
                   << stream->get_detailed_error() << std::endl;
         return;
       }
       auto *linux_stream =
-          dynamic_cast<jkl::sp::lnx::tcp::send::settings const *>(
+          dynamic_cast<jkl::sp::tcp::send::settings const *>(
               stream->get_settings());
       std::cout << "incoming connection from - " << linux_stream->_peer_addr
                 << ", to - " << *linux_stream->_self_addr << std::endl;
@@ -98,8 +98,8 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  jkl::sp::lnx::ev_stream_factory manager;
-  jkl::sp::lnx::tcp::listen::settings settings;
+  jkl::sp::ev_stream_factory manager;
+  jkl::sp::tcp::listen::settings settings;
   std::atomic_bool work(true);
 
   data_per_thread cdata;
@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
   auto endTime =
       std::chrono::system_clock::now() + std::chrono::seconds(test_time);
 
-  jkl::sp::lnx::tcp::listen::statistic stat;
+  jkl::sp::tcp::listen::statistic stat;
   size_t message_proceed = 0;
   std::cout << "server start" << std::endl;
 
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
   }
 
   auto const *stream_stat =
-      static_cast<jkl::sp::lnx::tcp::listen::statistic const *>(
+      static_cast<jkl::sp::tcp::listen::statistic const *>(
           listen_stream->get_statistic());
   stat._failed_to_accept_connections +=
       stream_stat->_failed_to_accept_connections;

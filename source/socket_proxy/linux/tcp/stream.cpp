@@ -7,7 +7,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-namespace jkl::sp::lnx::tcp {
+namespace jkl::sp::tcp {
 
 uint32_t find_scope_id(const jkl::proto::ip::v6::address &addr) {
   uint32_t scope_id{0};
@@ -216,4 +216,4 @@ void stream::set_detailed_error(const std::string &str) {
     _detailed_error = str;
 }
 
-}  // namespace jkl::sp::lnx::tcp
+}  // namespace jkl::sp::tcp

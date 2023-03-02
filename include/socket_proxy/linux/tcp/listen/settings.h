@@ -6,7 +6,7 @@
 #include <any>
 #include <functional>
 
-namespace jkl::sp::lnx::tcp::listen {
+namespace jkl::sp::tcp::listen {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -24,6 +24,6 @@ struct settings : stream_settings {
   uint16_t _listen_backlog = 14;                  ///< listen backlog parameter
 };
 
-}  // namespace jkl::sp::lnx::tcp::listen
+}  // namespace jkl::sp::tcp::listen
 
 /** @} */  // end of ev_stream

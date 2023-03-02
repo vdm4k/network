@@ -1,7 +1,7 @@
 #include <socket_proxy/libev/libev.h>
 #include <socket_proxy/linux/tcp/send/stream.h>
 
-namespace jkl::sp::lnx::tcp::send {
+namespace jkl::sp::tcp::send {
 
 stream::~stream() { stop_events(); }
 
@@ -45,17 +45,17 @@ bool stream::init(settings *send_params) {
   bool res = false;
   _settings = *send_params;
 
-  if (create_socket()) {
-    if (connect()) {
-      res = true;
-    } else {
-      set_connection_state(state::e_failed);
-      cleanup();
-      stop_events();
-    }
-  } else {
+  if (!create_socket()) {
     set_connection_state(state::e_failed);
+    return res;
   }
+  if (!connect()) {
+    set_connection_state(state::e_failed);
+    cleanup();
+    return res;
+  }
+  set_connection_state(state::e_wait);
+  res = true;
   return res;
 }
 
@@ -156,7 +156,6 @@ bool stream::connect() {
       ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&peer_addr),
                 sizeof(peer_addr));
   if (0 == rc || EINPROGRESS == errno) {
-    set_connection_state(state::e_wait);
     res = true;
   } else {
     if (0 != rc) {
@@ -202,4 +201,4 @@ void stream::send_data() {
   if (_send_data_cb) _send_data_cb(this, _param_send_data_cb);
 }
 
-}  // namespace jkl::sp::lnx::tcp::send
+}  // namespace jkl::sp::tcp::send
