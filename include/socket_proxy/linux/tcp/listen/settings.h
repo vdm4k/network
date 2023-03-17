@@ -6,7 +6,7 @@
 #include <any>
 #include <functional>
 
-namespace jkl::sp::tcp::listen {
+namespace bro::sp::tcp::listen {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -14,7 +14,7 @@ namespace jkl::sp::tcp::listen {
 /*! \brief tcp receive connections settings
  */
 struct settings : stream_settings {
-  jkl::proto::ip::full_address
+  bro::proto::ip::full_address
       _listen_address;  ///< address for incomming connections
   using in_conn_handler_data_cb = std::any;  ///< data type for user data
   using in_conn_handler_cb = std::function<void(
@@ -24,6 +24,6 @@ struct settings : stream_settings {
   uint16_t _listen_backlog = 14;                  ///< listen backlog parameter
 };
 
-}  // namespace jkl::sp::tcp::listen
+}  // namespace bro::sp::tcp::listen
 
 /** @} */  // end of ev_stream

@@ -1,7 +1,7 @@
 #include <protocols/ip/full_address.h>
+#include <socket_proxy/linux/ssl/send/settings.h>
+#include <socket_proxy/linux/ssl/send/statistic.h>
 #include <socket_proxy/linux/stream_factory.h>
-#include <socket_proxy/linux/tcp/send/settings.h>
-#include <socket_proxy/linux/tcp/send/statistic.h>
 
 #include <atomic>
 #include <iostream>
@@ -32,13 +32,14 @@ struct per_thread_data {
   std::unordered_map<bro::stream *, std::unique_ptr<per_stream_data>>
       _stream_pool;
   std::thread _thread;
-  bro::sp::tcp::send::statistic _stat;
+  bro::sp::tcp::ssl::send::statistic _stat;
 };
 
 void received_data_cb(bro::stream *stream, std::any data_com) {
   cb_data cdata = std::any_cast<cb_data>(data_com);
   std::byte data[data_size];
   ssize_t size = stream->receive(data, data_size);
+  if (size == 0) return;
   if (size > 0) {
     if (print_debug_info)
       std::cout << "receive message - " << std::string((char *)data, data_size)
@@ -77,10 +78,11 @@ void thread_fun(
     bro::proto::ip::address const &server_addr, uint16_t server_port,
     bool print_send_success, std::atomic_bool &work,
     size_t connections_per_thread, size_t th_num,
-    bro::sp::tcp::send::statistic &stat, bro::sp::ev_stream_factory &manager,
+    bro::sp::tcp::ssl::send::statistic &stat,
+    bro::sp::ev_stream_factory &manager,
     std::unordered_map<bro::stream *, std::unique_ptr<per_stream_data>>
         &stream_pool) {
-  bro::sp::tcp::send::settings settings;
+  bro::sp::tcp::ssl::send::settings settings;
   settings._peer_addr = {server_addr, server_port};
   fillTestData(th_num);
   std::unordered_set<bro::stream *> _need_to_handle;
@@ -116,7 +118,7 @@ void thread_fun(
     if (!_need_to_handle.empty()) {
       auto it = _need_to_handle.begin();
       if (!(*it)->is_active()) {
-        stat += *static_cast<bro::sp::tcp::send::statistic const *>(
+        stat += *static_cast<bro::sp::tcp::ssl::send::statistic const *>(
             (*it)->get_statistic());
         stream_pool.erase((*it));
         _need_to_handle.erase(it);
@@ -128,7 +130,7 @@ void thread_fun(
 }
 
 int main(int argc, char **argv) {
-  CLI::App app{"tcp_client"};
+  CLI::App app{"ssl_client"};
   std::string server_address_string;
   uint16_t server_port;
   size_t threads_count = 1;
@@ -174,12 +176,12 @@ int main(int argc, char **argv) {
 
   std::this_thread::sleep_for(std::chrono::seconds(test_time));
   work = false;
-  bro::sp::tcp::send::statistic stat;
+  bro::sp::tcp::ssl::send::statistic stat;
   for (auto &wrk : worker_pool) {
     wrk._thread.join();
     stat += wrk._stat;
     for (auto &strm : wrk._stream_pool) {
-      stat += *static_cast<bro::sp::tcp::send::statistic const *>(
+      stat += *static_cast<bro::sp::tcp::ssl::send::statistic const *>(
           strm.first->get_statistic());
     }
   }

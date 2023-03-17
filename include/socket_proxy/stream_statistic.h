@@ -1,6 +1,6 @@
 #pragma once
 
-namespace jkl {
+namespace bro {
 /** @addtogroup stream
  *  @{
  */
@@ -12,6 +12,6 @@ struct stream_statistic {
   virtual ~stream_statistic(){};
 };
 
-}  // namespace jkl
+}  // namespace bro
 
 /** @} */  // end of tratata2

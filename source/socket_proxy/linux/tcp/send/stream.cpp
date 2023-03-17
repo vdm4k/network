@@ -1,7 +1,7 @@
 #include <socket_proxy/libev/libev.h>
 #include <socket_proxy/linux/tcp/send/stream.h>
 
-namespace jkl::sp::tcp::send {
+namespace bro::sp::tcp::send {
 
 stream::~stream() { stop_events(); }
 
@@ -46,10 +46,12 @@ bool stream::init(settings *send_params) {
   _settings = *send_params;
 
   if (!create_socket()) {
+    set_detailed_error("coulnd't create socket");
     set_connection_state(state::e_failed);
     return res;
   }
   if (!connect()) {
+    set_detailed_error("coulnd't connect to server");
     set_connection_state(state::e_failed);
     cleanup();
     return res;
@@ -64,31 +66,31 @@ void stream::connection_established() {
   socklen_t len = sizeof(err);
   int rc = getsockopt(_file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
 
-  if (0 == rc) {
-    if (0 == err) {
-      if (get_state() == state::e_wait) {
-        ev::stop(_write_io, _loop);
-        ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-        if (_send_data_cb) {
-          ev::start(_write_io, _loop);
-        }
-        ev::start(_read_io, _loop);
-        set_connection_state(state::e_established);
-      } else {
-        set_detailed_error(
-            std::string("connection established, but tcp state not in "
-                        "listen state. state is - ") +
-            connection_state_to_str(get_state()));
-        set_connection_state(state::e_failed);
-      }
-    } else {
-      set_detailed_error("connection not established");
-      set_connection_state(state::e_failed);
-    }
-  } else {
+  if (0 != rc) {
     set_detailed_error("getsockopt error");
     set_connection_state(state::e_failed);
+    return;
   }
+  if (0 != err) {
+    set_detailed_error("connection not established");
+    set_connection_state(state::e_failed);
+    return;
+  }
+
+  if (get_state() != state::e_wait) {
+    set_detailed_error(
+        std::string("connection established, but tcp state not in "
+                    "listen state. state is - ") +
+        connection_state_to_str(get_state()));
+    set_connection_state(state::e_failed);
+    return;
+  }
+
+  ev::stop(_write_io, _loop);
+  ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
+  if (_send_data_cb) ev::start(_write_io, _loop);
+  ev::start(_read_io, _loop);
+  set_connection_state(state::e_established);
 }
 
 ssize_t stream::send(std::byte *data, size_t data_size) {
@@ -148,21 +150,15 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   return rec;
 }
 
+settings *stream::current_settings() { return &_settings; }
+
 bool stream::connect() {
-  bool res{false};
   sockaddr_in peer_addr;
-  if (!fill_sockaddr(_settings._peer_addr, peer_addr)) return res;
+  if (!fill_sockaddr(_settings._peer_addr, peer_addr)) return false;
   int rc =
       ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&peer_addr),
                 sizeof(peer_addr));
-  if (0 == rc || EINPROGRESS == errno) {
-    res = true;
-  } else {
-    if (0 != rc) {
-      set_detailed_error("coulnd't connect to server");
-    }
-  }
-  return res;
+  return (0 == rc || EINPROGRESS == errno);
 }
 
 void stream::set_received_data_cb(received_data_cb cb, std::any user_data) {
@@ -170,7 +166,7 @@ void stream::set_received_data_cb(received_data_cb cb, std::any user_data) {
   _param_received_data_cb = user_data;
 }
 
-void stream::set_send_data_cb(jkl::send_data_cb cb, std::any user_data) {
+void stream::set_send_data_cb(bro::send_data_cb cb, std::any user_data) {
   _send_data_cb = cb;
   _param_send_data_cb = user_data;
   if (_send_data_cb)
@@ -201,4 +197,9 @@ void stream::send_data() {
   if (_send_data_cb) _send_data_cb(this, _param_send_data_cb);
 }
 
-}  // namespace jkl::sp::tcp::send
+void stream::cleanup() {
+  tcp::stream::cleanup();
+  stop_events();
+}
+
+}  // namespace bro::sp::tcp::send

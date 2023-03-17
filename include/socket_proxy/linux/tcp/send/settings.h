@@ -4,7 +4,7 @@
 
 #include <optional>
 
-namespace jkl::sp::tcp::send {
+namespace bro::sp::tcp::send {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -12,10 +12,10 @@ namespace jkl::sp::tcp::send {
 /*!\brief tcp send stream settings
  */
 struct settings : stream_settings {
-  jkl::proto::ip::full_address _peer_addr;                 ///< peer address
-  std::optional<jkl::proto::ip::full_address> _self_addr;  ///< self address
+  bro::proto::ip::full_address _peer_addr;                 ///< peer address
+  std::optional<bro::proto::ip::full_address> _self_addr;  ///< self address
 };
 
-}  // namespace jkl::sp::tcp::send
+}  // namespace bro::sp::tcp::send
 
 /** @} */  // end of ev_stream

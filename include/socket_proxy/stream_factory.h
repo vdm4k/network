@@ -2,7 +2,7 @@
 #include <socket_proxy/stream.h>
 #include <socket_proxy/stream_settings.h>
 
-namespace jkl {
+namespace bro {
 /** @addtogroup stream
  *  @{
  */
@@ -44,6 +44,6 @@ class stream_factory {
   virtual void proceed() = 0;
 };
 
-}  // namespace jkl
+}  // namespace bro
 
 /** @} */  // end of socket_proxy

@@ -3,7 +3,7 @@
 
 #include <optional>
 
-namespace jkl::sp::tcp {
+namespace bro::sp::tcp {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -11,10 +11,10 @@ namespace jkl::sp::tcp {
 /**
  * \brief common settings for listen/send stream
  */
-struct stream_settings : public jkl::stream_settings {
+struct stream_settings : public bro::stream_settings {
   std::optional<size_t> _buffer_size;  ///< send/receive buffer size
 };
 
-}  // namespace jkl::sp::tcp
+}  // namespace bro::sp::tcp
 
 /** @} */  // end of ev_stream

@@ -1,11 +1,12 @@
 #pragma once
 #include <socket_proxy/libev/libev.h>
+#include <socket_proxy/linux/tcp/send/stream.h>
 #include <socket_proxy/linux/tcp/stream.h>
 
 #include "settings.h"
 #include "statistic.h"
 
-namespace jkl::sp::tcp::listen {
+namespace bro::sp::tcp::listen {
 
 /** @addtogroup ev_stream
  *  @{
@@ -14,7 +15,7 @@ namespace jkl::sp::tcp::listen {
 /**
  * \brief listen stream
  */
-class stream : public jkl::sp::tcp::stream {
+class stream : public bro::sp::tcp::stream {
  public:
   /**
    * \brief default constructor
@@ -97,7 +98,7 @@ class stream : public jkl::sp::tcp::stream {
   /*! \brief get self address
    *  \return return self address
    */
-  jkl::proto::ip::full_address const &get_self_address() const;
+  bro::proto::ip::full_address const &get_self_address() const;
 
   /*!
    *  \brief init listen stream
@@ -112,14 +113,24 @@ class stream : public jkl::sp::tcp::stream {
    */
   void assign_loop(struct ev_loop *loop);
 
+ protected:
+  virtual std::unique_ptr<send::stream> generate_send_stream();
+  virtual void handle_incoming_connection(
+      int file_descr, proto::ip::full_address const &peer_addr,
+      proto::ip::full_address const &self_addr);
+
+  virtual bool fill_send_stream(int file_descr,
+                                bro::proto::ip::full_address const &peer_addr,
+                                proto::ip::full_address const &self_addr,
+                                std::unique_ptr<send::stream> &sck);
+
+  void cleanup();
+
  private:
   friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
                                      int /*revents*/);
-  void handle_incoming_connection(int file_descr,
-                                  proto::ip::full_address const &peer_addr,
-                                  proto::ip::full_address const &self_addr);
+
   bool create_listen_socket();
-  void stop_events();
 
   ev_io _connect_io;                ///< wait connection event
   struct ev_loop *_loop = nullptr;  ///< pointer on base event loop
@@ -127,6 +138,6 @@ class stream : public jkl::sp::tcp::stream {
   statistic _statistic;             ///< statistics
 };
 
-}  // namespace jkl::sp::tcp::listen
+}  // namespace bro::sp::tcp::listen
 
 /** @} */  // end of ev_stream

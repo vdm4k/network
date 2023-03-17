@@ -1,6 +1,6 @@
 #pragma once
 
-namespace jkl {
+namespace bro {
 /** @addtogroup stream
  *  @{
  */
@@ -13,6 +13,6 @@ class stream_settings {
   virtual ~stream_settings(){};
 };
 
-}  // namespace jkl
+}  // namespace bro
 
 /** @} */  // end of socket_proxy

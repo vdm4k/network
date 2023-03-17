@@ -8,7 +8,7 @@
 #include "stream_settings.h"
 #include "stream_statistic.h"
 
-namespace jkl {
+namespace bro {
 /** @defgroup stream
  *  @{
  */
@@ -151,6 +151,6 @@ inline std::ostream &operator<<(std::ostream &out, stream::state st) {
   return out << connection_state_to_str(st);
 }
 
-}  // namespace jkl
+}  // namespace bro
 
 /** @} */  // end of stream

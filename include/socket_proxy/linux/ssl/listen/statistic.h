@@ -2,7 +2,7 @@
 #include <socket_proxy/linux/tcp/listen/statistic.h>
 #include <stdint.h>
 
-namespace jkl::sp::tcp::ssl::listen {
+namespace bro::sp::tcp::ssl::listen {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -10,7 +10,7 @@ namespace jkl::sp::tcp::ssl::listen {
 /**
  * \brief statistic for listen stream
  */
-struct statistic : public jkl::sp::tcp::listen::statistic {};
-}  // namespace jkl::sp::tcp::ssl::listen
+struct statistic : public bro::sp::tcp::listen::statistic {};
+}  // namespace bro::sp::tcp::ssl::listen
 
 /** @} */  // end of ev_stream

@@ -5,7 +5,7 @@
 
 #include <string>
 
-namespace jkl::sp::tcp {
+namespace bro::sp::tcp {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -13,7 +13,7 @@ namespace jkl::sp::tcp {
 /**
  * \brief common stream for listen/send stream
  */
-class stream : public jkl::stream {
+class stream : public bro::stream {
  public:
   /**
    * \brief default constructor
@@ -73,7 +73,7 @@ class stream : public jkl::stream {
    * \param [out] addr filled address
    * \return true on success
    */
-  bool fill_sockaddr(jkl::proto::ip::full_address const &faddr,
+  bool fill_sockaddr(bro::proto::ip::full_address const &faddr,
                      sockaddr_in &addr);
 
  protected:
@@ -101,8 +101,8 @@ class stream : public jkl::stream {
    * \param [out] addr address to fill
    * \result true if success
    */
-  static bool get_local_address(jkl::proto::ip::address::version ver, int fd,
-                                jkl::proto::ip::full_address &addr);
+  static bool get_local_address(bro::proto::ip::address::version ver, int fd,
+                                bro::proto::ip::full_address &addr);
 
   /*! \brief cleanup current stream
    */
@@ -123,6 +123,6 @@ class stream : public jkl::stream {
   state _state = state::e_closed;      ///< current state
 };
 
-}  // namespace jkl::sp::tcp
+}  // namespace bro::sp::tcp
 
 /** @} */  // end of ev_stream

@@ -5,11 +5,11 @@
 #include "settings.h"
 #include "statistic.h"
 
-namespace jkl::sp::tcp::listen {
+namespace bro::sp::tcp::listen {
 class stream;
-}  // namespace jkl::sp::tcp::listen
+}  // namespace bro::sp::tcp::listen
 
-namespace jkl::sp::tcp::send {
+namespace bro::sp::tcp::send {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -17,7 +17,7 @@ namespace jkl::sp::tcp::send {
 /**
  * \brief send stream
  */
-class stream : public jkl::sp::tcp::stream {
+class stream : public bro::sp::tcp::stream {
  public:
   /**
    * \brief default constructor
@@ -109,19 +109,24 @@ class stream : public jkl::sp::tcp::stream {
    */
   void assign_loop(struct ev_loop *loop);
 
+ protected:
+  virtual void connection_established();
+
+  void cleanup();
+
  private:
   friend void connection_established_cb(struct ev_loop *, ev_io *w, int);
+  virtual settings *current_settings();
 
   bool connect();
   void stop_events();
-  void connection_established();
   void receive_data();
   void send_data();
 
   friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
   friend void send_data_cb(struct ev_loop *, ev_io *w, int);
 
-  friend class jkl::sp::tcp::listen::stream;
+  friend class bro::sp::tcp::listen::stream;
 
   ev_io _read_io;                      ///< wait read event
   ev_io _write_io;                     ///< wait write event
@@ -136,6 +141,6 @@ class stream : public jkl::sp::tcp::stream {
   statistic _statistic;                ///< statistics
 };
 
-}  // namespace jkl::sp::tcp::send
+}  // namespace bro::sp::tcp::send
 
 /** @} */  // end of ev_stream

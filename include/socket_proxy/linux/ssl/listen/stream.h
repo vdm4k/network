@@ -1,6 +1,7 @@
 #pragma once
 #include <socket_proxy/libev/libev.h>
-#include <socket_proxy/linux/tcp/stream.h>
+#include <socket_proxy/linux/ssl/send/stream.h>
+#include <socket_proxy/linux/tcp/listen/stream.h>
 
 #include "settings.h"
 #include "statistic.h"
@@ -8,7 +9,7 @@
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
 
-namespace jkl::sp::tcp::ssl::listen {
+namespace bro::sp::tcp::ssl::listen {
 
 /** @addtogroup ev_stream
  *  @{
@@ -17,7 +18,7 @@ namespace jkl::sp::tcp::ssl::listen {
 /**
  * \brief listen stream
  */
-class stream : public jkl::sp::tcp::stream {
+class stream : public tcp::listen::stream {
  public:
   /**
    * \brief default constructor
@@ -45,7 +46,7 @@ class stream : public jkl::sp::tcp::stream {
    */
   stream &operator=(stream &&) = delete;
 
-  ~stream();
+  ~stream() override;
 
   /*! \brief get actual stream settings
    *  \return stream_settings
@@ -57,15 +58,6 @@ class stream : public jkl::sp::tcp::stream {
    */
   stream_statistic const *get_statistic() const override { return &_statistic; }
 
-  /*! \brief reset actual statistic
-   */
-  void reset_statistic() override;
-
-  /*! \brief get self address
-   *  \return return self address
-   */
-  jkl::proto::ip::full_address const &get_self_address() const;
-
   /*!
    *  \brief init listen stream
    *  \param [in] listen_params pointer on parameters
@@ -73,29 +65,23 @@ class stream : public jkl::sp::tcp::stream {
    */
   bool init(settings *listen_params);
 
-  /*!
-   *  \brief assign event loop to current stream
-   *  \param [in] loop pointer on loop
-   */
-  void assign_loop(struct ev_loop *loop);
+ protected:
+  std::unique_ptr<bro::sp::tcp::send::stream> generate_send_stream() override;
+
+  bool fill_send_stream(
+      int file_descr, bro::proto::ip::full_address const &peer_addr,
+      proto::ip::full_address const &self_addr,
+      std::unique_ptr<bro::sp::tcp::send::stream> &sck) override;
+
+  void cleanup();
 
  private:
-  friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
-                                     int /*revents*/);
-  void handle_incoming_connection(int file_descr,
-                                  proto::ip::full_address const &peer_addr,
-                                  proto::ip::full_address const &self_addr);
-  bool create_listen_socket();
-  void stop_events();
-
-  ev_io _connect_io;
-  struct ev_loop *_loop = nullptr;
   settings _settings;
   statistic _statistic;
 
   SSL_CTX *_ctx = nullptr;
 };
 
-}  // namespace jkl::sp::tcp::ssl::listen
+}  // namespace bro::sp::tcp::ssl::listen
 
 /** @} */  // end of ev_stream

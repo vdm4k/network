@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.3.2)
-project(tcp_client)
+project(ssl_server)
 
 add_executable(${PROJECT_NAME} main.cpp )
+
+find_package(OpenSSL)
 
 #sanitizer
 if(NOT DEFINED SANITIZER)
@@ -14,5 +16,3 @@ if(SANITIZER)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads socket_proxy CLI11::CLI11)
-
-

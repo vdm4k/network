@@ -1,8 +1,8 @@
 #include <protocols/ip/full_address.h>
+#include <socket_proxy/linux/ssl/listen/settings.h>
+#include <socket_proxy/linux/ssl/listen/statistic.h>
+#include <socket_proxy/linux/ssl/send/settings.h>
 #include <socket_proxy/linux/stream_factory.h>
-#include <socket_proxy/linux/tcp/listen/settings.h>
-#include <socket_proxy/linux/tcp/listen/statistic.h>
-#include <socket_proxy/linux/tcp/send/settings.h>
 
 #include <atomic>
 #include <iostream>
@@ -27,6 +27,7 @@ void received_data_cb(bro::stream *stream, std::any data_com) {
   data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
   cdata->_count++;
   ssize_t size = stream->receive(data, data_size);
+  if (size == 0) return;
   if (size > 0) {
     if (print_debug_info)
       std::cout << "receive message - " << std::string((char *)data, size)
@@ -57,14 +58,14 @@ void state_changed_cb(bro::stream *stream, std::any data_com) {
 
 auto in_socket_fun =
     [](bro::stream_ptr &&stream,
-       bro::sp::tcp::listen::settings::in_conn_handler_data_cb data) {
+       bro::sp::tcp::ssl::listen::settings::in_conn_handler_data_cb data) {
       if (!stream->is_active()) {
         std::cerr << "fail to create incomming connection "
                   << stream->get_detailed_error() << std::endl;
         return;
       }
       auto *linux_stream =
-          dynamic_cast<bro::sp::tcp::send::settings const *>(
+          dynamic_cast<bro::sp::tcp::ssl::send::settings const *>(
               stream->get_settings());
       std::cout << "incoming connection from - " << linux_stream->_peer_addr
                 << ", to - " << *linux_stream->_self_addr << std::endl;
@@ -77,10 +78,12 @@ auto in_socket_fun =
     };
 
 int main(int argc, char **argv) {
-  CLI::App app{"tcp_server"};
+  CLI::App app{"ssl_server"};
   std::string server_address_s;
   uint16_t server_port;
   size_t test_time = 1;  // in seconds
+  std::string certificate_path{"certificate.pem"};
+  std::string key_path{"key.pem"};
 
   app.add_option("-a,--address", server_address_s, "server address")
       ->required();
@@ -89,6 +92,8 @@ int main(int argc, char **argv) {
   app.add_option("-d,--data", data_size, "send data size")
       ->type_size(1, std::numeric_limits<std::uint16_t>::max());
   app.add_option("-t,--test_time", test_time, "test time in seconds");
+  app.add_option("-c,--certificate_path", certificate_path, "certificate path");
+  app.add_option("-k,--key_path", key_path, "key path");
   CLI11_PARSE(app, argc, argv);
 
   bro::proto::ip::address server_address(server_address_s);
@@ -99,7 +104,7 @@ int main(int argc, char **argv) {
   }
 
   bro::sp::ev_stream_factory manager;
-  bro::sp::tcp::listen::settings settings;
+  bro::sp::tcp::ssl::listen::settings settings;
   std::atomic_bool work(true);
 
   data_per_thread cdata;
@@ -107,6 +112,8 @@ int main(int argc, char **argv) {
   settings._listen_address = {server_address, server_port};
   settings._proc_in_conn = in_socket_fun;
   settings._in_conn_handler_data = &cdata;
+  settings._certificate_path = certificate_path;
+  settings._key_path = key_path;
   auto listen_stream = manager.create_stream(&settings);
   if (!listen_stream->is_active()) {
     std::cerr << "couldn't create listen stream, cause - "
@@ -118,7 +125,7 @@ int main(int argc, char **argv) {
   auto endTime =
       std::chrono::system_clock::now() + std::chrono::seconds(test_time);
 
-  bro::sp::tcp::listen::statistic stat;
+  bro::sp::tcp::ssl::listen::statistic stat;
   size_t message_proceed = 0;
   std::cout << "server start" << std::endl;
 
@@ -141,7 +148,7 @@ int main(int argc, char **argv) {
   }
 
   auto const *stream_stat =
-      static_cast<bro::sp::tcp::listen::statistic const *>(
+      static_cast<bro::sp::tcp::ssl::listen::statistic const *>(
           listen_stream->get_statistic());
   stat._failed_to_accept_connections +=
       stream_stat->_failed_to_accept_connections;

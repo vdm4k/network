@@ -4,4 +4,8 @@ project(socket_proxy_apps VERSION 0.0.2 DESCRIPTION "socket proxy apps" LANGUAGE
 include("${PROJECT_SOURCE_DIR}/third_party/cli11.cmake")
 add_subdirectory(tcp_client)
 add_subdirectory(tcp_server)
+if(WITH_SSL)
+    add_subdirectory(ssl_client)
+    add_subdirectory(ssl_server)
+endif()
 

@@ -1,158 +1,168 @@
 #include <socket_proxy/libev/libev.h>
+#include <socket_proxy/linux/ssl/common.h>
 #include <socket_proxy/linux/ssl/listen/stream.h>
-#include <socket_proxy/linux/tcp/send/stream.h>
+#include <socket_proxy/linux/ssl/send/stream.h>
+
+#include <mutex>
 
 //#include <openssl/bio.h>
+#include <openssl/err.h>
 #include <openssl/ssl.h>
-//#include <openssl/err.h>
 //#include <openssl/pem.h>
 //#include <openssl/x509.h>
 //#include <openssl/x509_vfy.h>
 
-namespace jkl::sp::tcp::ssl::listen {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+typedef uint64_t ctx_option_t;
+#else
+typedef long ctx_option_t;
+#endif
 
-void init_SSL() {
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
-    (defined(LIBRESSL_VERSION_NUMBER) &&      \
-     LIBRESSL_VERSION_NUMBER < 0x20700000L)
-  static std::once_flag flag;
-  std::call_once(flag, []() {
-    OpenSSL_add_all_algorithms();
-    ERR_load_BIO_strings();
-    ERR_load_crypto_strings();
-    SSL_load_error_strings(); /* readable error messages */
-    SSL_library_init();       /* initialize library */
-  });
-#endif  // ENABLE_SSL
-  // ssl sctp использует для отправки сообщений sendmsg без флагов
-  // => у нас могут появлятся SIGPIPE
-  signal(SIGPIPE, SIG_IGN);
+namespace bro::sp::tcp::ssl::listen {
+
+stream::~stream() { cleanup(); }
+
+std::unique_ptr<bro::sp::tcp::send::stream> stream::generate_send_stream() {
+  return std::make_unique<bro::sp::tcp::ssl::send::stream>();
 }
 
-void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
-                            int /*revents*/) {
-  int new_fd = -1;
-  auto *conn = reinterpret_cast<stream *>(w->data);
+bool stream::fill_send_stream(int file_descr,
+                              bro::proto::ip::full_address const &peer_addr,
+                              proto::ip::full_address const &self_addr,
+                              std::unique_ptr<tcp::send::stream> &sck) {
+  if (!tcp::listen::stream::fill_send_stream(file_descr, peer_addr, self_addr,
+                                             sck))
+    return false;
 
-  jkl::proto::ip::full_address peer_addr;
-  switch (conn->get_self_address().get_address().get_version()) {
-    case jkl::proto::ip::address::version::e_v4: {
-      struct sockaddr_in t_peer_addr = {0, 0, {0}, {0}};
-      socklen_t addrlen = sizeof(t_peer_addr);
-      while (true) {
-        new_fd = accept(
-            w->fd, reinterpret_cast<struct sockaddr *>(&t_peer_addr), &addrlen);
-        if (-1 == new_fd) {
-          if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) break;
-        } else
-          break;
-      }
-
-      if (-1 != new_fd) {
-        peer_addr = jkl::proto::ip::full_address(
-            jkl::proto::ip::v4::address(t_peer_addr.sin_addr.s_addr),
-            htons(t_peer_addr.sin_port));
-      }
-      break;
-    }
-    case jkl::proto::ip::address::version::e_v6: {
-      sockaddr_in6 t_peer_addr = {0, 0, 0, {{{0}}}, 0};
-      socklen_t addrlen = sizeof(t_peer_addr);
-      while (true) {
-        new_fd = accept(
-            w->fd, reinterpret_cast<struct sockaddr *>(&t_peer_addr), &addrlen);
-        if (-1 == new_fd) {
-          if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) break;
-        } else
-          break;
-      }
-      if (-1 != new_fd) {
-        char addr_buf[50];
-        inet_ntop(AF_INET6, &t_peer_addr.sin6_addr, addr_buf, sizeof(addr_buf));
-        peer_addr =
-            jkl::proto::ip::full_address(jkl::proto::ip::v6::address(addr_buf),
-                                         htons(t_peer_addr.sin6_port));
-      }
-      break;
-    }
-    default:
-      break;
-  }
-
-  jkl::proto::ip::full_address self_address;
-  if (-1 != new_fd) {
-    stream::get_local_address(peer_addr.get_address().get_version(), new_fd,
-                              self_address);
-  }
-  conn->handle_incoming_connection(new_fd, peer_addr, self_address);
-}
-
-stream::~stream() { stop_events(); }
-
-void stream::reset_statistic() {
-  _statistic._success_accept_connections = 0;
-  _statistic._failed_to_accept_connections = 0;
-}
-
-bool stream::create_listen_socket() {
-  if (!create_socket()) return false;
-
-  int reuseaddr = 1;
-  if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_REUSEADDR,
-                       reinterpret_cast<const void *>(&reuseaddr),
-                       sizeof(int))) {
-    set_detailed_error("couldn't set option SO_REUSEADDR");
-    ::close(_file_descr);
-    _file_descr = -1;
+  ssl::send::stream *s = (ssl::send::stream *)sck.get();
+  s->_ctx = SSL_new(_ctx);
+  SSL_set_fd(s->_ctx, s->_file_descr);
+  int res = SSL_accept(s->_ctx);
+  res = SSL_get_error(s->_ctx, res);
+  if (res != SSL_ERROR_WANT_READ) {
+    s->set_detailed_error("SSL_accept failed with :" + ssl_error());
+    s->set_connection_state(state::e_failed);
+    s->cleanup();
     return false;
   }
 
-  return bind_on_address(_settings._listen_address);
-}
+  if (_settings._enable_http2) {
+    const unsigned char *alpn = nullptr;
+    unsigned int alpnlen = 0;
+#ifndef OPENSSL_NO_NEXTPROTONEG
+    SSL_get0_next_proto_negotiated(s->_ctx, &alpn, &alpnlen);
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    if (alpn == NULL) {
+      SSL_get0_alpn_selected(s->_ctx, &alpn, &alpnlen);
+    }
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
 
-void stream::handle_incoming_connection(
-    int file_descr, jkl::proto::ip::full_address const &peer_addr,
-    proto::ip::full_address const &self_addr) {
-  auto sck = std::make_unique<send::stream>();
+    if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
+      auto st = SSL_get_state(s->_ctx);
+      if (TLS_ST_BEFORE != st) {
+        s->set_detailed_error("h2 isn't negotiated. ssl state is " +
+                              std::to_string(uint32_t(st)));
+        s->set_connection_state(state::e_failed);
+        s->cleanup();
+        return false;
+      }
+    }
+  }
 
-  if (_settings._proc_in_conn)
-    _settings._proc_in_conn(std::move(sck), _settings._in_conn_handler_data);
-}
-
-void stream::assign_loop(struct ev_loop *loop) {
-  _loop = loop;
-  ev::init(_connect_io, incoming_connection_cb, _file_descr, EV_READ, this);
-  ev::start(_connect_io, _loop);
-}
-
-jkl::proto::ip::full_address const &stream::get_self_address() const {
-  return _settings._listen_address;
+  return true;
 }
 
 bool stream::init(settings *listen_params) {
-  bool res{false};
+  if (!tcp::listen::stream::init(listen_params)) return false;
   _settings = *listen_params;
 
+  init_openSSL();
+
 #if OPENSSL_VERSION_NUMBER >= 0x10100000
-  _ctx = SSL_CTX_new(TLS_method());
+  _ctx = SSL_CTX_new(TLS_server_method());
 #else
-  ssl_context = SSL_CTX_new(TLSv1_2_method());
+  ssl_context = SSL_CTX_new(TLSv1_2_server_method());
 #endif
 
-  unsigned long ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
+  /*When we no longer need a read buffer or a write buffer for a given SSL, then
+   * release the memory we were using to hold it. Using this flag can save
+   * around 34k per idle SSL connection. This flag has no effect on SSL v2
+   * connections, or on DTLS connections.*/
+#ifdef SSL_MODE_RELEASE_BUFFERS
+  SSL_CTX_set_mode(_ctx, SSL_MODE_RELEASE_BUFFERS);
+#endif
+
+  ctx_option_t ctx_options = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
+
+#ifdef SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG
+  /* mitigate CVE-2010-4180 */
+  ctx_options &= ~SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG;
+#endif
+
+#ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
+  /* unless the user explicitly asks to allow the protocol vulnerability we
+     use the work-around */
+  if (!_settings._enable_empty_fragments)
+    ctx_options &= ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+#endif
 
   if (!_settings._enable_sslv2) {
-    ssl_opts =
-        (SSL_OP_NO_SSLv2 |
-         SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);  // Disabling SSLv2
-                                                          // will leave v3 and
-                                                          // TSLv1 for
-                                                          // negotiation
+    ctx_options |= SSL_OP_NO_SSLv2;
   }
 
-  return res;
+  if (_settings._enable_http2) {
+// like in nghttp2
+#ifdef SSL_OP_NO_TICKET
+    ctx_options |= SSL_OP_NO_TICKET;
+#endif
+
+#ifdef SSL_OP_NO_COMPRESSION
+    ctx_options |= SSL_OP_NO_COMPRESSION;
+#endif
+
+#ifdef SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
+    ctx_options |= SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
+#endif
+  }
+  SSL_CTX_set_options(_ctx, ctx_options);
+
+  /* Set the key and cert */
+  if (SSL_CTX_use_certificate_file(_ctx, _settings._certificate_path.c_str(),
+                                   SSL_FILETYPE_PEM) <= 0) {
+    std::string err_str(ssl_error());
+    set_detailed_error("server certificate not found. " + err_str);
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
+
+  if (SSL_CTX_use_PrivateKey_file(_ctx, _settings._key_path.c_str(),
+                                  SSL_FILETYPE_PEM) <= 0) {
+    std::string err_str(ssl_error());
+    set_detailed_error("key certificate not found. " + err_str);
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
+
+  if (!SSL_CTX_check_private_key(_ctx)) {
+    std::string err_str(ssl_error());
+    set_detailed_error("invalid private key. " + err_str);
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
+
+  return true;
 }
 
-void stream::stop_events() { ev::stop(_connect_io, _loop); }
+void stream::cleanup() {
+  tcp::listen::stream::cleanup();
+  if (_ctx) {
+    SSL_CTX_free(_ctx);
+    _ctx = nullptr;
+  }
+}
 
-}  // namespace jkl::sp::tcp::ssl::listen
+}  // namespace bro::sp::tcp::ssl::listen

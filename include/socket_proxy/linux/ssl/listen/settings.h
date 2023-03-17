@@ -6,18 +6,21 @@
 #include <any>
 #include <functional>
 
-namespace jkl::sp::tcp::ssl::listen {
+namespace bro::sp::tcp::ssl::listen {
 /** @addtogroup ev_stream
  *  @{
  */
 
 /*! \brief tcp receive connections settings
  */
-struct settings : jkl::sp::tcp::listen::settings {
+struct settings : bro::sp::tcp::listen::settings {
+  std::string _certificate_path;
+  std::string _key_path;
   bool _enable_sslv2 = true;
+  bool _enable_empty_fragments = false;
   bool _enable_http2 = false;
 };
 
-}  // namespace jkl::sp::tcp::ssl::listen
+}  // namespace bro::sp::tcp::ssl::listen
 
 /** @} */  // end of ev_stream

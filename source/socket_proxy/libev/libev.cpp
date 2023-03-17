@@ -4,7 +4,7 @@
 #include <climits>
 #include <string>
 
-namespace jkl::sp::ev {
+namespace bro::sp::ev {
 
 struct ev_loop *init() {
   return ev_loop_new(EVFLAG_AUTO);
@@ -40,4 +40,4 @@ void init(ev_io &watcher, io_callback_t callback, int fd, int flags,
 
 void proceed(struct ev_loop *loop) { ev_loop(loop, EVRUN_ONCE | EVRUN_NOWAIT); }
 
-}  // namespace jkl::sp::ev
+}  // namespace bro::sp::ev

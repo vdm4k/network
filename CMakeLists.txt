@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14.0)
 project(socket_proxy VERSION 0.0.2 DESCRIPTION "socket proxy library" LANGUAGES CXX)
 
 # core cpp files
-set(CPP_FILES
+set(H_FILES
     include/socket_proxy/stream_settings.h
     include/socket_proxy/libev/libev.h
     include/socket_proxy/stream_factory.h
@@ -21,7 +21,7 @@ set(CPP_FILES
 )
 
 # core cpp files
-set(H_FILES
+set(CPP_FILES
     source/socket_proxy/libev/libev.cpp
     source/socket_proxy/linux/tcp/stream.cpp
     source/socket_proxy/linux/tcp/listen/stream.cpp
@@ -35,14 +35,20 @@ if(WITH_SSL)
     add_definitions(-DWITH_SSL)
     find_package(OpenSSL REQUIRED)
 
-    set(CPP_FILES ${CPP_FILES}
+    set(H_FILES ${H_FILES}
         include/socket_proxy/linux/ssl/listen/settings.h
         include/socket_proxy/linux/ssl/listen/statistic.h
         include/socket_proxy/linux/ssl/listen/stream.h
+        include/socket_proxy/linux/ssl/send/settings.h
+        include/socket_proxy/linux/ssl/send/statistic.h
+        include/socket_proxy/linux/ssl/send/stream.h
+        include/socket_proxy/linux/ssl/common.h
     )
 
-    set(H_FILES ${H_FILES}
+    set(CPP_FILES ${CPP_FILES}
         source/socket_proxy/linux/ssl/listen/stream.cpp
+        source/socket_proxy/linux/ssl/send/stream.cpp
+        source/socket_proxy/linux/ssl/common.cpp
     )
 
     set(ADDITIONAL_DEPS
@@ -57,7 +63,7 @@ find_package(Threads REQUIRED)
 add_subdirectory("third_party/protocols/")
 
 add_library(${PROJECT_NAME} ${CPP_FILES} ${H_FILES})
-add_library(jkl::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+add_library(bro::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_compile_options(${PROJECT_NAME} PRIVATE  -Wall -Wextra -Wpedantic -Wno-vla -Wno-unused-local-typedefs)
@@ -83,7 +89,7 @@ if(WITH_APP)
     add_subdirectory(app)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC jkl::protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS})
+target_link_libraries(${PROJECT_NAME} PUBLIC bro::protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS})
 
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")

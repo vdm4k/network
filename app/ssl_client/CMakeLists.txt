@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.3.2)
-project(tcp_client)
+project(ssl_client)
 
 add_executable(${PROJECT_NAME} main.cpp )
+
+find_package(OpenSSL)
 
 #sanitizer
 if(NOT DEFINED SANITIZER)

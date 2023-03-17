@@ -2,7 +2,7 @@
 #include <socket_proxy/libev/libev.h>
 #include <socket_proxy/stream_factory.h>
 
-namespace jkl::sp {
+namespace bro::sp {
 /** @defgroup ev_stream
  *  @{
  */
@@ -10,7 +10,7 @@ namespace jkl::sp {
 /**
  * \brief stream factory based on libev
  */
-class ev_stream_factory : public jkl::stream_factory {
+class ev_stream_factory : public bro::stream_factory {
  public:
   /**
    * default constructor
@@ -81,6 +81,6 @@ class ev_stream_factory : public jkl::stream_factory {
   struct ev_loop *_ev_loop = nullptr;
 };
 
-}  // namespace jkl::sp
+}  // namespace bro::sp
 
 /** @} */  // end of ev_stream
