@@ -9,9 +9,9 @@ void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
   int new_fd = -1;
   auto *conn = reinterpret_cast<stream *>(w->data);
 
-  bro::proto::ip::full_address peer_addr;
+  proto::ip::full_address peer_addr;
   switch (conn->get_self_address().get_address().get_version()) {
-    case bro::proto::ip::address::version::e_v4: {
+  case proto::ip::address::version::e_v4: {
       struct sockaddr_in t_peer_addr = {0, 0, {0}, {0}};
       socklen_t addrlen = sizeof(t_peer_addr);
       while (true) {
@@ -24,13 +24,13 @@ void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
       }
 
       if (-1 != new_fd) {
-        peer_addr = bro::proto::ip::full_address(
-            bro::proto::ip::v4::address(t_peer_addr.sin_addr.s_addr),
+        peer_addr = proto::ip::full_address(
+            proto::ip::v4::address(t_peer_addr.sin_addr.s_addr),
             htons(t_peer_addr.sin_port));
       }
       break;
     }
-    case bro::proto::ip::address::version::e_v6: {
+  case proto::ip::address::version::e_v6: {
       sockaddr_in6 t_peer_addr = {0, 0, 0, {{{0}}}, 0};
       socklen_t addrlen = sizeof(t_peer_addr);
       while (true) {
@@ -45,7 +45,7 @@ void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
         char addr_buf[50];
         inet_ntop(AF_INET6, &t_peer_addr.sin6_addr, addr_buf, sizeof(addr_buf));
         peer_addr =
-            bro::proto::ip::full_address(bro::proto::ip::v6::address(addr_buf),
+            proto::ip::full_address(proto::ip::v6::address(addr_buf),
                                          htons(t_peer_addr.sin6_port));
       }
       break;
@@ -54,7 +54,7 @@ void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
       break;
   }
 
-  bro::proto::ip::full_address self_address;
+    proto::ip::full_address self_address;
   if (-1 != new_fd) {
     stream::get_local_address(peer_addr.get_address().get_version(), new_fd,
                               self_address);
@@ -106,7 +106,7 @@ bool stream::create_listen_socket() {
 }
 
 bool stream::fill_send_stream(int file_descr,
-                              bro::proto::ip::full_address const &peer_addr,
+                              const proto::ip::full_address &peer_addr,
                               proto::ip::full_address const &self_addr,
                               std::unique_ptr<send::stream> &sck) {
   if (-1 == file_descr) {
@@ -130,7 +130,7 @@ std::unique_ptr<send::stream> stream::generate_send_stream() {
 }
 
 void stream::handle_incoming_connection(
-    int file_descr, bro::proto::ip::full_address const &peer_addr,
+    int file_descr, proto::ip::full_address const &peer_addr,
     proto::ip::full_address const &self_addr) {
   auto sck{generate_send_stream()};
   fill_send_stream(file_descr, peer_addr, self_addr, sck);
@@ -144,7 +144,7 @@ void stream::assign_loop(struct ev_loop *loop) {
   ev::start(_connect_io, _loop);
 }
 
-bro::proto::ip::full_address const &stream::get_self_address() const {
+proto::ip::full_address const &stream::get_self_address() const {
   return _settings._listen_address;
 }
 

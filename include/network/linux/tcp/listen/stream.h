@@ -98,7 +98,7 @@ class stream : public bro::net::tcp::stream {
   /*! \brief get self address
    *  \return return self address
    */
-  bro::proto::ip::full_address const &get_self_address() const;
+  proto::ip::full_address const &get_self_address() const;
 
   /*!
    *  \brief init listen stream
@@ -115,12 +115,11 @@ class stream : public bro::net::tcp::stream {
 
  protected:
   virtual std::unique_ptr<send::stream> generate_send_stream();
-  virtual void handle_incoming_connection(
-      int file_descr, proto::ip::full_address const &peer_addr,
+  virtual void handle_incoming_connection(int file_descr, const proto::ip::full_address &peer_addr,
       proto::ip::full_address const &self_addr);
 
   virtual bool fill_send_stream(int file_descr,
-                                bro::proto::ip::full_address const &peer_addr,
+                                proto::ip::full_address const &peer_addr,
                                 proto::ip::full_address const &self_addr,
                                 std::unique_ptr<send::stream> &sck);
 

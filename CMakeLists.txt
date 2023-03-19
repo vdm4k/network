@@ -89,7 +89,7 @@ if(WITH_APP)
     add_subdirectory(app)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS})
+target_link_libraries(${PROJECT_NAME} PUBLIC network_protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS})
 
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")

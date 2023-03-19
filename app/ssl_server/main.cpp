@@ -1,8 +1,8 @@
-#include <protocols/ip/full_address.h>
 #include <network/linux/ssl/listen/settings.h>
 #include <network/linux/ssl/listen/statistic.h>
 #include <network/linux/ssl/send/settings.h>
 #include <network/linux/stream_factory.h>
+#include <protocols/ip/full_address.h>
 
 #include <atomic>
 #include <iostream>
@@ -12,6 +12,8 @@
 
 #include "CLI/CLI.hpp"
 
+using namespace bro::net;
+
 bool print_debug_info = false;
 size_t data_size = 65000;
 
@@ -19,7 +21,7 @@ struct data_per_thread {
   std::unordered_set<bro::stream *> _need_to_handle;
   std::unordered_map<bro::stream *, bro::stream_ptr> _streams;
   size_t _count = 0;
-  bro::sp::ev_stream_factory *_manager;
+  ev_stream_factory *_manager;
 };
 
 void received_data_cb(bro::stream *stream, std::any data_com) {
@@ -58,15 +60,14 @@ void state_changed_cb(bro::stream *stream, std::any data_com) {
 
 auto in_connections =
     [](bro::stream_ptr &&stream,
-       bro::sp::tcp::ssl::listen::settings::in_conn_handler_data_cb data) {
+       tcp::ssl::listen::settings::in_conn_handler_data_cb data) {
       if (!stream->is_active()) {
         std::cerr << "fail to create incomming connection "
                   << stream->get_detailed_error() << std::endl;
         return;
       }
-      auto *linux_stream =
-          dynamic_cast<bro::sp::tcp::ssl::send::settings const *>(
-              stream->get_settings());
+      auto *linux_stream = dynamic_cast<tcp::ssl::send::settings const *>(
+          stream->get_settings());
       std::cout << "incoming connection from - " << linux_stream->_peer_addr
                 << ", to - " << *linux_stream->_self_addr << std::endl;
 
@@ -96,15 +97,14 @@ int main(int argc, char **argv) {
   app.add_option("-k,--key_path", key_path, "key path");
   CLI11_PARSE(app, argc, argv);
 
-  bro::proto::ip::address server_address(server_address_s);
-  if (server_address.get_version() ==
-      bro::proto::ip::address::version::e_none) {
+  proto::ip::address server_address(server_address_s);
+  if (server_address.get_version() == proto::ip::address::version::e_none) {
     std::cerr << "incorrect address - " << server_address << std::endl;
     return -1;
   }
 
-  bro::sp::ev_stream_factory manager;
-  bro::sp::tcp::ssl::listen::settings settings;
+  ev_stream_factory manager;
+  tcp::ssl::listen::settings settings;
   std::atomic_bool work(true);
 
   data_per_thread cdata;
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
   auto endTime =
       std::chrono::system_clock::now() + std::chrono::seconds(test_time);
 
-  bro::sp::tcp::ssl::listen::statistic stat;
+  tcp::ssl::listen::statistic stat;
   size_t message_proceed = 0;
   std::cout << "server start" << std::endl;
 
@@ -147,9 +147,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  auto const *stream_stat =
-      static_cast<bro::sp::tcp::ssl::listen::statistic const *>(
-          listen_stream->get_statistic());
+  auto const *stream_stat = static_cast<tcp::ssl::listen::statistic const *>(
+      listen_stream->get_statistic());
   stat._failed_to_accept_connections +=
       stream_stat->_failed_to_accept_connections;
   stat._success_accept_connections += stream_stat->_success_accept_connections;

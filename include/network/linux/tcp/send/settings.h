@@ -12,8 +12,8 @@ namespace bro::net::tcp::send {
 /*!\brief tcp send stream settings
  */
 struct settings : stream_settings {
-  bro::proto::ip::full_address _peer_addr;                 ///< peer address
-  std::optional<bro::proto::ip::full_address> _self_addr;  ///< self address
+    proto::ip::full_address _peer_addr;                 ///< peer address
+    std::optional<proto::ip::full_address> _self_addr;  ///< self address
 };
 
 }  // namespace bro::net::tcp::send

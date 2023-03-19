@@ -69,7 +69,7 @@ class stream : public tcp::listen::stream {
   std::unique_ptr<bro::net::tcp::send::stream> generate_send_stream() override;
 
   bool fill_send_stream(
-      int file_descr, bro::proto::ip::full_address const &peer_addr,
+      int file_descr, proto::ip::full_address const &peer_addr,
       proto::ip::full_address const &self_addr,
       std::unique_ptr<bro::net::tcp::send::stream> &sck) override;
 

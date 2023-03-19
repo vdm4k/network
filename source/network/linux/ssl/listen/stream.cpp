@@ -27,7 +27,7 @@ std::unique_ptr<bro::net::tcp::send::stream> stream::generate_send_stream() {
 }
 
 bool stream::fill_send_stream(int file_descr,
-                              bro::proto::ip::full_address const &peer_addr,
+                              proto::ip::full_address const &peer_addr,
                               proto::ip::full_address const &self_addr,
                               std::unique_ptr<tcp::send::stream> &sck) {
   if (!tcp::listen::stream::fill_send_stream(file_descr, peer_addr, self_addr,

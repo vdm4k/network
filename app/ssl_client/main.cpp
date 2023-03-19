@@ -1,7 +1,7 @@
-#include <protocols/ip/full_address.h>
 #include <network/linux/ssl/send/settings.h>
 #include <network/linux/ssl/send/statistic.h>
 #include <network/linux/stream_factory.h>
+#include <protocols/ip/full_address.h>
 
 #include <atomic>
 #include <iostream>
@@ -9,6 +9,8 @@
 #include <unordered_set>
 
 #include "CLI/CLI.hpp"
+
+using namespace bro::net;
 
 bool print_debug_info = false;
 size_t data_size = 1500;
@@ -28,11 +30,11 @@ struct per_stream_data {
 };
 
 struct per_thread_data {
-  std::unique_ptr<bro::sp::ev_stream_factory> _manager;
+  std::unique_ptr<ev_stream_factory> _manager;
   std::unordered_map<bro::stream *, std::unique_ptr<per_stream_data>>
       _stream_pool;
   std::thread _thread;
-  bro::sp::tcp::ssl::send::statistic _stat;
+  tcp::ssl::send::statistic _stat;
 };
 
 void received_data_cb(bro::stream *stream, std::any data_com) {
@@ -75,14 +77,13 @@ void fillTestData(int thread_number) {
 }
 
 void thread_fun(
-    bro::proto::ip::address const &server_addr, uint16_t server_port,
+    proto::ip::address const &server_addr, uint16_t server_port,
     bool print_send_success, std::atomic_bool &work,
     size_t connections_per_thread, size_t th_num,
-    bro::sp::tcp::ssl::send::statistic &stat,
-    bro::sp::ev_stream_factory &manager,
+    tcp::ssl::send::statistic &stat, ev_stream_factory &manager,
     std::unordered_map<bro::stream *, std::unique_ptr<per_stream_data>>
         &stream_pool) {
-  bro::sp::tcp::ssl::send::settings settings;
+  tcp::ssl::send::settings settings;
   settings._peer_addr = {server_addr, server_port};
   fillTestData(th_num);
   std::unordered_set<bro::stream *> _need_to_handle;
@@ -118,7 +119,7 @@ void thread_fun(
     if (!_need_to_handle.empty()) {
       auto it = _need_to_handle.begin();
       if (!(*it)->is_active()) {
-        stat += *static_cast<bro::sp::tcp::ssl::send::statistic const *>(
+        stat += *static_cast<tcp::ssl::send::statistic const *>(
             (*it)->get_statistic());
         stream_pool.erase((*it));
         _need_to_handle.erase(it);
@@ -151,9 +152,8 @@ int main(int argc, char **argv) {
                  "connections per thread");
   CLI11_PARSE(app, argc, argv);
 
-  bro::proto::ip::address server_address(server_address_string);
-  if (server_address.get_version() ==
-      bro::proto::ip::address::version::e_none) {
+  proto::ip::address server_address(server_address_string);
+  if (server_address.get_version() == proto::ip::address::version::e_none) {
     std::cerr << "incorrect address - " << server_address << std::endl;
     return -1;
   }
@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i < threads_count; ++i) {
     worker_pool.emplace_back();
     auto &last = worker_pool.back();
-    last._manager = std::make_unique<bro::sp::ev_stream_factory>();
+    last._manager = std::make_unique<ev_stream_factory>();
     last._thread =
         std::thread(thread_fun, server_address, server_port, print_send_success,
                     std::ref(work), connections_per_thread, i,
@@ -176,12 +176,12 @@ int main(int argc, char **argv) {
 
   std::this_thread::sleep_for(std::chrono::seconds(test_time));
   work = false;
-  bro::sp::tcp::ssl::send::statistic stat;
+  tcp::ssl::send::statistic stat;
   for (auto &wrk : worker_pool) {
     wrk._thread.join();
     stat += wrk._stat;
     for (auto &strm : wrk._stream_pool) {
-      stat += *static_cast<bro::sp::tcp::ssl::send::statistic const *>(
+      stat += *static_cast<tcp::ssl::send::statistic const *>(
           strm.first->get_statistic());
     }
   }

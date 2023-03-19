@@ -1,7 +1,7 @@
 #pragma once
 #include <arpa/inet.h>
-#include <protocols/ip/full_address.h>
 #include <network/stream.h>
+#include <protocols/ip/full_address.h>
 
 #include <string>
 
@@ -73,8 +73,7 @@ class stream : public bro::stream {
    * \param [out] addr filled address
    * \return true on success
    */
-  bool fill_sockaddr(bro::proto::ip::full_address const &faddr,
-                     sockaddr_in &addr);
+  bool fill_sockaddr(proto::ip::full_address const &faddr, sockaddr_in &addr);
 
  protected:
   /*! \brief set state for stream
@@ -101,8 +100,8 @@ class stream : public bro::stream {
    * \param [out] addr address to fill
    * \result true if success
    */
-  static bool get_local_address(bro::proto::ip::address::version ver, int fd,
-                                bro::proto::ip::full_address &addr);
+  static bool get_local_address(proto::ip::address::version ver, int fd,
+                                proto::ip::full_address &addr);
 
   /*! \brief cleanup current stream
    */
