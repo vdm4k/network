@@ -1,32 +1,32 @@
 cmake_minimum_required(VERSION 3.14.0)
-project(socket_proxy VERSION 0.0.2 DESCRIPTION "socket proxy library" LANGUAGES CXX)
+project(network VERSION 0.0.2 DESCRIPTION "network library" LANGUAGES CXX)
 
 # core cpp files
 set(H_FILES
-    include/socket_proxy/stream_settings.h
-    include/socket_proxy/libev/libev.h
-    include/socket_proxy/stream_factory.h
-    include/socket_proxy/stream.h
-    include/socket_proxy/linux/stream_factory.h
-    include/socket_proxy/linux/tcp/settings.h
-    include/socket_proxy/linux/tcp/stream.h
-    include/socket_proxy/linux/tcp/listen
-    include/socket_proxy/linux/tcp/listen/settings.h
-    include/socket_proxy/linux/tcp/listen/statistic.h
-    include/socket_proxy/linux/tcp/listen/stream.h
-    include/socket_proxy/linux/tcp/send/settings.h
-    include/socket_proxy/linux/tcp/send/statistic.h
-    include/socket_proxy/linux/tcp/send/stream.h
-    include/socket_proxy/stream_statistic.h
+    include/network/stream_settings.h
+    include/network/libev/libev.h
+    include/network/stream_factory.h
+    include/network/stream.h
+    include/network/linux/stream_factory.h
+    include/network/linux/tcp/settings.h
+    include/network/linux/tcp/stream.h
+    include/network/linux/tcp/listen
+    include/network/linux/tcp/listen/settings.h
+    include/network/linux/tcp/listen/statistic.h
+    include/network/linux/tcp/listen/stream.h
+    include/network/linux/tcp/send/settings.h
+    include/network/linux/tcp/send/statistic.h
+    include/network/linux/tcp/send/stream.h
+    include/network/stream_statistic.h
 )
 
 # core cpp files
 set(CPP_FILES
-    source/socket_proxy/libev/libev.cpp
-    source/socket_proxy/linux/tcp/stream.cpp
-    source/socket_proxy/linux/tcp/listen/stream.cpp
-    source/socket_proxy/linux/tcp/send/stream.cpp
-    source/socket_proxy/linux/stream_factory.cpp
+    source/network/libev/libev.cpp
+    source/network/linux/tcp/stream.cpp
+    source/network/linux/tcp/listen/stream.cpp
+    source/network/linux/tcp/send/stream.cpp
+    source/network/linux/stream_factory.cpp
 )
 
 # SSL
@@ -36,19 +36,19 @@ if(WITH_SSL)
     find_package(OpenSSL REQUIRED)
 
     set(H_FILES ${H_FILES}
-        include/socket_proxy/linux/ssl/listen/settings.h
-        include/socket_proxy/linux/ssl/listen/statistic.h
-        include/socket_proxy/linux/ssl/listen/stream.h
-        include/socket_proxy/linux/ssl/send/settings.h
-        include/socket_proxy/linux/ssl/send/statistic.h
-        include/socket_proxy/linux/ssl/send/stream.h
-        include/socket_proxy/linux/ssl/common.h
+        include/network/linux/ssl/listen/settings.h
+        include/network/linux/ssl/listen/statistic.h
+        include/network/linux/ssl/listen/stream.h
+        include/network/linux/ssl/send/settings.h
+        include/network/linux/ssl/send/statistic.h
+        include/network/linux/ssl/send/stream.h
+        include/network/linux/ssl/common.h
     )
 
     set(CPP_FILES ${CPP_FILES}
-        source/socket_proxy/linux/ssl/listen/stream.cpp
-        source/socket_proxy/linux/ssl/send/stream.cpp
-        source/socket_proxy/linux/ssl/common.cpp
+        source/network/linux/ssl/listen/stream.cpp
+        source/network/linux/ssl/send/stream.cpp
+        source/network/linux/ssl/common.cpp
     )
 
     set(ADDITIONAL_DEPS
@@ -79,8 +79,8 @@ if(NOT DEFINED WITH_SANITIZER)
 endif()
 
 if(WITH_SANITIZER)
-    target_compile_options(socket_proxy INTERFACE -fsanitize=address -fPIC)
-    target_link_options(socket_proxy INTERFACE -fsanitize=address)
+    target_compile_options(${PROJECT_NAME} INTERFACE -fsanitize=address -fPIC)
+    target_link_options(${PROJECT_NAME} INTERFACE -fsanitize=address)
 endif()
 
 #app
@@ -89,7 +89,7 @@ if(WITH_APP)
     add_subdirectory(app)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC bro::protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS})
+target_link_libraries(${PROJECT_NAME} PUBLIC protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS})
 
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")
     include("${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")

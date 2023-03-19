@@ -13,4 +13,4 @@ if(SANITIZER)
     target_link_options(${PROJECT_NAME} INTERFACE -fsanitize=address)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads socket_proxy CLI11::CLI11)
+target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads network CLI11::CLI11)

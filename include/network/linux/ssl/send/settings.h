@@ -1,0 +1,22 @@
+#pragma once
+#include <protocols/ip/full_address.h>
+#include <network/linux/tcp/send/settings.h>
+
+#include <optional>
+
+namespace bro::net::tcp::ssl::send {
+/** @addtogroup ev_stream
+ *  @{
+ */
+
+/*!\brief tcp send stream settings
+ */
+struct settings : bro::net::tcp::send::settings {
+  bool _enable_sslv2 = true;
+  bool _enable_empty_fragments = false;
+  bool _enable_http2 = false;
+};
+
+}  // namespace bro::net::tcp::ssl::send
+
+/** @} */  // end of ev_stream

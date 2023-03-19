@@ -1,7 +1,7 @@
 #include <protocols/ip/full_address.h>
-#include <socket_proxy/linux/ssl/send/settings.h>
-#include <socket_proxy/linux/ssl/send/statistic.h>
-#include <socket_proxy/linux/stream_factory.h>
+#include <network/linux/ssl/send/settings.h>
+#include <network/linux/ssl/send/statistic.h>
+#include <network/linux/stream_factory.h>
 
 #include <atomic>
 #include <iostream>

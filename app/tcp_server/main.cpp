@@ -1,8 +1,8 @@
 #include <protocols/ip/full_address.h>
-#include <socket_proxy/linux/stream_factory.h>
-#include <socket_proxy/linux/tcp/listen/settings.h>
-#include <socket_proxy/linux/tcp/listen/statistic.h>
-#include <socket_proxy/linux/tcp/send/settings.h>
+#include <network/linux/stream_factory.h>
+#include <network/linux/tcp/listen/settings.h>
+#include <network/linux/tcp/listen/statistic.h>
+#include <network/linux/tcp/send/settings.h>
 
 #include <atomic>
 #include <iostream>
@@ -55,7 +55,7 @@ void state_changed_cb(bro::stream *stream, std::any data_com) {
   }
 }
 
-auto in_socket_fun =
+auto in_connections =
     [](bro::stream_ptr &&stream,
        bro::sp::tcp::listen::settings::in_conn_handler_data_cb data) {
       if (!stream->is_active()) {
@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
   data_per_thread cdata;
   cdata._manager = &manager;
   settings._listen_address = {server_address, server_port};
-  settings._proc_in_conn = in_socket_fun;
+  settings._proc_in_conn = in_connections;
   settings._in_conn_handler_data = &cdata;
   auto listen_stream = manager.create_stream(&settings);
   if (!listen_stream->is_active()) {
