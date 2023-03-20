@@ -1,21 +1,55 @@
 #pragma once
-#include <network/stream.h>
-#include <network/stream_settings.h>
+#include <network/libev/libev.h>
+#include <stream/factory.h>
 
-namespace bro {
-/** @addtogroup stream
+namespace bro::net {
+/** @defgroup ev_stream
  *  @{
  */
 
 /**
- * \brief stream factory interface
+ * \brief stream factory based on libev
  */
-class stream_factory {
+class ev_stream_factory : public strm::factory {
  public:
-  virtual ~stream_factory() {}
+  /**
+   * default constructor
+   */
+  ev_stream_factory() noexcept;
+
+  /**
+   * \brief disabled copy ctor
+   *
+   * We can't copy and handle event loop
+   */
+  ev_stream_factory(ev_stream_factory const &) = delete;
+
+  /**
+   * \brief disabled move ctor
+   *
+   * Can be dangerous. Need to remeber all binded streams.
+   * (If we override existing loop with already binded streams)
+   */
+  ev_stream_factory(ev_stream_factory &&) = delete;
+
+  /**
+   * \brief disabled move assign operator
+   *
+   * Can be dangerous. Need to remeber all binded streams.
+   * (If we override existing loop with already binded streams)
+   */
+  ev_stream_factory &operator=(ev_stream_factory &&) = delete;
+
+  /**
+   * \brief disabled assign operator
+   *
+   * We can't copy and handle event loop
+   */
+  ev_stream_factory &operator=(ev_stream_factory const &) = delete;
+  ~ev_stream_factory();
 
   /*! \brief create stream
-   * [in] stream_set pointer on settings
+   *  [in] stream_set pointer on settings
    *
    * Always create stream.
    * If success created stream we need to bind stream to factory
@@ -26,7 +60,7 @@ class stream_factory {
    *
    *  \return stream_ptr created stream
    */
-  virtual stream_ptr create_stream(stream_settings* stream_set) = 0;
+  strm::stream_ptr create_stream(strm::settings *stream_set) override;
 
   /*! \brief bind stream
    *  [in] stream
@@ -34,16 +68,19 @@ class stream_factory {
    * We always need to bind created stream to factory. Only after that we start
    * to handle all events
    */
-  virtual void bind(stream_ptr& stream) = 0;
+  void bind(strm::stream_ptr &stream) override;
 
   /*! \brief proceed event loop
    *
    *  This function is a main funcion to generate/handle in/out events.
    *  Hence we need to call it periodically
    */
-  virtual void proceed() = 0;
+  void proceed() override;
+
+ private:
+  struct ev_loop *_ev_loop = nullptr;
 };
 
-}  // namespace bro
+}  // namespace bro::net
 
-/** @} */  // end of network
+/** @} */  // end of ev_stream

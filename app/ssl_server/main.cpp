@@ -1,7 +1,7 @@
-#include <network/linux/ssl/listen/settings.h>
-#include <network/linux/ssl/listen/statistic.h>
-#include <network/linux/ssl/send/settings.h>
-#include <network/linux/stream_factory.h>
+#include <network/tcp/ssl/listen/settings.h>
+#include <network/tcp/ssl/listen/statistic.h>
+#include <network/tcp/ssl/send/settings.h>
+#include <network/stream_factory.h>
 #include <protocols/ip/full_address.h>
 
 #include <atomic>
@@ -13,18 +13,19 @@
 #include "CLI/CLI.hpp"
 
 using namespace bro::net;
+using namespace bro::strm;
 
 bool print_debug_info = false;
 size_t data_size = 65000;
 
 struct data_per_thread {
-  std::unordered_set<bro::stream *> _need_to_handle;
-  std::unordered_map<bro::stream *, bro::stream_ptr> _streams;
+  std::unordered_set<stream *> _need_to_handle;
+  std::unordered_map<stream *, stream_ptr> _streams;
   size_t _count = 0;
   ev_stream_factory *_manager;
 };
 
-void received_data_cb(bro::stream *stream, std::any data_com) {
+void received_data_cb(stream *stream, std::any data_com) {
   std::byte data[data_size];
   data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
   cdata->_count++;
@@ -49,7 +50,7 @@ void received_data_cb(bro::stream *stream, std::any data_com) {
   }
 }
 
-void state_changed_cb(bro::stream *stream, std::any data_com) {
+void state_changed_cb(stream *stream, std::any data_com) {
   if (print_debug_info)
     std::cout << "state_changed_cb " << stream->get_state() << std::endl;
   if (!stream->is_active()) {
@@ -59,7 +60,7 @@ void state_changed_cb(bro::stream *stream, std::any data_com) {
 }
 
 auto in_connections =
-    [](bro::stream_ptr &&stream,
+    [](stream_ptr &&stream,
        tcp::ssl::listen::settings::in_conn_handler_data_cb data) {
       if (!stream->is_active()) {
         std::cerr << "fail to create incomming connection "
@@ -72,8 +73,8 @@ auto in_connections =
                 << ", to - " << *linux_stream->_self_addr << std::endl;
 
       auto *cdata = std::any_cast<data_per_thread *>(data);
-      stream->set_received_data_cb(received_data_cb, data);
-      stream->set_state_changed_cb(state_changed_cb, data);
+      stream->set_received_data_cb(::received_data_cb, data);
+      stream->set_state_changed_cb(::state_changed_cb, data);
       cdata->_manager->bind(stream);
       cdata->_streams[stream.get()] = std::move(stream);
     };

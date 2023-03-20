@@ -1,6 +1,6 @@
-#include <network/linux/ssl/send/settings.h>
-#include <network/linux/ssl/send/statistic.h>
-#include <network/linux/stream_factory.h>
+#include <network/stream_factory.h>
+#include <network/tcp/ssl/send/settings.h>
+#include <network/tcp/ssl/send/statistic.h>
 #include <protocols/ip/full_address.h>
 
 #include <atomic>
@@ -11,6 +11,7 @@
 #include "CLI/CLI.hpp"
 
 using namespace bro::net;
+using namespace bro::strm;
 
 bool print_debug_info = false;
 size_t data_size = 1500;
@@ -19,25 +20,24 @@ thread_local std::byte send_data[max_data_size];
 
 struct cb_data {
   bool *data_received = nullptr;
-  std::unordered_set<bro::stream *> *_need_to_handle = nullptr;
+  std::unordered_set<stream *> *_need_to_handle = nullptr;
 };
 
 struct per_stream_data {
-  per_stream_data(bool received, bro::stream_ptr &&ptr)
+  per_stream_data(bool received, stream_ptr &&ptr)
       : data_received(received), stream(std::move(ptr)) {}
   bool data_received;
-  bro::stream_ptr stream;
+  bro::strm::stream_ptr stream;
 };
 
 struct per_thread_data {
   std::unique_ptr<ev_stream_factory> _manager;
-  std::unordered_map<bro::stream *, std::unique_ptr<per_stream_data>>
-      _stream_pool;
+  std::unordered_map<stream *, std::unique_ptr<per_stream_data>> _stream_pool;
   std::thread _thread;
   tcp::ssl::send::statistic _stat;
 };
 
-void received_data_cb(bro::stream *stream, std::any data_com) {
+void received_data_cb(stream *stream, std::any data_com) {
   cb_data cdata = std::any_cast<cb_data>(data_com);
   std::byte data[data_size];
   ssize_t size = stream->receive(data, data_size);
@@ -50,7 +50,7 @@ void received_data_cb(bro::stream *stream, std::any data_com) {
   *cdata.data_received = true;
 }
 
-void state_changed_cb(bro::stream *stream, std::any data_com) {
+void state_changed_cb(stream *stream, std::any data_com) {
   if (print_debug_info)
     std::cout << "state_changed_cb " << stream->get_state() << ", "
               << stream->get_detailed_error() << std::endl;
@@ -60,7 +60,7 @@ void state_changed_cb(bro::stream *stream, std::any data_com) {
   }
 }
 
-void send_data_cb(bro::stream *stream, std::any data_com) {
+void send_data_cb(stream *stream, std::any data_com) {
   if (print_debug_info) {
     std::cout << "data_sended " << std::endl;
   }
@@ -76,17 +76,16 @@ void fillTestData(int thread_number) {
   memcpy(send_data + sizeof(data), num.c_str(), num.size());
 }
 
-void thread_fun(
-    proto::ip::address const &server_addr, uint16_t server_port,
-    bool print_send_success, std::atomic_bool &work,
-    size_t connections_per_thread, size_t th_num,
-    tcp::ssl::send::statistic &stat, ev_stream_factory &manager,
-    std::unordered_map<bro::stream *, std::unique_ptr<per_stream_data>>
-        &stream_pool) {
+void thread_fun(proto::ip::address const &server_addr, uint16_t server_port,
+                bool print_send_success, std::atomic_bool &work,
+                size_t connections_per_thread, size_t th_num,
+                tcp::ssl::send::statistic &stat, ev_stream_factory &manager,
+                std::unordered_map<stream *, std::unique_ptr<per_stream_data>>
+                    &stream_pool) {
   tcp::ssl::send::settings settings;
   settings._peer_addr = {server_addr, server_port};
   fillTestData(th_num);
-  std::unordered_set<bro::stream *> _need_to_handle;
+  std::unordered_set<stream *> _need_to_handle;
 
   while (work.load(std::memory_order_acquire)) {
     if (stream_pool.size() < connections_per_thread) {
@@ -96,10 +95,10 @@ void thread_fun(
         auto s_data =
             std::make_unique<per_stream_data>(true, std::move(new_stream));
         cb_data cb_data{&s_data->data_received, &_need_to_handle};
-        s_data->stream->set_received_data_cb(received_data_cb, cb_data);
-        s_data->stream->set_state_changed_cb(state_changed_cb, cb_data);
+        s_data->stream->set_received_data_cb(::received_data_cb, cb_data);
+        s_data->stream->set_state_changed_cb(::state_changed_cb, cb_data);
         if (print_send_success)
-          s_data->stream->set_send_data_cb(send_data_cb, nullptr);
+          s_data->stream->set_send_data_cb(::send_data_cb, nullptr);
         stream_pool[s_data->stream.get()] = std::move(s_data);
       }
     }
@@ -107,7 +106,7 @@ void thread_fun(
     for (auto &sp : stream_pool) {
       auto &per_stream_data = sp.second;
       auto &send_stream = per_stream_data->stream;
-      if (bro::stream::state::e_established != send_stream->get_state() ||
+      if (stream::state::e_established != send_stream->get_state() ||
           !per_stream_data->data_received)
         continue;
 
