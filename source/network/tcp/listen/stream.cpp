@@ -1,3 +1,4 @@
+#include <network/common.h>
 #include <network/libev/libev.h>
 #include <network/tcp/listen/stream.h>
 #include <network/tcp/send/stream.h>
@@ -55,8 +56,8 @@ void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
 
   proto::ip::full_address self_address;
   if (-1 != new_fd) {
-    stream::get_local_address(peer_addr.get_address().get_version(), new_fd,
-                              self_address);
+    get_local_address(peer_addr.get_address().get_version(), new_fd,
+                      self_address);
   }
   conn->handle_incoming_connection(new_fd, peer_addr, self_address);
 }
@@ -76,8 +77,7 @@ ssize_t stream::receive(std::byte * /*data*/, size_t /*data_size*/) {
 void stream::set_received_data_cb(strm::received_data_cb /*cb*/,
                                   std::any /*param*/) {}
 
-void stream::set_send_data_cb(strm::send_data_cb /*cb*/,
-                              std::any /*param*/) {}
+void stream::set_send_data_cb(strm::send_data_cb /*cb*/, std::any /*param*/) {}
 
 bool stream::is_active() const { return get_state() == state::e_wait; }
 
@@ -87,7 +87,7 @@ void stream::reset_statistic() {
 }
 
 bool stream::create_listen_socket() {
-  if (!create_socket()) {
+  if (!create_socket(_settings._listen_address.get_address().get_version())) {
     set_detailed_error("coulnd't create socket");
     set_connection_state(state::e_failed);
     return false;
@@ -102,7 +102,8 @@ bool stream::create_listen_socket() {
     return false;
   }
 
-  return bind_on_address(_settings._listen_address);
+  return bind_on_address(_settings._listen_address, _file_descr,
+                         get_detailed_error());
 }
 
 bool stream::fill_send_stream(int file_descr,

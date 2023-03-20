@@ -8,7 +8,9 @@ set(H_FILES
     include/stream/settings.h
     include/stream/statistic.h
     include/network/libev/libev.h
+    include/network/stream.h
     include/network/stream_factory.h
+    include/network/common.h
     include/network/tcp/settings.h
     include/network/tcp/stream.h
     include/network/tcp/listen
@@ -27,6 +29,8 @@ set(CPP_FILES
     source/network/tcp/listen/stream.cpp
     source/network/tcp/send/stream.cpp
     source/network/stream_factory.cpp
+    source/network/stream.cpp
+    source/network/common.cpp
 )
 
 

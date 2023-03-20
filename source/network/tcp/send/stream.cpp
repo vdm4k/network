@@ -1,3 +1,4 @@
+#include <network/common.h>
 #include <network/libev/libev.h>
 #include <network/tcp/send/stream.h>
 
@@ -45,7 +46,7 @@ bool stream::init(settings *send_params) {
   bool res = false;
   _settings = *send_params;
 
-  if (!create_socket()) {
+  if (!create_socket(_settings._peer_addr.get_address().get_version())) {
     set_detailed_error("coulnd't create socket");
     set_connection_state(state::e_failed);
     return res;
@@ -154,7 +155,8 @@ settings *stream::current_settings() { return &_settings; }
 
 bool stream::connect() {
   sockaddr_in peer_addr;
-  if (!fill_sockaddr(_settings._peer_addr, peer_addr)) return false;
+  if (!fill_sockaddr(_settings._peer_addr, peer_addr, get_detailed_error()))
+    return false;
   int rc =
       ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&peer_addr),
                 sizeof(peer_addr));
@@ -167,8 +169,7 @@ void stream::set_received_data_cb(strm::received_data_cb cb,
   _param_received_data_cb = user_data;
 }
 
-void stream::set_send_data_cb(strm::send_data_cb cb,
-                              std::any user_data) {
+void stream::set_send_data_cb(strm::send_data_cb cb, std::any user_data) {
   _send_data_cb = cb;
   _param_send_data_cb = user_data;
   if (_send_data_cb)

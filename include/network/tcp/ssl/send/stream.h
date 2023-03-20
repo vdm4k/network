@@ -21,32 +21,6 @@ namespace bro::net::tcp::ssl::send {
  */
 class stream : public tcp::send::stream {
  public:
-  /**
-   * \brief default constructor
-   */
-  stream() = default;
-
-  /**
-   * \brief disabled copy ctor
-   *
-   * We can't copy and handle event loop
-   */
-  stream(stream const &) = delete;
-
-  /**
-   * \brief disabled move ctor
-   *
-   * Can be too complex
-   */
-  stream(stream &&) = delete;
-
-  /**
-   * \brief disabled move assign operator
-   *
-   * Can be too complex
-   */
-  stream &operator=(stream &&) = delete;
-
   ~stream() override;
 
   /*! \brief send data

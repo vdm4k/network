@@ -9,20 +9,12 @@
 
 namespace bro::net::sctp {
 
-void stream::cleanup() {
-  if (-1 != _file_descr) {
-    ::close(_file_descr);
-    _file_descr = -1;
-  }
-}
-
-void set_sctp_specific_sockopt(int file_descr,
-                               proto::ip::address::version addr_ver,
-                               bro::net::sctp::settings *params) {
+void stream::set_socket_specific_options(proto::ip::address::version addr_ver) {
+  settings *params = (settings *)get_settings();
   int optval = 1;
   /* Set the NODELAY option (Nagle-like algorithm) */
 #ifdef SCTP_NODELAY
-  if (-1 == ::setsockopt(file_descr, IPPROTO_SCTP, SCTP_NODELAY,
+  if (-1 == ::setsockopt(_file_descr, IPPROTO_SCTP, SCTP_NODELAY,
                          reinterpret_cast<char const *>(&optval),
                          sizeof(optval))) {
   }
@@ -39,7 +31,8 @@ void set_sctp_specific_sockopt(int file_descr,
   rtoinfo.srto_min =
       params->_srto_min; /* Value under which the RTO does not descend, we set
                             this value to not conflict with srto_max */
-  setsockopt(file_descr, IPPROTO_SCTP, SCTP_RTOINFO, &rtoinfo, sizeof(rtoinfo));
+  setsockopt(_file_descr, IPPROTO_SCTP, SCTP_RTOINFO, &rtoinfo,
+             sizeof(rtoinfo));
 #endif  // SCTP_RTOINFO
 
 /* Set the association parameters: max number of retransmits, ... */
@@ -51,7 +44,7 @@ void set_sctp_specific_sockopt(int file_descr,
                                     we want fast detection of errors */
   /* Note that this must remain less than the sum of retransmission parameters
    * of the different paths. */
-  setsockopt(file_descr, IPPROTO_SCTP, SCTP_ASSOCINFO, &assoc, sizeof(assoc));
+  setsockopt(_file_descr, IPPROTO_SCTP, SCTP_ASSOCINFO, &assoc, sizeof(assoc));
 #endif  // SCTP_ASSOCINFO
 
 /* Set the INIT parameters, such as number of streams */
@@ -65,7 +58,7 @@ void set_sctp_specific_sockopt(int file_descr,
   init.sinit_max_init_timeo = params->_sinit_max_init_timeo;
   init.sinit_max_attempts = params->_sinit_max_attempts;
   init.sinit_max_instreams = params->_sinit_num_istreams;
-  setsockopt(file_descr, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init));
+  setsockopt(_file_descr, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init));
 #endif  // SCTP_INITMSG
 
 /* The SO_LINGER option will be reset if we want to perform SCTP ABORT */
@@ -77,7 +70,7 @@ void set_sctp_specific_sockopt(int file_descr,
     linger.l_linger =
         0; /* Ignored, but it would mean : Return immediately when closing (=>
               abort) (graceful shutdown in background) */
-    setsockopt(file_descr, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    setsockopt(_file_descr, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
   }
 #endif  // SO_LINGER
 
@@ -86,7 +79,7 @@ void set_sctp_specific_sockopt(int file_descr,
       int v4mapped{0};
       //            v4mapped = 1;	/* but we may have to, otherwise the
       //            bind fails in some environments */
-      setsockopt(file_descr, IPPROTO_SCTP, SCTP_I_WANT_MAPPED_V4_ADDR,
+      setsockopt(_file_descr, IPPROTO_SCTP, SCTP_I_WANT_MAPPED_V4_ADDR,
                  &v4mapped, sizeof(v4mapped));
     }
   }
@@ -114,14 +107,14 @@ void set_sctp_specific_sockopt(int file_descr,
       params->_sctp_adaptation_layer_event; /* adaptation layer notifications */
   event.sctp_authentication_event =
       params->_sctp_authentication_event; /* when new key is made active */
-  setsockopt(file_descr, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event));
+  setsockopt(_file_descr, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event));
 
 ///* Set the SCTP_DISABLE_FRAGMENTS option, required for TLS */
 #ifdef SCTP_DISABLE_FRAGMENTS
   if (params->_disable_frag) {
     int nofrag = 0;
     setsockopt(
-        file_descr, IPPROTO_SCTP, SCTP_DISABLE_FRAGMENTS, &nofrag,
+        _file_descr, IPPROTO_SCTP, SCTP_DISABLE_FRAGMENTS, &nofrag,
         sizeof(nofrag)); /* We turn ON the fragmentation, since Diameter
                             messages & TLS messages can be quite large. */
   }
@@ -146,35 +139,22 @@ void set_sctp_specific_sockopt(int file_descr,
      * is a relationship with sasoc_asocmaxrxt, so we leave the default here */
 
     /* Set the option to the socket */
-    setsockopt(file_descr, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &parms,
+    setsockopt(_file_descr, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &parms,
                sizeof(parms));
 
 #endif /* SCTP_PEER_ADDR_PARAMS */
   }
 }
 
-std::string const &stream::get_detailed_error() const {
-  return _detailed_error;
-}
-
-stream::state stream::get_state() const { return _state; }
-
-void stream::set_state_changed_cb(strm::state_changed_cb cb,
-                                  std::any user_data) {
-  _state_changed_cb = cb;
-  _param_state_changed_cb = user_data;
-}
-
-void stream::set_connection_state(state new_state) {
-  _state = new_state;
-  if (_state_changed_cb) _state_changed_cb(this, _param_state_changed_cb);
-}
-
-void stream::set_detailed_error(const std::string &str) {
-  if (errno)
-    _detailed_error = str + ", errno - " + strerror(errno);
-  else
-    _detailed_error = str;
+bool stream::create_socket(proto::ip::address::version version) {
+  int af_type =
+      proto::ip::address::version::e_v6 == version ? AF_INET6 : AF_INET;
+  int rc = ::socket(af_type, SOCK_STREAM, IPPROTO_SCTP);
+  if (-1 != rc) {
+    _file_descr = rc;
+    set_socket_specific_options(version);
+  }
+  return rc != -1;
 }
 
 }  // namespace bro::net::sctp
