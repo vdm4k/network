@@ -3,7 +3,7 @@
 
 #include <optional>
 
-namespace bro::net::tcp {
+namespace bro::net {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -15,6 +15,6 @@ struct settings : public strm::settings {
   std::optional<size_t> _buffer_size;  ///< send/receive buffer size
 };
 
-}  // namespace bro::net::tcp
+}  // namespace bro::net
 
 /** @} */  // end of ev_stream

@@ -146,15 +146,4 @@ void stream::set_socket_specific_options(proto::ip::address::version addr_ver) {
   }
 }
 
-bool stream::create_socket(proto::ip::address::version version) {
-  int af_type =
-      proto::ip::address::version::e_v6 == version ? AF_INET6 : AF_INET;
-  int rc = ::socket(af_type, SOCK_STREAM, IPPROTO_SCTP);
-  if (-1 != rc) {
-    _file_descr = rc;
-    set_socket_specific_options(version);
-  }
-  return rc != -1;
-}
-
 }  // namespace bro::net::sctp

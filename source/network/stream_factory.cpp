@@ -2,10 +2,9 @@
 #include <network/tcp/ssl/listen/stream.h>
 #include <network/tcp/ssl/send/stream.h>
 #endif
+#include <network/settings.h>
 #include <network/stream_factory.h>
 #include <network/tcp/listen/stream.h>
-#include <network/tcp/send/stream.h>
-#include <network/tcp/settings.h>
 
 namespace bro::net {
 ev_stream_factory::ev_stream_factory() noexcept : _ev_loop{ev::init()} {}

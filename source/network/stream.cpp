@@ -2,8 +2,8 @@
 #include <ifaddrs.h>
 #include <netinet/tcp.h>
 #include <network/libev/libev.h>
+#include <network/settings.h>
 #include <network/stream.h>
-#include <network/tcp/settings.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -35,6 +35,42 @@ void stream::set_detailed_error(const std::string &str) {
     _detailed_error = str + ", errno - " + strerror(errno);
   else
     _detailed_error = str;
+}
+
+bool stream::create_socket(proto::ip::address::version version, type tp) {
+  int af_type =
+      proto::ip::address::version::e_v6 == version ? AF_INET6 : AF_INET;
+  int protocol =
+      tp == type::e_sctp ? IPPROTO_SCTP : IPPROTO_TCP;  // IPPROTO_TCP
+
+  int rc = ::socket(af_type, SOCK_STREAM, protocol);
+  if (-1 != rc) {
+    _file_descr = rc;
+    set_socket_options();
+    set_socket_specific_options(version);
+  }
+  return rc != -1;
+}
+
+void stream::set_socket_options() {
+  int mode = 1;
+  ioctl(_file_descr, FIONBIO, &mode);
+  settings *sparam = (settings *)get_settings();
+  if (sparam->_buffer_size) {
+    int optval = *sparam->_buffer_size;
+#ifdef SO_SNDBUF
+    if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_SNDBUF,
+                         reinterpret_cast<char const *>(&optval),
+                         sizeof(optval))) {
+    }
+#endif  // SO_SNDBUF
+#ifdef SO_RCVBUF
+    if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_RCVBUF,
+                         reinterpret_cast<char const *>(&optval),
+                         sizeof(optval))) {
+    }
+#endif  // SO_RCVBUF
+  }
 }
 
 void stream::cleanup() {

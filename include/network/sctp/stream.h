@@ -15,13 +15,10 @@ namespace bro::net::sctp {
  */
 class stream : public net::stream {
  protected:
-  /*! \brief create new socket
-   */
-  bool create_socket(proto::ip::address::version version);
-
   /*! \brief set socket options like send/receive buffers size
    */
-  void set_socket_specific_options(proto::ip::address::version addr_ver);
+  void set_socket_specific_options(
+      proto::ip::address::version addr_ver) override;
 };
 
 }  // namespace bro::net::sctp

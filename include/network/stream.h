@@ -69,6 +69,17 @@ class stream : public strm::stream {
   void set_state_changed_cb(strm::state_changed_cb cb, std::any param) override;
 
  protected:
+  enum class type { e_tcp, e_sctp };
+
+  virtual void set_socket_specific_options(
+      proto::ip::address::version addr_ver) = 0;
+
+  /*! \brief create new socket
+   */
+  bool create_socket(proto::ip::address::version version, type tp);
+
+  void set_socket_options();
+
   /*! \brief set state for stream
    * \param [in] new_state new state
    */

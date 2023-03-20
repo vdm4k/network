@@ -87,7 +87,8 @@ void stream::reset_statistic() {
 }
 
 bool stream::create_listen_socket() {
-  if (!create_socket(_settings._listen_address.get_address().get_version())) {
+  if (!create_socket(_settings._listen_address.get_address().get_version(),
+                     type::e_tcp)) {
     set_detailed_error("coulnd't create socket");
     set_connection_state(state::e_failed);
     return false;
@@ -122,7 +123,8 @@ bool stream::fill_send_stream(int file_descr,
   sck->current_settings()->_self_addr = self_addr;
   sck->_file_descr = file_descr;
   sck->set_connection_state(state::e_established);
-  sck->set_socket_specific_options();
+  sck->set_socket_options();
+  sck->set_socket_specific_options(self_addr.get_address().get_version());
   return true;
 }
 

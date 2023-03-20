@@ -1,5 +1,5 @@
 #pragma once
-#include <network/tcp/settings.h>
+#include <network/settings.h>
 #include <protocols/ip/full_address.h>
 #include <stream/stream.h>
 
@@ -13,7 +13,7 @@ namespace bro::net::tcp::listen {
 
 /*! \brief tcp receive connections settings
  */
-struct settings : tcp::settings {
+struct settings : net::settings {
   proto::ip::full_address
       _listen_address;  ///< address for incomming connections
   using in_conn_handler_data_cb = std::any;  ///< data type for user data

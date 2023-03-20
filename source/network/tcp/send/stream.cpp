@@ -46,7 +46,8 @@ bool stream::init(settings *send_params) {
   bool res = false;
   _settings = *send_params;
 
-  if (!create_socket(_settings._peer_addr.get_address().get_version())) {
+  if (!create_socket(_settings._peer_addr.get_address().get_version(),
+                     type::e_tcp)) {
     set_detailed_error("coulnd't create socket");
     set_connection_state(state::e_failed);
     return res;

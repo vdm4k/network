@@ -11,7 +11,7 @@ set(H_FILES
     include/network/stream.h
     include/network/stream_factory.h
     include/network/common.h
-    include/network/tcp/settings.h
+    include/network/settings.h
     include/network/tcp/stream.h
     include/network/tcp/listen
     include/network/tcp/listen/settings.h
