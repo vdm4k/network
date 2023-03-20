@@ -40,8 +40,10 @@ if(WITH_SCTP)
 
     #TODO: need to fix it ( maybe )
     include(CheckIncludeFile)
-    set (CMAKE_REQUIRED_INCLUDES "/usr/include")
-    CHECK_INCLUDE_FILE(linux/sctp.h  HAVE_NETINET_SCTP_H)
+    CHECK_INCLUDE_FILE(netinet/sctp.h  HAVE_NETINET_SCTP_H)
+    if(NOT HAVE_NETINET_SCTP_H)
+        message(FATAL_ERROR "please install libsctp-dev library to build with sctp support")
+    endif()
 
     add_definitions(-DWITH_SCTP)
     set(H_FILES ${H_FILES}
