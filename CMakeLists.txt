@@ -97,7 +97,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 #sanitizer
 if(NOT DEFINED WITH_SANITIZER)
-    option(SANITIZER "Enable address sanitizer" OFF)
+    option(WITH_SANITIZER "Enable address sanitizer" OFF)
 endif()
 
 if(WITH_SANITIZER)
@@ -112,8 +112,3 @@ if(WITH_APP)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC network_protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS})
-
-if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")
-    include("${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake")
-    package_create()
-endif()

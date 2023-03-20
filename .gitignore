@@ -33,3 +33,6 @@ CMakeLists.txt.user
 *.exe
 *.out
 *.app
+
+# Folders
+build

@@ -4,11 +4,11 @@ project(tcp_client)
 add_executable(${PROJECT_NAME} main.cpp )
 
 #sanitizer
-if(NOT DEFINED SANITIZER)
-    option(SANITIZER "Enable address sanitizer" OFF)
+if(NOT DEFINED WITH_SANITIZER)
+    option(WITH_SANITIZER "Enable address sanitizer" OFF)
 endif()
 
-if(SANITIZER)
+if(WITH_SANITIZER)
     target_compile_options(${PROJECT_NAME} INTERFACE -fsanitize=address -fPIC)
     target_link_options(${PROJECT_NAME} INTERFACE -fsanitize=address)
 endif()
