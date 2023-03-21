@@ -13,7 +13,6 @@ set(H_FILES
     include/network/common.h
     include/network/settings.h
     include/network/tcp/stream.h
-    include/network/tcp/listen
     include/network/tcp/listen/settings.h
     include/network/tcp/listen/statistic.h
     include/network/tcp/listen/stream.h
@@ -49,10 +48,18 @@ if(WITH_SCTP)
     set(H_FILES ${H_FILES}
         include/network/sctp/settings.h
         include/network/sctp/stream.h
+        include/network/sctp/listen/settings.h
+        include/network/sctp/listen/statistic.h
+        include/network/sctp/listen/stream.h
+        include/network/sctp/send/settings.h
+        include/network/sctp/send/statistic.h
+        include/network/sctp/send/stream.h
     )
 
     set(CPP_FILES ${CPP_FILES}
         source/network/sctp/stream.cpp
+        source/network/sctp/listen/stream.cpp
+        source/network/sctp/send/stream.cpp
     )
 
 endif()

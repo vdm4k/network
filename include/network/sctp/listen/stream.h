@@ -1,13 +1,13 @@
 #pragma once
 #include <network/libev/libev.h>
-#include <network/tcp/send/stream.h>
-#include <network/tcp/stream.h>
+#include <network/sctp/send/stream.h>
+#include <network/sctp/stream.h>
 
 #include "network/common.h"
 #include "settings.h"
 #include "statistic.h"
 
-namespace bro::net::tcp::listen {
+namespace bro::net::sctp::listen {
 
 /** @addtogroup ev_stream
  *  @{
@@ -110,6 +110,6 @@ class stream : public tcp::stream {
   statistic _statistic;             ///< statistics
 };
 
-}  // namespace bro::net::tcp::listen
+}  // namespace bro::net::sctp::listen
 
 /** @} */  // end of ev_stream

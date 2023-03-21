@@ -1,65 +1,16 @@
 #include <network/libev/libev.h>
-#include <network/linux/tcp/listen/stream.h>
-#include <network/linux/tcp/send/stream.h>
+#include <network/sctp/listen/stream.h>
+#include <network/sctp/send/stream.h>
 
-namespace bro::net::tcp::listen {
+#include "network/common.h"
+
+namespace bro::net::sctp::listen {
 
 void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
                             int /*revents*/) {
-  int new_fd = -1;
   auto *conn = reinterpret_cast<stream *>(w->data);
-
-  proto::ip::full_address peer_addr;
-  switch (conn->get_self_address().get_address().get_version()) {
-  case proto::ip::address::version::e_v4: {
-      struct sockaddr_in t_peer_addr = {0, 0, {0}, {0}};
-      socklen_t addrlen = sizeof(t_peer_addr);
-      while (true) {
-        new_fd = accept(
-            w->fd, reinterpret_cast<struct sockaddr *>(&t_peer_addr), &addrlen);
-        if (-1 == new_fd) {
-          if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) break;
-        } else
-          break;
-      }
-
-      if (-1 != new_fd) {
-        peer_addr = proto::ip::full_address(
-            proto::ip::v4::address(t_peer_addr.sin_addr.s_addr),
-            htons(t_peer_addr.sin_port));
-      }
-      break;
-    }
-  case proto::ip::address::version::e_v6: {
-      sockaddr_in6 t_peer_addr = {0, 0, 0, {{{0}}}, 0};
-      socklen_t addrlen = sizeof(t_peer_addr);
-      while (true) {
-        new_fd = accept(
-            w->fd, reinterpret_cast<struct sockaddr *>(&t_peer_addr), &addrlen);
-        if (-1 == new_fd) {
-          if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) break;
-        } else
-          break;
-      }
-      if (-1 != new_fd) {
-        char addr_buf[50];
-        inet_ntop(AF_INET6, &t_peer_addr.sin6_addr, addr_buf, sizeof(addr_buf));
-        peer_addr =
-            proto::ip::full_address(proto::ip::v6::address(addr_buf),
-                                         htons(t_peer_addr.sin6_port));
-      }
-      break;
-    }
-    default:
-      break;
-  }
-
-    proto::ip::full_address self_address;
-  if (-1 != new_fd) {
-    stream::get_local_address(peer_addr.get_address().get_version(), new_fd,
-                              self_address);
-  }
-  conn->handle_incoming_connection(new_fd, peer_addr, self_address);
+  conn->handle_incoming_connection(accept_new_connection(
+      conn->get_self_address().get_address().get_version(), w->fd));
 }
 
 stream::~stream() { cleanup(); }
@@ -74,10 +25,10 @@ ssize_t stream::receive(std::byte * /*data*/, size_t /*data_size*/) {
   return 0;
 }
 
-void stream::set_received_data_cb(received_data_cb /*cb*/, std::any /*param*/) {
-}
+void stream::set_received_data_cb(strm::received_data_cb /*cb*/,
+                                  std::any /*param*/) {}
 
-void stream::set_send_data_cb(send_data_cb /*cb*/, std::any /*param*/) {}
+void stream::set_send_data_cb(strm::send_data_cb /*cb*/, std::any /*param*/) {}
 
 bool stream::is_active() const { return get_state() == state::e_wait; }
 
@@ -87,7 +38,8 @@ void stream::reset_statistic() {
 }
 
 bool stream::create_listen_socket() {
-  if (!create_socket()) {
+  if (!create_socket(_settings._listen_address.get_address().get_version(),
+                     type::e_sctp)) {
     set_detailed_error("coulnd't create socket");
     set_connection_state(state::e_failed);
     return false;
@@ -102,14 +54,13 @@ bool stream::create_listen_socket() {
     return false;
   }
 
-  return bind_on_address(_settings._listen_address);
+  return bind_on_address(_settings._listen_address, _file_descr,
+                         get_detailed_error());
 }
 
-bool stream::fill_send_stream(int file_descr,
-                              const proto::ip::full_address &peer_addr,
-                              proto::ip::full_address const &self_addr,
+bool stream::fill_send_stream(const accept_connection_result &result,
                               std::unique_ptr<send::stream> &sck) {
-  if (-1 == file_descr) {
+  if (result._fd) {
     _statistic._failed_to_accept_connections++;
     sck->set_connection_state(state::e_failed);
     sck->set_detailed_error("couldn't accept new incomming connection");
@@ -117,11 +68,13 @@ bool stream::fill_send_stream(int file_descr,
   }
 
   _statistic._success_accept_connections++;
-  sck->current_settings()->_peer_addr = peer_addr;
-  sck->current_settings()->_self_addr = self_addr;
-  sck->_file_descr = file_descr;
+  sck->current_settings()->_peer_addr = result._peer_addr;
+  sck->current_settings()->_self_addr = result._self_address;
+  sck->_file_descr = *result._fd;
   sck->set_connection_state(state::e_established);
-  sck->set_socket_specific_options();
+  sck->set_socket_options();
+  sck->set_socket_specific_options(
+      result._peer_addr.get_address().get_version());
   return true;
 }
 
@@ -130,10 +83,9 @@ std::unique_ptr<send::stream> stream::generate_send_stream() {
 }
 
 void stream::handle_incoming_connection(
-    int file_descr, proto::ip::full_address const &peer_addr,
-    proto::ip::full_address const &self_addr) {
+    const accept_connection_result &result) {
   auto sck{generate_send_stream()};
-  fill_send_stream(file_descr, peer_addr, self_addr, sck);
+  fill_send_stream(result, sck);
   if (_settings._proc_in_conn)
     _settings._proc_in_conn(std::move(sck), _settings._in_conn_handler_data);
 }
@@ -170,4 +122,4 @@ void stream::cleanup() {
   ev::stop(_connect_io, _loop);
 }
 
-}  // namespace bro::net::tcp::listen
+}  // namespace bro::net::sctp::listen

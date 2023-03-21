@@ -26,13 +26,9 @@ std::unique_ptr<bro::net::tcp::send::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::tcp::ssl::send::stream>();
 }
 
-bool stream::fill_send_stream(int file_descr,
-                              proto::ip::full_address const &peer_addr,
-                              proto::ip::full_address const &self_addr,
+bool stream::fill_send_stream(accept_connection_result const &result,
                               std::unique_ptr<tcp::send::stream> &sck) {
-  if (!tcp::listen::stream::fill_send_stream(file_descr, peer_addr, self_addr,
-                                             sck))
-    return false;
+  if (!tcp::listen::stream::fill_send_stream(result, sck)) return false;
 
   ssl::send::stream *s = (ssl::send::stream *)sck.get();
   s->_ctx = SSL_new(_ctx);
