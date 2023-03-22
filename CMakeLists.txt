@@ -34,6 +34,36 @@ set(CPP_FILES
 
 
 # SSL
+option(WITH_SSL       "Builds with ssl" OFF)
+if(WITH_SSL)
+    add_definitions(-DWITH_SSL)
+    find_package(OpenSSL REQUIRED)
+
+    set(H_FILES ${H_FILES}
+        include/network/tcp/ssl/listen/settings.h
+        include/network/tcp/ssl/listen/statistic.h
+        include/network/tcp/ssl/listen/stream.h
+        include/network/tcp/ssl/send/settings.h
+        include/network/tcp/ssl/send/statistic.h
+        include/network/tcp/ssl/send/stream.h
+        include/network/tcp/ssl/common.h
+    )
+
+    set(CPP_FILES ${CPP_FILES}
+        source/network/tcp/ssl/listen/stream.cpp
+        source/network/tcp/ssl/send/stream.cpp
+        source/network/tcp/ssl/common.cpp
+    )
+
+    set(ADDITIONAL_DEPS
+        ${ADDITIONAL_DEPS}
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+endif()
+
+
+# SCTP
 option(WITH_SCTP       "Builds with ssl" OFF)
 if(WITH_SCTP)
 
@@ -69,36 +99,46 @@ if(WITH_SCTP)
         sctp
     )
 
+    # SSL
+    option(WITH_SCTP_SSL       "Builds with ssl" OFF)
+    if(WITH_SCTP_SSL)
+        add_definitions(-DWITH_SSL)
+        find_package(OpenSSL REQUIRED)
+        include(CheckSymbolExists)
+
+        # Check for macro SEEK_SET
+        check_symbol_exists(BIO_new_dgram_sctp "openssl/bio.h" HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
+        if(NOT HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
+          message(FATAL_ERROR "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
+                               Probably OpenSSL builded without support SCTP.
+                               You can do something like that -
+                               git clone git://git.openssl.org/openssl.git
+                               ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")
+        endif()
+
+        set(H_FILES ${H_FILES}
+            include/network/sctp/ssl/listen/settings.h
+            include/network/sctp/ssl/listen/statistic.h
+            include/network/sctp/ssl/listen/stream.h
+            include/network/sctp/ssl/send/settings.h
+            include/network/sctp/ssl/send/statistic.h
+            include/network/sctp/ssl/send/stream.h
+        )
+
+        set(CPP_FILES ${CPP_FILES}
+            source/network/sctp/ssl/listen/stream.cpp
+            source/network/sctp/ssl/send/stream.cpp
+        )
+
+        set(ADDITIONAL_DEPS
+            ${ADDITIONAL_DEPS}
+            OpenSSL::SSL
+            OpenSSL::Crypto
+        )
+
+    endif() # WITH_SCTP_SSL
 endif()
 
-# SSL
-option(WITH_SSL       "Builds with ssl" OFF)
-if(WITH_SSL)
-    add_definitions(-DWITH_SSL)
-    find_package(OpenSSL REQUIRED)
-
-    set(H_FILES ${H_FILES}
-        include/network/tcp/ssl/listen/settings.h
-        include/network/tcp/ssl/listen/statistic.h
-        include/network/tcp/ssl/listen/stream.h
-        include/network/tcp/ssl/send/settings.h
-        include/network/tcp/ssl/send/statistic.h
-        include/network/tcp/ssl/send/stream.h
-        include/network/tcp/ssl/common.h
-    )
-
-    set(CPP_FILES ${CPP_FILES}
-        source/network/tcp/ssl/listen/stream.cpp
-        source/network/tcp/ssl/send/stream.cpp
-        source/network/tcp/ssl/common.cpp
-    )
-
-    set(ADDITIONAL_DEPS
-        ${ADDITIONAL_DEPS}
-        OpenSSL::SSL
-        OpenSSL::Crypto
-    )
-endif()
 
 
 include("${CMAKE_SOURCE_DIR}/third_party/libev.cmake")
