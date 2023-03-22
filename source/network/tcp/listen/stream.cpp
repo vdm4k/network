@@ -38,7 +38,7 @@ void stream::reset_statistic() {
 
 bool stream::create_listen_socket() {
   return create_socket(_settings._listen_address.get_address().get_version(),
-                       type::e_sctp) &&
+                       type::e_tcp) &&
          reuse_address(_file_descr, get_detailed_error()) &&
          bind_on_address(_settings._listen_address, _file_descr,
                          get_detailed_error()) &&
@@ -48,7 +48,7 @@ bool stream::create_listen_socket() {
 
 bool stream::fill_send_stream(accept_connection_result const &result,
                               std::unique_ptr<send::stream> &sck) {
-  if (result._client_fd) {
+  if (!result._client_fd) {
     _statistic._failed_to_accept_connections++;
     sck->set_connection_state(state::e_failed);
     sck->set_detailed_error("couldn't accept new incomming connection");

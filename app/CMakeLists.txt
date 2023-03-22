@@ -8,4 +8,8 @@ if(WITH_SSL)
     add_subdirectory(tcp_ssl_client)
     add_subdirectory(tcp_ssl_server)
 endif()
+if(WITH_SCTP)
+    add_subdirectory(sctp_client)
+    add_subdirectory(sctp_server)
+endif()
 

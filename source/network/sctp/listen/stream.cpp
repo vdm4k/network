@@ -50,7 +50,7 @@ bool stream::create_listen_socket() {
 
 bool stream::fill_send_stream(const accept_connection_result &result,
                               std::unique_ptr<send::stream> &sck) {
-  if (result._client_fd) {
+  if (!result._client_fd) {
     _statistic._failed_to_accept_connections++;
     sck->set_connection_state(state::e_failed);
     sck->set_detailed_error("couldn't accept new incomming connection");
