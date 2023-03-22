@@ -4,7 +4,7 @@
 #include <optional>
 
 namespace bro::net {
-/** @addtogroup ev_stream
+/** @addtogroup network_stream
  *  @{
  */
 
@@ -17,4 +17,4 @@ struct settings : public strm::settings {
 
 }  // namespace bro::net
 
-/** @} */  // end of ev_stream
+/** @} */  // end of network_stream

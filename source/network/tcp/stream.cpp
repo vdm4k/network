@@ -7,7 +7,7 @@ namespace bro::net::tcp {
 
 void stream::set_socket_specific_options(
     proto::ip::address::version /*addr_ver*/) {
-#ifdef TCP_NODELAY
+#if defined __linux__ && defined TCP_NODELAY
   /* Set the NODELAY option */
   int optval = 1;
   if (-1 == ::setsockopt(_file_descr, IPPROTO_TCP, TCP_NODELAY,

@@ -3,7 +3,7 @@
 #include <stream/factory.h>
 
 namespace bro::net {
-/** @defgroup ev_stream
+/** @defgroup network_stream
  *  @{
  */
 
@@ -83,4 +83,4 @@ class ev_stream_factory : public strm::factory {
 
 }  // namespace bro::net
 
-/** @} */  // end of ev_stream
+/** @} */  // end of network_stream

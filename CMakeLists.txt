@@ -37,6 +37,8 @@ set(CPP_FILES
 option(WITH_SCTP       "Builds with ssl" OFF)
 if(WITH_SCTP)
 
+    add_definitions(-DWITH_SCTP)
+
     #TODO: need to fix it ( maybe )
     include(CheckIncludeFile)
     CHECK_INCLUDE_FILE(netinet/sctp.h  HAVE_NETINET_SCTP_H)
@@ -60,6 +62,11 @@ if(WITH_SCTP)
         source/network/sctp/stream.cpp
         source/network/sctp/listen/stream.cpp
         source/network/sctp/send/stream.cpp
+    )
+
+    set(ADDITIONAL_DEPS
+        ${ADDITIONAL_DEPS}
+        sctp
     )
 
 endif()
@@ -87,6 +94,7 @@ if(WITH_SSL)
     )
 
     set(ADDITIONAL_DEPS
+        ${ADDITIONAL_DEPS}
         OpenSSL::SSL
         OpenSSL::Crypto
     )

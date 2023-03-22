@@ -43,23 +43,21 @@ void stream::assign_loop(struct ev_loop *loop) {
 }
 
 bool stream::init(settings *send_params) {
-  bool res = false;
   _settings = *send_params;
+  bool res = create_socket(_settings._peer_addr.get_address().get_version(),
+                           type::e_tcp) &&
+             connect();
+  if (res && _settings._self_addr) {
+    res = reuse_address(_file_descr, get_detailed_error()) &&
+          bind_on_address(*_settings._self_addr, _file_descr,
+                          get_detailed_error());
+  }
 
-  if (!create_socket(_settings._peer_addr.get_address().get_version(),
-                     type::e_tcp)) {
-    set_detailed_error("coulnd't create socket");
-    set_connection_state(state::e_failed);
-    return res;
-  }
-  if (!connect()) {
-    set_detailed_error("coulnd't connect to server");
-    set_connection_state(state::e_failed);
+  if (res) {
+    set_connection_state(state::e_wait);
+  } else {
     cleanup();
-    return res;
   }
-  set_connection_state(state::e_wait);
-  res = true;
   return res;
 }
 
@@ -90,7 +88,8 @@ void stream::connection_established() {
 
   ev::stop(_write_io, _loop);
   ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-  if (_send_data_cb) ev::start(_write_io, _loop);
+  if (_send_data_cb)
+    ev::start(_write_io, _loop);
   ev::start(_read_io, _loop);
   set_connection_state(state::e_established);
 }
@@ -155,13 +154,10 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
 settings *stream::current_settings() { return &_settings; }
 
 bool stream::connect() {
-  sockaddr_in peer_addr;
-  if (!fill_sockaddr(_settings._peer_addr, peer_addr, get_detailed_error()))
-    return false;
-  int rc =
-      ::connect(_file_descr, reinterpret_cast<struct sockaddr *>(&peer_addr),
-                sizeof(peer_addr));
-  return (0 == rc || EINPROGRESS == errno);
+  if (connect_stream(_settings._peer_addr, _file_descr, get_detailed_error()))
+    return true;
+  set_connection_state(state::e_failed);
+  return false;
 }
 
 void stream::set_received_data_cb(strm::received_data_cb cb,
@@ -194,11 +190,13 @@ void stream::reset_statistic() {
 }
 
 void stream::receive_data() {
-  if (_received_data_cb) _received_data_cb(this, _param_received_data_cb);
+  if (_received_data_cb)
+    _received_data_cb(this, _param_received_data_cb);
 }
 
 void stream::send_data() {
-  if (_send_data_cb) _send_data_cb(this, _param_send_data_cb);
+  if (_send_data_cb)
+    _send_data_cb(this, _param_send_data_cb);
 }
 
 void stream::cleanup() {
@@ -206,4 +204,4 @@ void stream::cleanup() {
   stop_events();
 }
 
-}  // namespace bro::net::tcp::send
+} // namespace bro::net::tcp::send

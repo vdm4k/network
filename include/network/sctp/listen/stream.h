@@ -16,8 +16,8 @@ namespace bro::net::sctp::listen {
 /**
  * \brief listen stream
  */
-class stream : public tcp::stream {
- public:
+class stream : public sctp::stream {
+public:
   ~stream();
 
   /*!
@@ -88,28 +88,28 @@ class stream : public tcp::stream {
    */
   void assign_loop(struct ev_loop *loop);
 
- protected:
+protected:
   virtual std::unique_ptr<send::stream> generate_send_stream();
-  virtual void handle_incoming_connection(
-      accept_connection_result const &result);
+  virtual void
+  handle_incoming_connection(accept_connection_result const &result);
 
   virtual bool fill_send_stream(const accept_connection_result &result,
                                 std::unique_ptr<send::stream> &sck);
 
   void cleanup();
 
- private:
+private:
   friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
                                      int /*revents*/);
 
   bool create_listen_socket();
 
-  ev_io _connect_io;                ///< wait connection event
-  struct ev_loop *_loop = nullptr;  ///< pointer on base event loop
-  settings _settings;               ///< current settings
-  statistic _statistic;             ///< statistics
+  ev_io _connect_io;               ///< wait connection event
+  struct ev_loop *_loop = nullptr; ///< pointer on base event loop
+  settings _settings;              ///< current settings
+  statistic _statistic;            ///< statistics
 };
 
-}  // namespace bro::net::sctp::listen
+} // namespace bro::net::sctp::listen
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

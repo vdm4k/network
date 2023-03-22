@@ -26,8 +26,11 @@ void stream::set_state_changed_cb(strm::state_changed_cb cb,
 }
 
 void stream::set_connection_state(state new_state) {
+  if (_state == new_state)
+    return;
   _state = new_state;
-  if (_state_changed_cb) _state_changed_cb(this, _param_state_changed_cb);
+  if (_state_changed_cb)
+    _state_changed_cb(this, _param_state_changed_cb);
 }
 
 void stream::set_detailed_error(const std::string &str) {
@@ -40,16 +43,19 @@ void stream::set_detailed_error(const std::string &str) {
 bool stream::create_socket(proto::ip::address::version version, type tp) {
   int af_type =
       proto::ip::address::version::e_v6 == version ? AF_INET6 : AF_INET;
-  int protocol =
-      tp == type::e_sctp ? IPPROTO_SCTP : IPPROTO_TCP;  // IPPROTO_TCP
+  int protocol = tp == type::e_sctp ? IPPROTO_SCTP : IPPROTO_TCP; // IPPROTO_TCP
 
   int rc = ::socket(af_type, SOCK_STREAM, protocol);
-  if (-1 != rc) {
-    _file_descr = rc;
-    set_socket_options();
-    set_socket_specific_options(version);
+  if (rc == -1) {
+    set_detailed_error("coulnd't create socket");
+    set_connection_state(state::e_failed);
+    return false;
   }
-  return rc != -1;
+
+  _file_descr = rc;
+  set_socket_options();
+  set_socket_specific_options(version);
+  return true;
 }
 
 void stream::set_socket_options() {
@@ -63,13 +69,13 @@ void stream::set_socket_options() {
                          reinterpret_cast<char const *>(&optval),
                          sizeof(optval))) {
     }
-#endif  // SO_SNDBUF
+#endif // SO_SNDBUF
 #ifdef SO_RCVBUF
     if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_RCVBUF,
                          reinterpret_cast<char const *>(&optval),
                          sizeof(optval))) {
     }
-#endif  // SO_RCVBUF
+#endif // SO_RCVBUF
   }
 }
 
@@ -80,4 +86,4 @@ void stream::cleanup() {
   }
 }
 
-}  // namespace bro::net
+} // namespace bro::net

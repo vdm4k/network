@@ -37,29 +37,18 @@ void stream::reset_statistic() {
 }
 
 bool stream::create_listen_socket() {
-  if (!create_socket(_settings._listen_address.get_address().get_version(),
-                     type::e_tcp)) {
-    set_detailed_error("coulnd't create socket");
-    set_connection_state(state::e_failed);
-    return false;
-  }
-  int reuseaddr = 1;
-  if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_REUSEADDR,
-                       reinterpret_cast<const void *>(&reuseaddr),
-                       sizeof(int))) {
-    set_detailed_error("couldn't set option SO_REUSEADDR");
-    ::close(_file_descr);
-    _file_descr = -1;
-    return false;
-  }
-
-  return bind_on_address(_settings._listen_address, _file_descr,
-                         get_detailed_error());
+  return create_socket(_settings._listen_address.get_address().get_version(),
+                       type::e_sctp) &&
+         reuse_address(_file_descr, get_detailed_error()) &&
+         bind_on_address(_settings._listen_address, _file_descr,
+                         get_detailed_error()) &&
+         start_listen(_file_descr, _settings._listen_backlog,
+                      get_detailed_error());
 }
 
 bool stream::fill_send_stream(accept_connection_result const &result,
                               std::unique_ptr<send::stream> &sck) {
-  if (result._fd) {
+  if (result._client_fd) {
     _statistic._failed_to_accept_connections++;
     sck->set_connection_state(state::e_failed);
     sck->set_detailed_error("couldn't accept new incomming connection");
@@ -69,7 +58,7 @@ bool stream::fill_send_stream(accept_connection_result const &result,
   _statistic._success_accept_connections++;
   sck->current_settings()->_peer_addr = result._peer_addr;
   sck->current_settings()->_self_addr = result._self_address;
-  sck->_file_descr = *result._fd;
+  sck->_file_descr = *result._client_fd;
   sck->set_connection_state(state::e_established);
   sck->set_socket_options();
   sck->set_socket_specific_options(
@@ -102,17 +91,13 @@ proto::ip::full_address const &stream::get_self_address() const {
 bool stream::init(settings *listen_params) {
   bool res{false};
   _settings = *listen_params;
-  if (!create_listen_socket()) return res;
-
-  if (0 == ::listen(_file_descr, _settings._listen_backlog)) {
+  if (create_listen_socket()) {
     set_connection_state(state::e_wait);
     res = true;
   } else {
-    set_detailed_error("server listen is failed");
     set_connection_state(state::e_failed);
     cleanup();
   }
-
   return res;
 }
 
@@ -121,4 +106,4 @@ void stream::cleanup() {
   ev::stop(_connect_io, _loop);
 }
 
-}  // namespace bro::net::tcp::listen
+} // namespace bro::net::tcp::listen

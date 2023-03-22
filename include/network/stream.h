@@ -1,12 +1,11 @@
 #pragma once
-#include <arpa/inet.h>
 #include <protocols/ip/full_address.h>
 #include <stream/stream.h>
 
 #include <string>
 
 namespace bro::net {
-/** @addtogroup ev_stream
+/** @defgroup network_stream
  *  @{
  */
 
@@ -107,4 +106,4 @@ class stream : public strm::stream {
 
 }  // namespace bro::net
 
-/** @} */  // end of ev_stream
+/** @} */  // end of network_stream

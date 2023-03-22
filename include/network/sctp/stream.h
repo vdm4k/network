@@ -1,5 +1,4 @@
 #pragma once
-#include <arpa/inet.h>
 #include <network/stream.h>
 #include <protocols/ip/full_address.h>
 
