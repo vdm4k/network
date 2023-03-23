@@ -32,6 +32,11 @@ set(CPP_FILES
     source/network/common.cpp
 )
 
+if(OPENSSL_DIR)
+     set(OPENSSL_ROOT_DIR ${OPENSSL_DIR})
+     set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
+     set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib64")
+endif()
 
 # SSL
 option(WITH_SSL       "Builds with ssl" OFF)
@@ -103,17 +108,19 @@ if(WITH_SCTP)
     option(WITH_SCTP_SSL       "Builds with ssl" OFF)
     if(WITH_SCTP_SSL)
         add_definitions(-DWITH_SSL)
-        find_package(OpenSSL REQUIRED)
-        include(CheckSymbolExists)
+        add_definitions(-DWITH_SCTP_SSL)
 
+        include(CheckSymbolExists)
         # Check for macro SEEK_SET
+        list(APPEND CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
         check_symbol_exists(BIO_new_dgram_sctp "openssl/bio.h" HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
         if(NOT HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
-          message(FATAL_ERROR "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
-                               Probably OpenSSL builded without support SCTP.
-                               You can do something like that -
-                               git clone git://git.openssl.org/openssl.git
-                               ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")
+            message(INFORMATION "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
+                                 Probably cmake can't find right version or you
+                                 need build openssl with SCTP support.
+                                 You can do something like that -
+                                 git clone git://git.openssl.org/openssl.git
+                                 ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")
         endif()
 
         set(H_FILES ${H_FILES}
@@ -128,12 +135,6 @@ if(WITH_SCTP)
         set(CPP_FILES ${CPP_FILES}
             source/network/sctp/ssl/listen/stream.cpp
             source/network/sctp/ssl/send/stream.cpp
-        )
-
-        set(ADDITIONAL_DEPS
-            ${ADDITIONAL_DEPS}
-            OpenSSL::SSL
-            OpenSSL::Crypto
         )
 
     endif() # WITH_SCTP_SSL
