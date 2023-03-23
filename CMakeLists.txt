@@ -38,11 +38,21 @@ if(OPENSSL_DIR)
      set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib64")
 endif()
 
+
+if(WITH_SCTP_SSL OR WITH_SSL)
+    find_package(OpenSSL REQUIRED)
+
+    set(ADDITIONAL_DEPS
+        ${ADDITIONAL_DEPS}
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+endif()
+
 # SSL
 option(WITH_SSL       "Builds with ssl" OFF)
 if(WITH_SSL)
-    add_definitions(-DWITH_SSL)
-    find_package(OpenSSL REQUIRED)
+    add_definitions(-DWITH_SSL)    
 
     set(H_FILES ${H_FILES}
         include/network/tcp/ssl/listen/settings.h
@@ -58,12 +68,6 @@ if(WITH_SSL)
         source/network/tcp/ssl/listen/stream.cpp
         source/network/tcp/ssl/send/stream.cpp
         source/network/tcp/ssl/common.cpp
-    )
-
-    set(ADDITIONAL_DEPS
-        ${ADDITIONAL_DEPS}
-        OpenSSL::SSL
-        OpenSSL::Crypto
     )
 endif()
 
@@ -107,7 +111,6 @@ if(WITH_SCTP)
     # SSL
     option(WITH_SCTP_SSL       "Builds with ssl" OFF)
     if(WITH_SCTP_SSL)
-        add_definitions(-DWITH_SSL)
         add_definitions(-DWITH_SCTP_SSL)
 
         include(CheckSymbolExists)
@@ -115,12 +118,12 @@ if(WITH_SCTP)
         list(APPEND CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
         check_symbol_exists(BIO_new_dgram_sctp "openssl/bio.h" HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
         if(NOT HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
-            message(INFORMATION "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
-                                 Probably cmake can't find right version or you
-                                 need build openssl with SCTP support.
-                                 You can do something like that -
-                                 git clone git://git.openssl.org/openssl.git
-                                 ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")
+            message(STATUS "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
+                            Probably cmake can't find right version or you
+                            need build openssl with SCTP support.
+                            You can do something like that -
+                            git clone git://git.openssl.org/openssl.git
+                            ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")
         endif()
 
         set(H_FILES ${H_FILES}
@@ -139,8 +142,6 @@ if(WITH_SCTP)
 
     endif() # WITH_SCTP_SSL
 endif()
-
-
 
 include("${CMAKE_SOURCE_DIR}/third_party/libev.cmake")
 find_package(Threads REQUIRED)
