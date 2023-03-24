@@ -85,14 +85,15 @@ public:
 
 protected:
   virtual void connection_established();
+  void init_config(settings *send_params);
 
   void cleanup();
+  bool connect();
 
 private:
   friend void connection_established_cb(struct ev_loop *, ev_io *w, int);
   virtual settings *current_settings();
 
-  bool connect();
   void stop_events();
   void receive_data();
   void send_data();

@@ -6,6 +6,10 @@
 #include <network/sctp/listen/stream.h>
 #include <network/sctp/send/stream.h>
 #endif
+#ifdef WITH_SCTP_SSL
+#include <network/sctp/ssl/listen/stream.h>
+#include <network/sctp/ssl/send/stream.h>
+#endif
 #include <network/settings.h>
 #include <network/stream_factory.h>
 #include <network/tcp/listen/stream.h>
@@ -16,6 +20,20 @@ ev_stream_factory::ev_stream_factory() noexcept : _ev_loop{ev::init()} {}
 ev_stream_factory::~ev_stream_factory() { ev::clean_up(_ev_loop); }
 
 strm::stream_ptr ev_stream_factory::create_stream(strm::settings *stream_set) {
+#ifdef WITH_SCTP_SSL
+  if (auto *param = dynamic_cast<sctp::ssl::listen::settings *>(stream_set);
+      param) {
+    auto sck = std::make_unique<sctp::ssl::listen::stream>();
+    sck->init(param);
+    return sck;
+  }
+  if (auto *param = dynamic_cast<sctp::ssl::send::settings *>(stream_set);
+      param) {
+    auto sck = std::make_unique<sctp::ssl::send::stream>();
+    sck->init(param);
+    return sck;
+  }
+#endif
 #ifdef WITH_SCTP
   if (auto *param = dynamic_cast<sctp::listen::settings *>(stream_set); param) {
     auto sck = std::make_unique<sctp::listen::stream>();

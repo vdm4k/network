@@ -43,30 +43,6 @@ bool stream::fill_send_stream(accept_connection_result const &result,
     return false;
   }
 
-  if (_settings._enable_http2) {
-    const unsigned char *alpn = nullptr;
-    unsigned int alpnlen = 0;
-#ifndef OPENSSL_NO_NEXTPROTONEG
-    SSL_get0_next_proto_negotiated(s->_ctx, &alpn, &alpnlen);
-#endif /* !OPENSSL_NO_NEXTPROTONEG */
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-    if (alpn == NULL) {
-      SSL_get0_alpn_selected(s->_ctx, &alpn, &alpnlen);
-    }
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
-
-    if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
-      auto st = SSL_get_state(s->_ctx);
-      if (TLS_ST_BEFORE != st) {
-        s->set_detailed_error("h2 isn't negotiated. ssl state is " +
-                              std::to_string(uint32_t(st)));
-        s->set_connection_state(state::e_failed);
-        s->cleanup();
-        return false;
-      }
-    }
-  }
-
   return true;
 }
 
@@ -109,47 +85,16 @@ bool stream::init(settings *listen_params) {
     ctx_options |= SSL_OP_NO_SSLv2;
   }
 
-  if (_settings._enable_http2) {
-// like in nghttp2
-#ifdef SSL_OP_NO_TICKET
-    ctx_options |= SSL_OP_NO_TICKET;
-#endif
-
-#ifdef SSL_OP_NO_COMPRESSION
-    ctx_options |= SSL_OP_NO_COMPRESSION;
-#endif
-
-#ifdef SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
-    ctx_options |= SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
-#endif
-  }
   SSL_CTX_set_options(_ctx, ctx_options);
 
-  /* Set the key and cert */
-  if (SSL_CTX_use_certificate_file(_ctx, _settings._certificate_path.c_str(),
-                                   SSL_FILETYPE_PEM) <= 0) {
-    std::string err_str(tcp::ssl::ssl_error());
-    set_detailed_error("server certificate not found. " + err_str);
-    set_connection_state(state::e_failed);
-    cleanup();
-    return false;
-  }
-
-  if (SSL_CTX_use_PrivateKey_file(_ctx, _settings._key_path.c_str(),
-                                  SSL_FILETYPE_PEM) <= 0) {
-    std::string err_str(tcp::ssl::ssl_error());
-    set_detailed_error("key certificate not found. " + err_str);
-    set_connection_state(state::e_failed);
-    cleanup();
-    return false;
-  }
-
-  if (!SSL_CTX_check_private_key(_ctx)) {
-    std::string err_str(tcp::ssl::ssl_error());
-    set_detailed_error("invalid private key. " + err_str);
-    set_connection_state(state::e_failed);
-    cleanup();
-    return false;
+  if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
+    if (!tcp::ssl::check_ceritficate(_ctx, _settings._certificate_path,
+                                     _settings._key_path,
+                                     get_detailed_error())) {
+      set_connection_state(state::e_failed);
+      cleanup();
+      return false;
+    }
   }
 
   return true;

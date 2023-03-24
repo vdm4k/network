@@ -28,7 +28,8 @@ std::unique_ptr<bro::net::tcp::send::stream> stream::generate_send_stream() {
 
 bool stream::fill_send_stream(accept_connection_result const &result,
                               std::unique_ptr<tcp::send::stream> &sck) {
-  if (!tcp::listen::stream::fill_send_stream(result, sck)) return false;
+  if (!tcp::listen::stream::fill_send_stream(result, sck))
+    return false;
 
   ssl::send::stream *s = (ssl::send::stream *)sck.get();
   s->_ctx = SSL_new(_ctx);
@@ -70,7 +71,8 @@ bool stream::fill_send_stream(accept_connection_result const &result,
 }
 
 bool stream::init(settings *listen_params) {
-  if (!tcp::listen::stream::init(listen_params)) return false;
+  if (!tcp::listen::stream::init(listen_params))
+    return false;
   _settings = *listen_params;
 
   init_openSSL();
@@ -123,33 +125,14 @@ bool stream::init(settings *listen_params) {
   }
   SSL_CTX_set_options(_ctx, ctx_options);
 
-  /* Set the key and cert */
-  if (SSL_CTX_use_certificate_file(_ctx, _settings._certificate_path.c_str(),
-                                   SSL_FILETYPE_PEM) <= 0) {
-    std::string err_str(ssl_error());
-    set_detailed_error("server certificate not found. " + err_str);
-    set_connection_state(state::e_failed);
-    cleanup();
-    return false;
+  if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
+    if (!check_ceritficate(_ctx, _settings._certificate_path,
+                           _settings._key_path, get_detailed_error())) {
+      set_connection_state(state::e_failed);
+      cleanup();
+      return false;
+    }
   }
-
-  if (SSL_CTX_use_PrivateKey_file(_ctx, _settings._key_path.c_str(),
-                                  SSL_FILETYPE_PEM) <= 0) {
-    std::string err_str(ssl_error());
-    set_detailed_error("key certificate not found. " + err_str);
-    set_connection_state(state::e_failed);
-    cleanup();
-    return false;
-  }
-
-  if (!SSL_CTX_check_private_key(_ctx)) {
-    std::string err_str(ssl_error());
-    set_detailed_error("invalid private key. " + err_str);
-    set_connection_state(state::e_failed);
-    cleanup();
-    return false;
-  }
-
   return true;
 }
 
@@ -161,4 +144,4 @@ void stream::cleanup() {
   }
 }
 
-}  // namespace bro::net::tcp::ssl::listen
+} // namespace bro::net::tcp::ssl::listen

@@ -1,8 +1,8 @@
-#include <openssl/err.h>
-#include <openssl/ssl.h>
 #include <network/libev/libev.h>
 #include <network/tcp/ssl/common.h>
 #include <network/tcp/ssl/send/stream.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
 namespace bro::net::tcp::ssl::send {
 
@@ -23,7 +23,8 @@ void stream::cleanup() {
 }
 
 bool stream::init(settings *send_params) {
-  if (!bro::net::tcp::send::stream::init(send_params)) return false;
+  if (!bro::net::tcp::send::stream::init(send_params))
+    return false;
   _settings = *send_params;
   ERR_clear_error();
 
@@ -89,28 +90,42 @@ bool stream::init(settings *send_params) {
     //    SSL_CTX_set_alpn_protos(_client_ctx, proto_list.data(),
     //    proto_list.size());
   }
+
+  if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
+    if (!check_ceritficate(_client_ctx, _settings._certificate_path,
+                           _settings._key_path, get_detailed_error())) {
+      set_connection_state(state::e_failed);
+      cleanup();
+      return false;
+    }
+  }
+
   SSL_CTX_set_options(_client_ctx, ctx_options);
   return true;
 }
 
 void stream::connection_established() {
   tcp::send::stream::connection_established();
-  if (get_state() != state::e_established) return;
+  if (get_state() != state::e_established)
+    return;
   ERR_clear_error();
 
   _ctx = SSL_new(_client_ctx);
   SSL_set_fd(_ctx, _file_descr);
-  int res = SSL_connect(_ctx);
-  res = SSL_get_error(_ctx, res);
-  if (res != SSL_ERROR_WANT_READ) {
-    set_detailed_error("SSL_connect call: " + ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
+  int retval = SSL_connect(_ctx);
+  if (retval <= 0) {
+    retval = SSL_get_error(_ctx, retval);
+    if (retval != SSL_ERROR_WANT_READ) {
+      set_detailed_error("SSL_connect call: " + tcp::ssl::ssl_error());
+      set_connection_state(state::e_failed);
+      cleanup();
+    }
   }
 }
 
 ssize_t stream::send(std::byte *data, size_t data_size) {
-  if (get_state() == state::e_failed) return -1;
+  if (get_state() == state::e_failed)
+    return -1;
 
   ssize_t sent = -1;
   while (true) {
@@ -123,32 +138,32 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
 
     int error = SSL_get_error(_ctx, sent);
     switch (error) {
-      case SSL_ERROR_WANT_READ:
-      case SSL_ERROR_WANT_WRITE: {
+    case SSL_ERROR_WANT_READ:
+    case SSL_ERROR_WANT_WRITE: {
+      ++_statistic._retry_send_data;
+      continue;
+    }
+
+    case SSL_ERROR_SYSCALL: {
+      if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
+        set_detailed_error("error occured while send data " + ssl_error());
+        set_connection_state(state::e_failed);
+      } else {
         ++_statistic._retry_send_data;
         continue;
       }
-
-      case SSL_ERROR_SYSCALL: {
-        if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
-          set_detailed_error("error occured while send data " + ssl_error());
-          set_connection_state(state::e_failed);
-        } else {
-          ++_statistic._retry_send_data;
-          continue;
-        }
-        break;
-      }
-      case SSL_ERROR_SSL: {
-        set_connection_state(state::e_failed);
-        set_detailed_error("SSL_write failed with error " + ssl_error());
-        break;
-      }
-      default: {
-        set_connection_state(state::e_failed);
-        set_detailed_error("SSL_write failed with error " + ssl_error());
-        break;
-      }
+      break;
+    }
+    case SSL_ERROR_SSL: {
+      set_connection_state(state::e_failed);
+      set_detailed_error("SSL_write failed with error " + ssl_error());
+      break;
+    }
+    default: {
+      set_connection_state(state::e_failed);
+      set_detailed_error("SSL_write failed with error " + ssl_error());
+      break;
+    }
     }
     ++_statistic._failed_send_data;
     break;
@@ -168,42 +183,42 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
 
     int error = SSL_get_error(_ctx, rec);
     switch (error) {
-      case SSL_ERROR_ZERO_RETURN: /* Received a close_notify alert. */ {
-        set_detailed_error("ssl read return 0 bytes " + ssl_error());
+    case SSL_ERROR_ZERO_RETURN: /* Received a close_notify alert. */ {
+      set_detailed_error("ssl read return 0 bytes " + ssl_error());
+      set_connection_state(state::e_failed);
+      break;
+    }
+    case SSL_ERROR_SYSCALL: {
+      if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
+        set_detailed_error("error occured while receive ssl data" +
+                           ssl_error());
         set_connection_state(state::e_failed);
-        break;
+      } else {
+        ++_statistic._retry_recv_data;
+        continue;
       }
-      case SSL_ERROR_SYSCALL: {
-        if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
-          set_detailed_error("error occured while receive ssl data" +
-                             ssl_error());
-          set_connection_state(state::e_failed);
-        } else {
-          ++_statistic._retry_recv_data;
-          continue;
-        }
-        break;
-      }
-      case SSL_ERROR_WANT_READ: /* We need more data to finish the frame. */
-        return 0;
-      case SSL_ERROR_WANT_WRITE: {
-        // TODO: Same as in grpc. need to check, maybe it is actual only for
-        // boringSSL
-        set_connection_state(state::e_failed);
-        set_detailed_error(
-            "Peer tried to renegotiate SSL connection. This is unsupported. " +
-            ssl_error());
-        break;
-      }
-      case SSL_ERROR_SSL: {
-        set_connection_state(state::e_failed);
-        set_detailed_error("SSL_read failed with error " + ssl_error());
-        break;
-      }
-      default:
-        set_connection_state(state::e_failed);
-        set_detailed_error("SSL_read failed with error " + ssl_error());
-        break;
+      break;
+    }
+    case SSL_ERROR_WANT_READ: /* We need more data to finish the frame. */
+      return 0;
+    case SSL_ERROR_WANT_WRITE: {
+      // TODO: Same as in grpc. need to check, maybe it is actual only for
+      // boringSSL
+      set_connection_state(state::e_failed);
+      set_detailed_error(
+          "Peer tried to renegotiate SSL connection. This is unsupported. " +
+          ssl_error());
+      break;
+    }
+    case SSL_ERROR_SSL: {
+      set_connection_state(state::e_failed);
+      set_detailed_error("SSL_read failed with error " + ssl_error());
+      break;
+    }
+    default:
+      set_connection_state(state::e_failed);
+      set_detailed_error("SSL_read failed with error " + ssl_error());
+      break;
     }
     ++_statistic._failed_recv_data;
     break;
@@ -213,4 +228,4 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
 
 settings *stream::current_settings() { return &_settings; }
 
-}  // namespace bro::net::tcp::ssl::send
+} // namespace bro::net::tcp::ssl::send

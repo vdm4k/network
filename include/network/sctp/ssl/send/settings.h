@@ -12,9 +12,10 @@ namespace bro::net::sctp::ssl::send {
 /*!\brief sctp send stream settings
  */
 struct settings : sctp::send::settings {
+  std::string _certificate_path;
+  std::string _key_path;
   bool _enable_sslv2 = true;
   bool _enable_empty_fragments = false;
-  bool _enable_http2 = false;
 };
 
 } // namespace bro::net::sctp::ssl::send

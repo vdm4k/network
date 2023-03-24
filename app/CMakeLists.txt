@@ -12,4 +12,8 @@ if(WITH_SCTP)
     add_subdirectory(sctp_client)
     add_subdirectory(sctp_server)
 endif()
+if(WITH_SCTP_SSL)
+    add_subdirectory(sctp_ssl_client)
+#    add_subdirectory(sctp_ssl_server)
+endif()
 

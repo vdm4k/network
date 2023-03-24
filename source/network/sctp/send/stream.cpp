@@ -43,8 +43,10 @@ void stream::assign_loop(struct ev_loop *loop) {
   }
 }
 
+void stream::init_config(settings *send_params) { _settings = *send_params; }
+
 bool stream::init(settings *send_params) {
-  _settings = *send_params;
+  init_config(send_params);
   bool res = create_socket(_settings._peer_addr.get_address().get_version(),
                            type::e_sctp) &&
              connect();

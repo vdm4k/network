@@ -1,11 +1,9 @@
 #pragma once
-#include <network/sctp/send/stream.h>
-
 #include "settings.h"
 #include "statistic.h"
-
-typedef struct ssl_st SSL;
-typedef struct ssl_ctx_st SSL_CTX;
+#include <network/sctp/send/stream.h>
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
 
 namespace bro::net::sctp::ssl::listen {
 class stream;
@@ -65,6 +63,7 @@ private:
   friend class ssl::listen::stream;
 
   SSL *_ctx = nullptr;
+  BIO *_bio = nullptr;
   SSL_CTX *_client_ctx = nullptr;
   settings _settings;   ///< current settings
   statistic _statistic; ///< statistics

@@ -32,14 +32,16 @@ set(CPP_FILES
     source/network/common.cpp
 )
 
-if(OPENSSL_DIR)
-     set(OPENSSL_ROOT_DIR ${OPENSSL_DIR})
-     set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
-     set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib64")
-endif()
-
-
+# SSL
 if(WITH_SCTP_SSL OR WITH_SSL)
+    if(OPENSSL_DIR)
+         set(OPENSSL_ROOT_DIR ${OPENSSL_DIR})
+         set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
+         set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib64")
+         set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_LIB_DIR}/libcrypto.so")
+         set(OPENSSL_SSL_LIBRARY "${OPENSSL_LIB_DIR}/libssl.so")
+    endif()
+
     find_package(OpenSSL REQUIRED)
 
     set(ADDITIONAL_DEPS
@@ -47,7 +49,7 @@ if(WITH_SCTP_SSL OR WITH_SSL)
         OpenSSL::SSL
         OpenSSL::Crypto
     )
-endif()
+endif() # WITH_SCTP_SSL OR WITH_SSL
 
 # SSL
 option(WITH_SSL       "Builds with ssl" OFF)
@@ -69,7 +71,7 @@ if(WITH_SSL)
         source/network/tcp/ssl/send/stream.cpp
         source/network/tcp/ssl/common.cpp
     )
-endif()
+endif() #WITH_SSL
 
 
 # SCTP
@@ -108,40 +110,43 @@ if(WITH_SCTP)
         sctp
     )
 
-    # SSL
-    option(WITH_SCTP_SSL       "Builds with ssl" OFF)
-    if(WITH_SCTP_SSL)
-        add_definitions(-DWITH_SCTP_SSL)
+endif() #SCTP
 
-        include(CheckSymbolExists)
-        # Check for macro SEEK_SET
-        list(APPEND CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
-        check_symbol_exists(BIO_new_dgram_sctp "openssl/bio.h" HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
-        if(NOT HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
-            message(STATUS "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
-                            Probably cmake can't find right version or you
-                            need build openssl with SCTP support.
-                            You can do something like that -
-                            git clone git://git.openssl.org/openssl.git
-                            ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")
-        endif()
+# WITH_SCTP_SSL
+option(WITH_SCTP_SSL       "Builds with ssl" OFF)
+if(WITH_SCTP_SSL)
+    add_definitions(-DWITH_SCTP_SSL)
 
-        set(H_FILES ${H_FILES}
-            include/network/sctp/ssl/listen/settings.h
-            include/network/sctp/ssl/listen/statistic.h
-            include/network/sctp/ssl/listen/stream.h
-            include/network/sctp/ssl/send/settings.h
-            include/network/sctp/ssl/send/statistic.h
-            include/network/sctp/ssl/send/stream.h
-        )
+    include(CheckSymbolExists)
+    # Check for macro SEEK_SET
+    list(APPEND CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
+    check_symbol_exists(BIO_new_dgram_sctp "openssl/bio.h" HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
+    if(NOT HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
+        message(STATUS "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
+                        Probably cmake can't find right version or you
+                        need build openssl with SCTP support.
+                        You can do something like that -
+                        git clone git://git.openssl.org/openssl.git
+                        ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")
+    endif()
 
-        set(CPP_FILES ${CPP_FILES}
-            source/network/sctp/ssl/listen/stream.cpp
-            source/network/sctp/ssl/send/stream.cpp
-        )
+    message(STATUS "don't forget to enable sudo sysctl -w net.sctp.auth_enable=1")
 
-    endif() # WITH_SCTP_SSL
-endif()
+    set(H_FILES ${H_FILES}
+        include/network/sctp/ssl/listen/settings.h
+        include/network/sctp/ssl/listen/statistic.h
+        include/network/sctp/ssl/listen/stream.h
+        include/network/sctp/ssl/send/settings.h
+        include/network/sctp/ssl/send/statistic.h
+        include/network/sctp/ssl/send/stream.h
+    )
+
+    set(CPP_FILES ${CPP_FILES}
+        source/network/sctp/ssl/listen/stream.cpp
+        source/network/sctp/ssl/send/stream.cpp
+    )
+
+endif() # WITH_SCTP_SSL
 
 include("${CMAKE_SOURCE_DIR}/third_party/libev.cmake")
 find_package(Threads REQUIRED)

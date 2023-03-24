@@ -1,3 +1,5 @@
+#include "network/common.h"
+#include <linux/sctp.h>
 #include <network/libev/libev.h>
 #include <network/sctp/ssl/send/stream.h>
 #include <network/tcp/ssl/common.h>
@@ -24,9 +26,13 @@ void stream::cleanup() {
 }
 
 bool stream::init(settings *send_params) {
-  if (!bro::net::sctp::send::stream::init(send_params))
-    return false;
+  tcp::ssl::init_openSSL();
+  init_config(send_params);
   _settings = *send_params;
+
+  if (!create_socket(_settings._peer_addr.get_address().get_version(),
+                     type::e_sctp))
+    return false;
   ERR_clear_error();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000
@@ -34,14 +40,11 @@ bool stream::init(settings *send_params) {
 #else
   _client_ctx = SSL_CTX_new(DTLSv1_2_client_method());
 #endif
-
-  /*When we no longer need a read buffer or a write buffer for a given SSL, then
-   * release the memory we were using to hold it. Using this flag can save
-   * around 34k per idle SSL connection. This flag has no effect on SSL v2
-   * connections, or on DTLS connections.*/
-#ifdef SSL_MODE_RELEASE_BUFFERS
-  SSL_CTX_set_mode(_client_ctx, SSL_MODE_RELEASE_BUFFERS);
-#endif
+  if (!_client_ctx) {
+    set_detailed_error("couldn't create client_ctx: " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+  }
 
   unsigned long ctx_options = SSL_OP_ALL;
 
@@ -68,8 +71,45 @@ bool stream::init(settings *send_params) {
   if (!_settings._enable_sslv2) {
     ctx_options |= SSL_OP_NO_SSLv2;
   }
-
   SSL_CTX_set_options(_client_ctx, ctx_options);
+
+  int on = 1;
+  setsockopt(_file_descr, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on));
+
+  //  if (!_settings._certificate_path.empty() && !_settings._key_path.empty())
+  //  {
+  //    if (!tcp::ssl::check_ceritficate(_client_ctx,
+  //    _settings._certificate_path,
+  //                                     _settings._key_path,
+  //                                     get_detailed_error())) {
+  //      set_connection_state(state::e_failed);
+  //      cleanup();
+  //      return false;
+  //    }
+  //  SSL_CTX_set_verify_depth(_client_ctx, 2);
+  //  }
+
+  _ctx = SSL_new(_client_ctx);
+  if (!_ctx) {
+    set_detailed_error("couldn't create ssl ctx: " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+  }
+
+  /* Create DTLS/SCTP BIO and connect */
+  _bio = BIO_new_dgram_sctp(_file_descr, BIO_CLOSE);
+
+  if (!_bio) {
+    set_detailed_error("couldn't create bio: " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+  }
+
+  if (!connect()) {
+    cleanup();
+    return false;
+  }
+  set_connection_state(state::e_wait);
   return true;
 }
 
@@ -79,16 +119,17 @@ void stream::connection_established() {
     return;
   ERR_clear_error();
 
-  BIO *bio = BIO_new_dgram_sctp(_file_descr, BIO_CLOSE);
-
-  _ctx = SSL_new(_client_ctx);
-  SSL_set_fd(_ctx, _file_descr);
-  int res = SSL_connect(_ctx);
-  res = SSL_get_error(_ctx, res);
-  if (res != SSL_ERROR_WANT_READ) {
-    set_detailed_error("SSL_connect call: " + tcp::ssl::ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
+  // SSL_set_bio() takes ownership of _bio
+  SSL_set_bio(_ctx, _bio, _bio);
+  _bio = nullptr;
+  int retval = SSL_connect(_ctx);
+  if (retval <= 0) {
+    retval = SSL_get_error(_ctx, retval);
+    if (retval != SSL_ERROR_WANT_READ) {
+      set_detailed_error("SSL_connect call: " + tcp::ssl::ssl_error());
+      set_connection_state(state::e_failed);
+      cleanup();
+    }
   }
 }
 
