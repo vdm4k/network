@@ -9,7 +9,7 @@ typedef struct ssl_ctx_st SSL_CTX;
 
 namespace bro::net::tcp::ssl::listen {
 class stream;
-}  // namespace bro::net::tcp::ssl::listen
+} // namespace bro::net::tcp::ssl::listen
 
 namespace bro::net::tcp::ssl::send {
 /** @addtogroup ev_stream
@@ -19,8 +19,9 @@ namespace bro::net::tcp::ssl::send {
 /**
  * \brief send stream
  */
-class stream : public tcp::send::stream {
- public:
+class stream : public tcp::send::stream
+{
+public:
   ~stream() override;
 
   /*! \brief send data
@@ -56,20 +57,20 @@ class stream : public tcp::send::stream {
    */
   bool init(settings *send_params);
 
- protected:
+protected:
   void cleanup();
   settings *current_settings() override;
-  void connection_established() override;
+  [[nodiscard]] bool connection_established() override;
 
- private:
+private:
   friend class ssl::listen::stream;
 
   SSL *_ctx = nullptr;
   SSL_CTX *_client_ctx = nullptr;
-  settings _settings;    ///< current settings
-  statistic _statistic;  ///< statistics
+  settings _settings;   ///< current settings
+  statistic _statistic; ///< statistics
 };
 
-}  // namespace bro::net::tcp::ssl::send
+} // namespace bro::net::tcp::ssl::send
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

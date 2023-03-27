@@ -5,7 +5,9 @@
 
 namespace bro::net::sctp::send {
 
-stream::~stream() { stop_events(); }
+stream::~stream() {
+  stop_events();
+}
 
 void receive_data_cb(struct ev_loop *, ev_io *w, int) {
   auto *conn = reinterpret_cast<stream *>(w->data);
@@ -19,7 +21,7 @@ void send_data_cb(struct ev_loop *, ev_io *w, int) {
 
 void connection_established_cb(struct ev_loop *, ev_io *w, int) {
   auto *tr = reinterpret_cast<stream *>(w->data);
-  tr->connection_established();
+  (void) tr->connection_established();
 }
 
 void stream::stop_events() {
@@ -43,13 +45,13 @@ void stream::assign_loop(struct ev_loop *loop) {
   }
 }
 
-void stream::init_config(settings *send_params) { _settings = *send_params; }
+void stream::init_config(settings *send_params) {
+  _settings = *send_params;
+}
 
 bool stream::init(settings *send_params) {
   init_config(send_params);
-  bool res = create_socket(_settings._peer_addr.get_address().get_version(),
-                           type::e_sctp) &&
-             connect();
+  bool res = create_socket(_settings._peer_addr.get_address().get_version(), type::e_sctp) && connect();
   if (res) {
     set_connection_state(state::e_wait);
   } else {
@@ -58,7 +60,7 @@ bool stream::init(settings *send_params) {
   return res;
 }
 
-void stream::connection_established() {
+bool stream::connection_established() {
   int err = -1;
   socklen_t len = sizeof(err);
   int rc = getsockopt(_file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
@@ -66,21 +68,20 @@ void stream::connection_established() {
   if (0 != rc) {
     set_detailed_error("getsockopt error");
     set_connection_state(state::e_failed);
-    return;
+    return false;
   }
   if (0 != err) {
     set_detailed_error("connection not established");
     set_connection_state(state::e_failed);
-    return;
+    return false;
   }
 
   if (get_state() != state::e_wait) {
-    set_detailed_error(
-        std::string("connection established, but tcp state not in "
-                    "listen state. state is - ") +
-        connection_state_to_str(get_state()));
+    set_detailed_error(std::string("connection established, but tcp state not in "
+                                   "listen state. state is - ")
+                       + connection_state_to_str(get_state()));
     set_connection_state(state::e_failed);
-    return;
+    return false;
   }
 
   ev::stop(_write_io, _loop);
@@ -89,19 +90,12 @@ void stream::connection_established() {
     ev::start(_write_io, _loop);
   ev::start(_read_io, _loop);
   set_connection_state(state::e_established);
+  return true;
 }
 
 ssize_t stream::send(std::byte *data, size_t data_size) {
   ssize_t sent{0};
-  sctp_sndrcvinfo sinfo{0,
-                        0,
-                        uint16_t(_settings._unordered ? SCTP_UNORDERED : 0),
-                        htonl(_settings._ppid),
-                        0,
-                        0,
-                        0,
-                        0,
-                        0};
+  sctp_sndrcvinfo sinfo{0, 0, uint16_t(_settings._unordered ? SCTP_UNORDERED : 0), htonl(_settings._ppid), 0, 0, 0, 0, 0};
   while (true) {
     sent = sctp_send(_file_descr, data, data_size, &sinfo, MSG_NOSIGNAL);
     if (sent > 0) {
@@ -128,22 +122,13 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
 }
 
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
-  sctp_sndrcvinfo sinfo{0,
-                        0,
-                        uint16_t(_settings._unordered ? SCTP_UNORDERED : 0),
-                        htonl(_settings._ppid),
-                        0,
-                        0,
-                        0,
-                        0,
-                        0};
+  sctp_sndrcvinfo sinfo{0, 0, uint16_t(_settings._unordered ? SCTP_UNORDERED : 0), htonl(_settings._ppid), 0, 0, 0, 0, 0};
   ssize_t rec{-1};
   while (true) {
     int msg_flags = MSG_NOSIGNAL;
-    rec = sctp_recvmsg(_file_descr, buffer, buffer_size, nullptr, 0, &sinfo,
-                       &msg_flags);
+    rec = sctp_recvmsg(_file_descr, buffer, buffer_size, nullptr, 0, &sinfo, &msg_flags);
     if (msg_flags & MSG_NOTIFICATION) {
-      union sctp_notification *notif = (union sctp_notification *)buffer;
+      union sctp_notification *notif = (union sctp_notification *) buffer;
       switch (notif->sn_header.sn_type) {
       //  The attached datagram could not be sent
       //  to the remote endpoint.  This structure includes the original
@@ -244,18 +229,18 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   return rec;
 }
 
-settings *stream::current_settings() { return &_settings; }
+settings *stream::current_settings() {
+  return &_settings;
+}
 
 bool stream::connect() {
-  if (connect_sctp_streams(_settings._peer_addr, _file_descr,
-                           get_detailed_error()))
+  if (connect_sctp_streams(_settings._peer_addr, _file_descr, get_detailed_error()))
     return true;
   set_connection_state(state::e_failed);
   return false;
 }
 
-void stream::set_received_data_cb(strm::received_data_cb cb,
-                                  std::any user_data) {
+void stream::set_received_data_cb(strm::received_data_cb cb, std::any user_data) {
   _received_data_cb = cb;
   _param_received_data_cb = user_data;
 }

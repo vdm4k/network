@@ -19,7 +19,7 @@ namespace bro::net::tcp::ssl::listen {
  * \brief listen stream
  */
 class stream : public tcp::listen::stream {
- public:
+public:
   ~stream() override;
 
   /*! \brief get actual stream settings
@@ -39,22 +39,21 @@ class stream : public tcp::listen::stream {
    */
   bool init(settings *listen_params);
 
- protected:
+protected:
   std::unique_ptr<bro::net::tcp::send::stream> generate_send_stream() override;
 
-  bool fill_send_stream(
-      const new_connection_details &result,
-      std::unique_ptr<bro::net::tcp::send::stream> &sck) override;
+  [[nodiscard]] bool fill_send_stream(accept_connection_res const &result,
+                                      std::unique_ptr<bro::net::tcp::send::stream> &sck) override;
 
   void cleanup();
 
- private:
+private:
   settings _settings;
   statistic _statistic;
 
   SSL_CTX *_ctx = nullptr;
 };
 
-}  // namespace bro::net::tcp::ssl::listen
+} // namespace bro::net::tcp::ssl::listen
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

@@ -17,7 +17,8 @@ namespace bro::net::sctp::ssl::send {
 /**
  * \brief send stream
  */
-class stream : public sctp::send::stream {
+class stream : public sctp::send::stream
+{
 public:
   ~stream() override;
 
@@ -57,7 +58,7 @@ public:
 protected:
   void cleanup();
   settings *current_settings() override;
-  void connection_established() override;
+  [[nodiscard]] bool connection_established() override;
 
 private:
   friend class ssl::listen::stream;

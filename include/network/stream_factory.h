@@ -1,6 +1,6 @@
 #pragma once
-#include <network/libev/libev.h>
 #include <stream/factory.h>
+struct ev_loop;
 
 namespace bro::net {
 /** @defgroup network_stream
@@ -11,7 +11,7 @@ namespace bro::net {
  * \brief stream factory based on libev
  */
 class ev_stream_factory : public strm::factory {
- public:
+public:
   /**
    * default constructor
    */
@@ -77,10 +77,10 @@ class ev_stream_factory : public strm::factory {
    */
   void proceed() override;
 
- private:
+private:
   struct ev_loop *_ev_loop = nullptr;
 };
 
-}  // namespace bro::net
+} // namespace bro::net
 
-/** @} */  // end of network_stream
+/** @} */ // end of network_stream

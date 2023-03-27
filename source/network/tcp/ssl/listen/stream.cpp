@@ -20,27 +20,42 @@ typedef long ctx_option_t;
 
 namespace bro::net::tcp::ssl::listen {
 
-stream::~stream() { cleanup(); }
+stream::~stream() {
+  cleanup();
+}
 
 std::unique_ptr<bro::net::tcp::send::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::tcp::ssl::send::stream>();
 }
 
-bool stream::fill_send_stream(new_connection_details const &result,
-                              std::unique_ptr<tcp::send::stream> &sck) {
+bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<tcp::send::stream> &sck) {
   if (!tcp::listen::stream::fill_send_stream(result, sck))
     return false;
 
-  ssl::send::stream *s = (ssl::send::stream *)sck.get();
+  ssl::send::stream *s = (ssl::send::stream *) sck.get();
   s->_ctx = SSL_new(_ctx);
-  SSL_set_fd(s->_ctx, s->_file_descr);
-  int res = SSL_accept(s->_ctx);
-  res = SSL_get_error(s->_ctx, res);
-  if (res != SSL_ERROR_WANT_READ) {
-    s->set_detailed_error("SSL_accept failed with :" + ssl_error());
+  if (!s->_ctx) {
+    s->set_detailed_error("couldn't create new ssl context " + tcp::ssl::ssl_error());
     s->set_connection_state(state::e_failed);
     s->cleanup();
     return false;
+  }
+
+  if (SSL_set_fd(s->_ctx, s->_file_descr)) {
+    s->set_detailed_error("couldn't set file descriptor " + tcp::ssl::ssl_error());
+    s->set_connection_state(state::e_failed);
+    s->cleanup();
+    return false;
+  }
+  int res = SSL_accept(s->_ctx);
+  if (res <= 0) {
+    res = SSL_get_error(s->_ctx, res);
+    if (res != SSL_ERROR_WANT_READ) {
+      s->set_detailed_error("SSL_accept failed with " + tcp::ssl::ssl_error());
+      s->set_connection_state(state::e_failed);
+      s->cleanup();
+      return false;
+    }
   }
 
   if (_settings._enable_http2) {
@@ -58,8 +73,7 @@ bool stream::fill_send_stream(new_connection_details const &result,
     if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
       auto st = SSL_get_state(s->_ctx);
       if (TLS_ST_BEFORE != st) {
-        s->set_detailed_error("h2 isn't negotiated. ssl state is " +
-                              std::to_string(uint32_t(st)));
+        s->set_detailed_error("h2 isn't negotiated. ssl state is " + std::to_string(uint32_t(st)));
         s->set_connection_state(state::e_failed);
         s->cleanup();
         return false;
@@ -71,17 +85,23 @@ bool stream::fill_send_stream(new_connection_details const &result,
 }
 
 bool stream::init(settings *listen_params) {
+  if (!tcp::ssl::init_openSSL()) {
+    set_detailed_error("coulnd't init ssl library " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
   if (!tcp::listen::stream::init(listen_params))
     return false;
   _settings = *listen_params;
 
-  init_openSSL();
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000
   _ctx = SSL_CTX_new(TLS_server_method());
-#else
-  ssl_context = SSL_CTX_new(TLSv1_2_server_method());
-#endif
+  if (!_ctx) {
+    set_detailed_error("couldn't create server ssl context: " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
 
   /*When we no longer need a read buffer or a write buffer for a given SSL, then
    * release the memory we were using to hold it. Using this flag can save
@@ -123,11 +143,11 @@ bool stream::init(settings *listen_params) {
     ctx_options |= SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
 #endif
   }
+  //NOTE: probably we can check return mask, but I don't see why we need it and how to handle it
   SSL_CTX_set_options(_ctx, ctx_options);
 
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
-    if (!check_ceritficate(_ctx, _settings._certificate_path,
-                           _settings._key_path, get_detailed_error())) {
+    if (!check_ceritficate(_ctx, _settings._certificate_path, _settings._key_path, get_detailed_error())) {
       set_connection_state(state::e_failed);
       cleanup();
       return false;

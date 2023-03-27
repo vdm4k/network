@@ -1,7 +1,6 @@
 #pragma once
 #include <protocols/ip/full_address.h>
 #include <stream/stream.h>
-
 #include <string>
 
 namespace bro::net {
@@ -13,7 +12,7 @@ namespace bro::net {
  * \brief common stream for listen/send stream
  */
 class stream : public strm::stream {
- public:
+public:
   /**
    * \brief default constructor
    */
@@ -67,17 +66,16 @@ class stream : public strm::stream {
    */
   void set_state_changed_cb(strm::state_changed_cb cb, std::any param) override;
 
- protected:
+protected:
   enum class type { e_tcp, e_sctp };
 
-  virtual void set_socket_specific_options(
-      proto::ip::address::version addr_ver) = 0;
+  [[nodiscard]] virtual bool set_socket_specific_options(proto::ip::address::version addr_ver) = 0;
 
   /*! \brief create new socket
    */
-  bool create_socket(proto::ip::address::version version, type tp);
+  [[nodiscard]] bool create_socket(proto::ip::address::version version, type tp);
 
-  bool set_socket_options();
+  [[nodiscard]] bool set_socket_options();
 
   /*! \brief set state for stream
    * \param [in] new_state new state
@@ -95,15 +93,15 @@ class stream : public strm::stream {
    */
   void cleanup();
 
-  int _file_descr = -1;  ///< file descriptor
+  int _file_descr = -1; ///< file descriptor
 
- private:
-  strm::state_changed_cb _state_changed_cb;  ///< state changed callback
-  std::any _param_state_changed_cb;  ///< user data for state changed callback
-  std::string _detailed_error;       ///< error description ( if set error )
-  state _state = state::e_closed;    ///< current state
+private:
+  strm::state_changed_cb _state_changed_cb; ///< state changed callback
+  std::any _param_state_changed_cb;         ///< user data for state changed callback
+  std::string _detailed_error;              ///< error description ( if set error )
+  state _state = state::e_closed;           ///< current state
 };
 
-}  // namespace bro::net
+} // namespace bro::net
 
-/** @} */  // end of network_stream
+/** @} */ // end of network_stream

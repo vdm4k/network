@@ -4,7 +4,9 @@
 
 namespace bro::net::tcp::send {
 
-stream::~stream() { stop_events(); }
+stream::~stream() {
+  stop_events();
+}
 
 void receive_data_cb(struct ev_loop *, ev_io *w, int) {
   auto *conn = reinterpret_cast<stream *>(w->data);
@@ -44,13 +46,10 @@ void stream::assign_loop(struct ev_loop *loop) {
 
 bool stream::init(settings *send_params) {
   _settings = *send_params;
-  bool res = create_socket(_settings._peer_addr.get_address().get_version(),
-                           type::e_tcp) &&
-             connect();
+  bool res = create_socket(_settings._peer_addr.get_address().get_version(), type::e_tcp) && connect();
   if (res && _settings._self_addr) {
-    res = reuse_address(_file_descr, get_detailed_error()) &&
-          bind_on_address(*_settings._self_addr, _file_descr,
-                          get_detailed_error());
+    res = reuse_address(_file_descr, get_detailed_error())
+          && bind_on_address(*_settings._self_addr, _file_descr, get_detailed_error());
   }
 
   if (res) {
@@ -61,7 +60,7 @@ bool stream::init(settings *send_params) {
   return res;
 }
 
-void stream::connection_established() {
+bool stream::connection_established() {
   int err = -1;
   socklen_t len = sizeof(err);
   int rc = getsockopt(_file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
@@ -69,21 +68,20 @@ void stream::connection_established() {
   if (0 != rc) {
     set_detailed_error("getsockopt error");
     set_connection_state(state::e_failed);
-    return;
+    return false;
   }
   if (0 != err) {
     set_detailed_error("connection not established");
     set_connection_state(state::e_failed);
-    return;
+    return false;
   }
 
   if (get_state() != state::e_wait) {
-    set_detailed_error(
-        std::string("connection established, but tcp state not in "
-                    "listen state. state is - ") +
-        connection_state_to_str(get_state()));
+    set_detailed_error(std::string("connection established, but tcp state not in "
+                                   "listen state. state is - ")
+                       + connection_state_to_str(get_state()));
     set_connection_state(state::e_failed);
-    return;
+    return false;
   }
 
   ev::stop(_write_io, _loop);
@@ -92,6 +90,7 @@ void stream::connection_established() {
     ev::start(_write_io, _loop);
   ev::start(_read_io, _loop);
   set_connection_state(state::e_established);
+  return true;
 }
 
 ssize_t stream::send(std::byte *data, size_t data_size) {
@@ -151,7 +150,9 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   return rec;
 }
 
-settings *stream::current_settings() { return &_settings; }
+settings *stream::current_settings() {
+  return &_settings;
+}
 
 bool stream::connect() {
   if (connect_stream(_settings._peer_addr, _file_descr, get_detailed_error()))
@@ -160,8 +161,7 @@ bool stream::connect() {
   return false;
 }
 
-void stream::set_received_data_cb(strm::received_data_cb cb,
-                                  std::any user_data) {
+void stream::set_received_data_cb(strm::received_data_cb cb, std::any user_data) {
   _received_data_cb = cb;
   _param_received_data_cb = user_data;
 }

@@ -57,8 +57,9 @@ bool stream::create_socket(proto::ip::address::version version, type tp) {
   }
 
   _file_descr = rc;
-  set_socket_options();
-  set_socket_specific_options(version);
+  if (!set_socket_options() || !set_socket_specific_options(version)) {
+    return false;
+  }
   return true;
 }
 

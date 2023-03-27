@@ -17,6 +17,7 @@ struct settings : sctp::listen::settings {
   std::string _key_path;
   bool _enable_sslv2 = true;
   bool _enable_empty_fragments = false;
+  bool _need_auth = false;
 };
 
 } // namespace bro::net::sctp::ssl::listen

@@ -6,7 +6,9 @@
 
 namespace bro::net::tcp::ssl::send {
 
-stream::~stream() { cleanup(); }
+stream::~stream() {
+  cleanup();
+}
 
 void stream::cleanup() {
   tcp::send::stream::cleanup();
@@ -23,16 +25,24 @@ void stream::cleanup() {
 }
 
 bool stream::init(settings *send_params) {
+  if (!tcp::ssl::init_openSSL()) {
+    set_detailed_error("coulnd't init ssl library " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
   if (!bro::net::tcp::send::stream::init(send_params))
     return false;
   _settings = *send_params;
   ERR_clear_error();
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000
   _client_ctx = SSL_CTX_new(TLS_client_method());
-#else
-  _client_ctx = SSL_CTX_new(TLSv1_2_client_method());
-#endif
+  if (!_client_ctx) {
+    set_detailed_error("couldn't create client ssl context: " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
 
   /*When we no longer need a read buffer or a write buffer for a given SSL, then
    * release the memory we were using to hold it. Using this flag can save
@@ -90,28 +100,39 @@ bool stream::init(settings *send_params) {
     //    SSL_CTX_set_alpn_protos(_client_ctx, proto_list.data(),
     //    proto_list.size());
   }
+  //NOTE: probably we can check return mask, but I don't see why we need it and how to handle it
+  SSL_CTX_set_options(_client_ctx, ctx_options);
 
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
-    if (!check_ceritficate(_client_ctx, _settings._certificate_path,
-                           _settings._key_path, get_detailed_error())) {
+    if (!check_ceritficate(_client_ctx, _settings._certificate_path, _settings._key_path, get_detailed_error())) {
       set_connection_state(state::e_failed);
       cleanup();
       return false;
     }
   }
 
-  SSL_CTX_set_options(_client_ctx, ctx_options);
   return true;
 }
 
-void stream::connection_established() {
-  tcp::send::stream::connection_established();
-  if (get_state() != state::e_established)
-    return;
+bool stream::connection_established() {
+  if (!tcp::send::stream::connection_established())
+    return false;
   ERR_clear_error();
 
   _ctx = SSL_new(_client_ctx);
-  SSL_set_fd(_ctx, _file_descr);
+  if (!_ctx) {
+    set_detailed_error("couldn't create new ssl context " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
+
+  if (SSL_set_fd(_ctx, _file_descr)) {
+    set_detailed_error("couldn't set file descriptor " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
   int retval = SSL_connect(_ctx);
   if (retval <= 0) {
     retval = SSL_get_error(_ctx, retval);
@@ -119,8 +140,10 @@ void stream::connection_established() {
       set_detailed_error("SSL_connect call: " + tcp::ssl::ssl_error());
       set_connection_state(state::e_failed);
       cleanup();
+      return false;
     }
   }
+  return true;
 }
 
 ssize_t stream::send(std::byte *data, size_t data_size) {
@@ -190,8 +213,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
     }
     case SSL_ERROR_SYSCALL: {
       if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
-        set_detailed_error("error occured while receive ssl data" +
-                           ssl_error());
+        set_detailed_error("error occured while receive ssl data" + ssl_error());
         set_connection_state(state::e_failed);
       } else {
         ++_statistic._retry_recv_data;
@@ -205,9 +227,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
       // TODO: Same as in grpc. need to check, maybe it is actual only for
       // boringSSL
       set_connection_state(state::e_failed);
-      set_detailed_error(
-          "Peer tried to renegotiate SSL connection. This is unsupported. " +
-          ssl_error());
+      set_detailed_error("Peer tried to renegotiate SSL connection. This is unsupported. " + ssl_error());
       break;
     }
     case SSL_ERROR_SSL: {
@@ -226,6 +246,8 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   return rec;
 }
 
-settings *stream::current_settings() { return &_settings; }
+settings *stream::current_settings() {
+  return &_settings;
+}
 
 } // namespace bro::net::tcp::ssl::send

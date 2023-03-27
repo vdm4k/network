@@ -12,14 +12,14 @@ namespace bro::net::sctp {
 /**
  * \brief common stream for listen/send stream
  */
-class stream : public net::stream {
- protected:
+class stream : public net::stream
+{
+protected:
   /*! \brief set socket options like send/receive buffers size
    */
-  void set_socket_specific_options(
-      proto::ip::address::version addr_ver) override;
+  [[nodiscard]] bool set_socket_specific_options(proto::ip::address::version addr_ver) override;
 };
 
-}  // namespace bro::net::sctp
+} // namespace bro::net::sctp
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

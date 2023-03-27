@@ -1,7 +1,6 @@
 #pragma once
 #include <network/stream.h>
 #include <protocols/ip/full_address.h>
-
 #include <string>
 
 namespace bro::net::tcp {
@@ -13,13 +12,12 @@ namespace bro::net::tcp {
  * \brief common stream for listen/send stream
  */
 class stream : public net::stream {
- protected:
+protected:
   /*! \brief set socket options like send/receive buffers size
    */
-  void set_socket_specific_options(
-      proto::ip::address::version addr_ver) override;
+  [[nodiscard]] bool set_socket_specific_options(proto::ip::address::version addr_ver) override;
 };
 
-}  // namespace bro::net::tcp
+} // namespace bro::net::tcp
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

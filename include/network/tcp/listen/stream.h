@@ -17,7 +17,7 @@ namespace bro::net::tcp::listen {
  * \brief listen stream
  */
 class stream : public tcp::stream {
- public:
+public:
   ~stream();
 
   /*!
@@ -88,28 +88,25 @@ class stream : public tcp::stream {
    */
   void assign_loop(struct ev_loop *loop);
 
- protected:
+protected:
   virtual std::unique_ptr<send::stream> generate_send_stream();
-  virtual void handle_incoming_connection(
-      new_connection_details const &result);
+  virtual void handle_incoming_connection(accept_connection_res const &result);
 
-  virtual bool fill_send_stream(const new_connection_details &result,
-                                std::unique_ptr<send::stream> &sck);
+  [[nodiscard]] virtual bool fill_send_stream(const accept_connection_res &result, std::unique_ptr<send::stream> &sck);
 
   void cleanup();
 
- private:
-  friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
-                                     int /*revents*/);
+private:
+  friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/);
 
-  bool create_listen_socket();
+  [[nodiscard]] bool create_listen_socket();
 
-  ev_io _connect_io;                ///< wait connection event
-  struct ev_loop *_loop = nullptr;  ///< pointer on base event loop
-  settings _settings;               ///< current settings
-  statistic _statistic;             ///< statistics
+  ev_io _connect_io;               ///< wait connection event
+  struct ev_loop *_loop = nullptr; ///< pointer on base event loop
+  settings _settings;              ///< current settings
+  statistic _statistic;            ///< statistics
 };
 
-}  // namespace bro::net::tcp::listen
+} // namespace bro::net::tcp::listen
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

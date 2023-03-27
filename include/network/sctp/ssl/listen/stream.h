@@ -42,9 +42,8 @@ public:
 protected:
   std::unique_ptr<bro::net::sctp::send::stream> generate_send_stream() override;
 
-  bool
-  fill_send_stream(const new_connection_details &result,
-                   std::unique_ptr<bro::net::sctp::send::stream> &sck) override;
+  [[nodiscard]] bool fill_send_stream(accept_connection_res const &result,
+                                      std::unique_ptr<bro::net::sctp::send::stream> &sck) override;
 
   void cleanup();
 

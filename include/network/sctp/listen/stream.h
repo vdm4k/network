@@ -1,5 +1,4 @@
 #pragma once
-#include <network/libev/libev.h>
 #include <network/sctp/send/stream.h>
 #include <network/sctp/stream.h>
 
@@ -90,19 +89,16 @@ public:
 
 protected:
   virtual std::unique_ptr<send::stream> generate_send_stream();
-  virtual void
-  handle_incoming_connection(new_connection_details const &result);
+  virtual void handle_incoming_connection(accept_connection_res const &result);
 
-  virtual bool fill_send_stream(const new_connection_details &result,
-                                std::unique_ptr<send::stream> &sck);
+  [[nodiscard]] virtual bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<send::stream> &sck);
 
   void cleanup();
 
 private:
-  friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w,
-                                     int /*revents*/);
+  friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/);
 
-  bool create_listen_socket();
+  [[nodiscard]] bool create_listen_socket();
 
   ev_io _connect_io;               ///< wait connection event
   struct ev_loop *_loop = nullptr; ///< pointer on base event loop
