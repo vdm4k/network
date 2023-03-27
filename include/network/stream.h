@@ -77,7 +77,7 @@ class stream : public strm::stream {
    */
   bool create_socket(proto::ip::address::version version, type tp);
 
-  void set_socket_options();
+  bool set_socket_options();
 
   /*! \brief set state for stream
    * \param [in] new_state new state

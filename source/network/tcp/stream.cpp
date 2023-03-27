@@ -13,8 +13,10 @@ void stream::set_socket_specific_options(
   if (-1 == ::setsockopt(_file_descr, IPPROTO_TCP, TCP_NODELAY,
                          reinterpret_cast<char const *>(&optval),
                          sizeof(optval))) {
+    set_detailed_error("coulnd't set tcp nodelay option");
+    set_connection_state(state::e_failed);
   }
-#endif  // TCP_NODELAY
+#endif // TCP_NODELAY
 }
 
-}  // namespace bro::net::tcp
+} // namespace bro::net::tcp

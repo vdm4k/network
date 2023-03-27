@@ -7,39 +7,57 @@
 #endif
 namespace bro::net {
 
-proto::ip::full_address get_local_address(proto::ip::address::version ver,
-                                          int fd) {
-  if (ver == proto::ip::address::version::e_v4) {
+std::optional<proto::ip::full_address>
+get_address_from_fd(proto::ip::address::version ver, int fd) {
+  switch (ver) {
+  case proto::ip::address::version::e_v4: {
     struct sockaddr_in t_local_addr = {0, 0, {0}, {0}};
     socklen_t addrlen = sizeof(t_local_addr);
-    getsockname(fd, (struct sockaddr *)&t_local_addr, &addrlen);
-    return proto::ip::full_address(t_local_addr);
-  }
-  sockaddr_in6 t_local_addr = {0, 0, 0, {{{0}}}, 0};
-  socklen_t addrlen = sizeof(t_local_addr);
-  getsockname(fd, (struct sockaddr *)&t_local_addr, &addrlen);
-  return proto::ip::full_address(t_local_addr);
-}
-
-bool fill_sockaddr(proto::ip::full_address const &ipaddr, sockaddr_in &addr,
-                   std::string &detailed_error) {
-  switch (ipaddr.get_address().get_version()) {
-  case proto::ip::address::version::e_v4: {
-    addr = ipaddr.to_native_v4();
-    return true;
+    if (0 == getsockname(fd, (struct sockaddr *)&t_local_addr, &addrlen))
+      return proto::ip::full_address(t_local_addr);
+    break;
   }
   case proto::ip::address::version::e_v6: {
-    sockaddr_in6 local_addr = ipaddr.to_native_v6();
-    auto *p_addr = reinterpret_cast<sockaddr_in6 *>(&addr);
-    *p_addr = local_addr;
-    return true;
+    sockaddr_in6 t_local_addr = {0, 0, 0, {{{0}}}, 0};
+    socklen_t addrlen = sizeof(t_local_addr);
+    if (0 == getsockname(fd, (struct sockaddr *)&t_local_addr, &addrlen))
+      return proto::ip::full_address(t_local_addr);
+    break;
   }
-  default: {
+  case proto::ip::address::version::e_none:
+    break;
+  }
+  return std::nullopt;
+}
+
+proto::ip::full_address get_address_from_fd(proto::ip::address::version ver,
+                                            int fd,
+                                            std::string &detailed_error) {
+  switch (ver) {
+  case proto::ip::address::version::e_v4: {
+    struct sockaddr_in t_local_addr = {0, 0, {0}, {0}};
+    socklen_t addrlen = sizeof(t_local_addr);
+    if (0 == getsockname(fd, (struct sockaddr *)&t_local_addr, &addrlen))
+      return proto::ip::full_address(t_local_addr);
+    detailed_error.append(std::string("couldn't get address, errno - ") +
+                          strerror(errno));
+    break;
+  }
+  case proto::ip::address::version::e_v6: {
+    sockaddr_in6 t_local_addr = {0, 0, 0, {{{0}}}, 0};
+    socklen_t addrlen = sizeof(t_local_addr);
+    if (0 == getsockname(fd, (struct sockaddr *)&t_local_addr, &addrlen))
+      return proto::ip::full_address(t_local_addr);
+    detailed_error.append(std::string("couldn't get address, errno - ") +
+                          strerror(errno));
+    break;
+  }
+  case proto::ip::address::version::e_none: {
     detailed_error = "incorrect address type";
     break;
   }
   }
-  return false;
+  return {};
 }
 
 bool bind_on_address(proto::ip::full_address &self_address, int file_descr,
@@ -109,18 +127,17 @@ bool bind_on_sctp_address(proto::ip::full_address &self_address, int file_descr,
   return false;
 }
 
-bool asconf_on(int file_descr, std::string & /*detailed_error*/) {
+bool asconf_on(int file_descr, std::string &detailed_error) {
 
 #ifdef SCTP_AUTO_ASCONF
   int asconf = 1; /* allow automatic use of added or removed addresses in the
                      association (for bound-all sockets) */
   if (-1 == setsockopt(file_descr, IPPROTO_SCTP, SCTP_AUTO_ASCONF, &asconf,
                        sizeof(asconf))) {
-    // TODO: maybe not so important
-    //     detailed_error.append(
-    //         std::string("couldn't set option SO_REUSEADDR, errno - ") +
-    //         strerror(errno));
-    //     return false;
+    detailed_error.append(
+        std::string("couldn't set option asconf for sctp, errno - ") +
+        strerror(errno));
+    return false;
   }
 #endif /* SCTP_AUTO_ASCONF */
   return true;
@@ -211,9 +228,9 @@ bool start_listen(int file_descr, int listen_backlog,
   return true;
 }
 
-accept_connection_result
+new_connection_details
 accept_new_connection(proto::ip::address::version ip_version, int server_fd) {
-  accept_connection_result res;
+  new_connection_details res;
   switch (ip_version) {
   case proto::ip::address::version::e_v4: {
     struct sockaddr_in t_peer_addr = {0, 0, {0}, {0}};
@@ -256,7 +273,8 @@ accept_new_connection(proto::ip::address::version ip_version, int server_fd) {
     break;
   }
   if (res._client_fd) {
-    res._self_address = get_local_address(ip_version, *res._client_fd);
+    if (auto addr = get_address_from_fd(ip_version, *res._client_fd); addr)
+      res._self_address = *addr;
   }
   return res;
 }

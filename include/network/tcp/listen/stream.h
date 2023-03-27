@@ -91,9 +91,9 @@ class stream : public tcp::stream {
  protected:
   virtual std::unique_ptr<send::stream> generate_send_stream();
   virtual void handle_incoming_connection(
-      accept_connection_result const &result);
+      new_connection_details const &result);
 
-  virtual bool fill_send_stream(const accept_connection_result &result,
+  virtual bool fill_send_stream(const new_connection_details &result,
                                 std::unique_ptr<send::stream> &sck);
 
   void cleanup();

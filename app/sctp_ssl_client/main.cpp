@@ -85,10 +85,6 @@ void thread_fun(proto::ip::address const &server_addr, uint16_t server_port,
                     &stream_pool) {
   sctp::ssl::send::settings settings;
   settings._peer_addr = {server_addr, server_port};
-  settings._certificate_path =
-      "/home/vdm4k/libs/DTLS-Examples/src/certs/client-cert.pem";
-  settings._key_path =
-      "/home/vdm4k/libs/DTLS-Examples/src/certs/client-key.pem";
   fillTestData(th_num);
   std::unordered_set<stream *> _need_to_handle;
 

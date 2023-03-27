@@ -26,7 +26,7 @@ std::unique_ptr<bro::net::tcp::send::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::tcp::ssl::send::stream>();
 }
 
-bool stream::fill_send_stream(accept_connection_result const &result,
+bool stream::fill_send_stream(new_connection_details const &result,
                               std::unique_ptr<tcp::send::stream> &sck) {
   if (!tcp::listen::stream::fill_send_stream(result, sck))
     return false;

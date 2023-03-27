@@ -46,7 +46,7 @@ bool stream::create_listen_socket() {
                       get_detailed_error());
 }
 
-bool stream::fill_send_stream(accept_connection_result const &result,
+bool stream::fill_send_stream(new_connection_details const &result,
                               std::unique_ptr<send::stream> &sck) {
   if (!result._client_fd) {
     _statistic._failed_to_accept_connections++;
@@ -71,7 +71,7 @@ std::unique_ptr<send::stream> stream::generate_send_stream() {
 }
 
 void stream::handle_incoming_connection(
-    const accept_connection_result &result) {
+    const new_connection_details &result) {
   auto sck{generate_send_stream()};
   fill_send_stream(result, sck);
   if (_settings._proc_in_conn)

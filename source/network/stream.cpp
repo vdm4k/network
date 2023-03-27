@@ -9,18 +9,23 @@
 
 namespace bro::net {
 
-stream::~stream() { cleanup(); }
+stream::~stream() {
+  cleanup();
+}
 
 std::string const &stream::get_detailed_error() const {
   return _detailed_error;
 }
 
-std::string &stream::get_detailed_error() { return _detailed_error; }
+std::string &stream::get_detailed_error() {
+  return _detailed_error;
+}
 
-stream::state stream::get_state() const { return _state; }
+stream::state stream::get_state() const {
+  return _state;
+}
 
-void stream::set_state_changed_cb(strm::state_changed_cb cb,
-                                  std::any user_data) {
+void stream::set_state_changed_cb(strm::state_changed_cb cb, std::any user_data) {
   _state_changed_cb = cb;
   _param_state_changed_cb = user_data;
 }
@@ -41,8 +46,7 @@ void stream::set_detailed_error(const std::string &str) {
 }
 
 bool stream::create_socket(proto::ip::address::version version, type tp) {
-  int af_type =
-      proto::ip::address::version::e_v6 == version ? AF_INET6 : AF_INET;
+  int af_type = proto::ip::address::version::e_v6 == version ? AF_INET6 : AF_INET;
   int protocol = tp == type::e_sctp ? IPPROTO_SCTP : IPPROTO_TCP; // IPPROTO_TCP
 
   int rc = ::socket(af_type, SOCK_STREAM, protocol);
@@ -58,30 +62,40 @@ bool stream::create_socket(proto::ip::address::version version, type tp) {
   return true;
 }
 
-void stream::set_socket_options() {
+bool stream::set_socket_options() {
   int mode = 1;
-  ioctl(_file_descr, FIONBIO, &mode);
-  settings *sparam = (settings *)get_settings();
+  if (-1 == ioctl(_file_descr, FIONBIO, &mode)) {
+    set_detailed_error("coulnd't set non blocking mode for socket");
+    set_connection_state(state::e_failed);
+    return false;
+  }
+  settings *sparam = (settings *) get_settings();
   if (sparam->_buffer_size) {
     int optval = *sparam->_buffer_size;
 #ifdef SO_SNDBUF
-    if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_SNDBUF,
-                         reinterpret_cast<char const *>(&optval),
-                         sizeof(optval))) {
+    if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<char const *>(&optval), sizeof(optval))) {
+      set_detailed_error("coulnd't set send buffer size");
+      set_connection_state(state::e_failed);
+      return false;
     }
 #endif // SO_SNDBUF
 #ifdef SO_RCVBUF
-    if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_RCVBUF,
-                         reinterpret_cast<char const *>(&optval),
-                         sizeof(optval))) {
+    if (-1 == setsockopt(_file_descr, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<char const *>(&optval), sizeof(optval))) {
+      set_detailed_error("coulnd't set receive buffer size");
+      set_connection_state(state::e_failed);
+      return false;
     }
 #endif // SO_RCVBUF
   }
+  return true;
 }
 
 void stream::cleanup() {
   if (-1 != _file_descr) {
-    ::close(_file_descr);
+    if (-1 == ::close(_file_descr)) {
+      set_detailed_error("close socket return an error");
+      set_connection_state(state::e_failed);
+    }
     _file_descr = -1;
   }
 }

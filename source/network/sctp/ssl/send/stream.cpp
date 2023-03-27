@@ -35,11 +35,7 @@ bool stream::init(settings *send_params) {
     return false;
   ERR_clear_error();
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000
   _client_ctx = SSL_CTX_new(DTLS_client_method());
-#else
-  _client_ctx = SSL_CTX_new(DTLSv1_2_client_method());
-#endif
   if (!_client_ctx) {
     set_detailed_error("couldn't create client_ctx: " + tcp::ssl::ssl_error());
     set_connection_state(state::e_failed);
@@ -56,11 +52,6 @@ bool stream::init(settings *send_params) {
   ctx_options |= SSL_OP_NO_COMPRESSION;
 #endif
 
-#ifdef SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG
-  /* mitigate CVE-2010-4180 */
-  ctx_options &= ~SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG;
-#endif
-
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
   /* unless the user explicitly asks to allow the protocol vulnerability we
      use the work-around */
@@ -73,21 +64,19 @@ bool stream::init(settings *send_params) {
   }
   SSL_CTX_set_options(_client_ctx, ctx_options);
 
-  int on = 1;
-  setsockopt(_file_descr, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on));
+  //  int on = 1;
+  //  setsockopt(_file_descr, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on));
 
-  //  if (!_settings._certificate_path.empty() && !_settings._key_path.empty())
-  //  {
-  //    if (!tcp::ssl::check_ceritficate(_client_ctx,
-  //    _settings._certificate_path,
-  //                                     _settings._key_path,
-  //                                     get_detailed_error())) {
-  //      set_connection_state(state::e_failed);
-  //      cleanup();
-  //      return false;
-  //    }
-  //  SSL_CTX_set_verify_depth(_client_ctx, 2);
-  //  }
+  if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
+    if (!tcp::ssl::check_ceritficate(_client_ctx, _settings._certificate_path,
+                                     _settings._key_path,
+                                     get_detailed_error())) {
+      set_connection_state(state::e_failed);
+      cleanup();
+      return false;
+    }
+    SSL_CTX_set_verify_depth(_client_ctx, 2);
+  }
 
   _ctx = SSL_new(_client_ctx);
   if (!_ctx) {
@@ -138,7 +127,7 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
     return -1;
 
   ssize_t sent = -1;
-  while (true) {
+  while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
     ERR_clear_error();
     sent = SSL_write(_ctx, data, data_size);
     if (sent > 0) {
@@ -186,7 +175,7 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
 
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec = -1;
-  while (true) {
+  while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
     ERR_clear_error();
     rec = SSL_read(_ctx, buffer, buffer_size);
     if (rec > 0) {

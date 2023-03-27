@@ -26,7 +26,7 @@ std::unique_ptr<bro::net::sctp::send::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::sctp::ssl::send::stream>();
 }
 
-bool stream::fill_send_stream(accept_connection_result const &result,
+bool stream::fill_send_stream(new_connection_details const &result,
                               std::unique_ptr<sctp::send::stream> &sck) {
   if (!sctp::listen::stream::fill_send_stream(result, sck))
     return false;
@@ -53,11 +53,7 @@ bool stream::init(settings *listen_params) {
 
   tcp::ssl::init_openSSL();
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000
   _ctx = SSL_CTX_new(DTLS_server_method());
-#else
-  ssl_context = SSL_CTX_new(DTLSv1_2_server_method());
-#endif
 
   /*When we no longer need a read buffer or a write buffer for a given SSL, then
    * release the memory we were using to hold it. Using this flag can save
