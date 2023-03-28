@@ -1,3 +1,4 @@
+#include <atomic>
 #include <network/tcp/ssl/common.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -36,27 +37,40 @@ bool check_ceritficate(SSL_CTX *ctx,
   return true;
 }
 
+enum init_state : int {
+  e_not_init = 0,
+  e_in_progress,
+  e_init,
+};
+
 bool init_openSSL() {
-  static std::once_flag flag;
-  bool res{true};
-  std::call_once(flag, [&res]() {
-    const uint64_t flags =
+  static bool res{true};
+  static std::atomic<init_state> state{e_not_init};
+  if (state.load(std::memory_order_acquire) == e_init)
+    return res;
+  init_state expected{init_state::e_not_init};
+  if (!state.compare_exchange_strong(expected, init_state::e_in_progress)) {
+    while (state.load(std::memory_order_acquire) != e_init)
+      ;
+    return res;
+  }
+  const uint64_t flags =
 #ifdef OPENSSL_INIT_ENGINE_ALL_BUILTIN
-      OPENSSL_INIT_ENGINE_ALL_BUILTIN |
+    OPENSSL_INIT_ENGINE_ALL_BUILTIN |
 #endif
-      OPENSSL_INIT_LOAD_CONFIG;
-    // first need to init library
-    res = OPENSSL_init_ssl(flags, nullptr) == 1;
+    OPENSSL_INIT_LOAD_CONFIG;
+  // first need to init library
+  res = OPENSSL_init_ssl(flags, nullptr) == 1;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-    // We don't need this for new version of openSSL
-    /* Load error strings into mem*/
-    SSL_library_init();
-    SSL_load_error_strings(); /* readable error messages */
-    OpenSSL_add_all_algorithms();
-    ERR_load_crypto_strings();
+  // We don't need this for new version of openSSL
+  /* Load error strings into mem*/
+  SSL_library_init();
+  SSL_load_error_strings(); /* readable error messages */
+  OpenSSL_add_all_algorithms();
+  ERR_load_crypto_strings();
 #endif
-  });
+  state.store(init_state::e_init, std::memory_order_release);
   return res;
 }
 

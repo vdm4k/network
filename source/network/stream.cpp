@@ -40,7 +40,9 @@ void stream::set_connection_state(state new_state) {
 
 void stream::set_detailed_error(const std::string &str) {
   if (errno) {
-    _detailed_error = str + ", errno - " + strerror(errno);
+    if (!_detailed_error.empty())
+      _detailed_error += "; ";
+    _detailed_error += str + ", errno - " + strerror(errno);
     errno = 0;
   } else
     _detailed_error = str;

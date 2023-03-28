@@ -31,6 +31,7 @@ bool stream::init(settings *send_params) {
     cleanup();
     return false;
   }
+
   if (!bro::net::tcp::send::stream::init(send_params))
     return false;
   _settings = *send_params;
@@ -151,7 +152,7 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
     return -1;
 
   ssize_t sent = -1;
-  while (true) {
+  while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
     ERR_clear_error();
     sent = SSL_write(_ctx, data, data_size);
     if (sent > 0) {
@@ -199,7 +200,7 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
 
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec = -1;
-  while (true) {
+  while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
     ERR_clear_error();
     rec = SSL_read(_ctx, buffer, buffer_size);
     if (rec > 0) {
@@ -209,7 +210,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
 
     int error = SSL_get_error(_ctx, rec);
     switch (error) {
-    case SSL_ERROR_ZERO_RETURN: /* Received a close_notify alert. */ {
+    case SSL_ERROR_ZERO_RETURN: { /* Received a close_notify alert. */
       set_detailed_error("ssl read return 0 bytes " + ssl_error());
       set_connection_state(state::e_failed);
       break;
