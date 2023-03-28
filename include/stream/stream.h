@@ -15,28 +15,25 @@ namespace bro::strm {
 
 class stream;
 
-using received_data_cb =
-    std::function<void(stream *, std::any)>;  ///< callback on receive data
-using send_data_cb =
-    std::function<void(stream *, std::any)>;  ///< callback on send data
-using state_changed_cb =
-    std::function<void(stream *, std::any)>;  ///< callback on state change
+using received_data_cb = std::function<void(stream *, std::any)>; ///< callback on receive data
+using send_data_cb = std::function<void(stream *, std::any)>;     ///< callback on send data
+using state_changed_cb = std::function<void(stream *, std::any)>; ///< callback on state change
 
 /**
  * \brief stream interface
  */
 class stream {
- public:
+public:
   /*!
    * @brief stream state
    */
   enum class state : uint8_t {
-    e_closed,       ///< closed - not active
-    e_wait,         ///< for server side connection in listen state
-                    ///< for client side wait for connection with server
-    e_established,  ///< connection established
-    e_failed        ///< connection failed, can check error with
-                    ///< get_detailed_error
+    e_closed,      ///< closed - not active
+    e_wait,        ///< for server side connection in listen state
+                   ///< for client side wait for connection with server
+    e_established, ///< connection established
+    e_failed       ///< connection failed, can check error with
+                   ///< get_detailed_error
   };
 
   virtual ~stream() = default;
@@ -52,8 +49,9 @@ class stream {
   /*! \brief receive data
    *  \param [in] data pointer on buffer
    *  \param [in] data_size buffer lenght
-   *  \return ssize_t if ssize_t is positive - received data size otherwise
-   * ssize_t interpet as error
+   *  \return ssize_t can be 3 meanings
+   *                if positive = received data size
+   *                if negative = error ( get_detailed_error )
    */
   virtual ssize_t receive(std::byte *data, size_t data_size) = 0;
 
@@ -127,19 +125,18 @@ using stream_ptr = std::unique_ptr<stream>;
 /*!
  * @brief convert state to const char * representation
  */
-[[maybe_unused]] static inline const char *connection_state_to_str(
-    stream::state st) {
+[[maybe_unused]] static inline const char *connection_state_to_str(stream::state st) {
   switch (st) {
-    case stream::state::e_closed:
-      return "closed";
-    case stream::state::e_wait:
-      return "wait";
-    case stream::state::e_established:
-      return "established";
-    case stream::state::e_failed:
-      return "failed";
-    default:
-      return "unknown";
+  case stream::state::e_closed:
+    return "closed";
+  case stream::state::e_wait:
+    return "wait";
+  case stream::state::e_established:
+    return "established";
+  case stream::state::e_failed:
+    return "failed";
+  default:
+    return "unknown";
   }
 }
 
@@ -151,6 +148,6 @@ inline std::ostream &operator<<(std::ostream &out, stream::state st) {
   return out << connection_state_to_str(st);
 }
 
-}  // namespace bro::strm
+} // namespace bro::strm
 
-/** @} */  // end of stream
+/** @} */ // end of stream

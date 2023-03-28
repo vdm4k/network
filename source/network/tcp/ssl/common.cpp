@@ -37,13 +37,11 @@ bool check_ceritficate(SSL_CTX *ctx,
 }
 
 bool init_openSSL() {
-#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
   static std::once_flag flag;
   bool res{true};
   std::call_once(flag, [&res]() {
     const uint64_t flags =
 #ifdef OPENSSL_INIT_ENGINE_ALL_BUILTIN
-      /* not present in BoringSSL */
       OPENSSL_INIT_ENGINE_ALL_BUILTIN |
 #endif
       OPENSSL_INIT_LOAD_CONFIG;
@@ -59,10 +57,6 @@ bool init_openSSL() {
     ERR_load_crypto_strings();
 #endif
   });
-#endif
-  // ssl sctp использует для отправки сообщений sendmsg без флагов
-  // => у нас могут появлятся SIGPIPE
-  //    signal(SIGPIPE, SIG_IGN);
   return res;
 }
 

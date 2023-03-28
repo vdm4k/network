@@ -121,7 +121,7 @@ bool stream::set_socket_specific_options(proto::ip::address::version addr_ver) {
                                                                                  connection is being shutdown */
   event.sctp_adaptation_layer_event = params->_sctp_adaptation_layer_event; /* adaptation layer notifications */
   event.sctp_authentication_event = params->_sctp_authentication_event;     /* when new key is made active */
-  ;
+
   if (-1 == setsockopt(_file_descr, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event))) {
     set_detailed_error("coulnd't enable sctp events");
     set_connection_state(state::e_failed);

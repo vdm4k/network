@@ -152,7 +152,7 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
     case SSL_ERROR_WANT_READ:
     case SSL_ERROR_WANT_WRITE: {
       ++_statistic._retry_send_data;
-      continue;
+      return 0;
     }
 
     case SSL_ERROR_SYSCALL: {

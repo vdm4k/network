@@ -17,8 +17,7 @@ namespace bro::net::sctp::send {
 /**
  * \brief send stream
  */
-class stream : public sctp::stream
-{
+class stream : public sctp::stream {
 public:
   ~stream() override;
 
@@ -98,6 +97,7 @@ private:
   void stop_events();
   void receive_data();
   void send_data();
+  bool is_sctp_flags_ok(std::byte *buffer);
 
   friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
   friend void send_data_cb(struct ev_loop *, ev_io *w, int);

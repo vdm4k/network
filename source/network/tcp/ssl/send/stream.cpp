@@ -127,7 +127,7 @@ bool stream::connection_established() {
     return false;
   }
 
-  if (SSL_set_fd(_ctx, _file_descr)) {
+  if (!SSL_set_fd(_ctx, _file_descr)) {
     set_detailed_error("couldn't set file descriptor " + tcp::ssl::ssl_error());
     set_connection_state(state::e_failed);
     cleanup();
@@ -161,7 +161,10 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
 
     int error = SSL_get_error(_ctx, sent);
     switch (error) {
-    case SSL_ERROR_WANT_READ:
+    case SSL_ERROR_WANT_READ: {
+      ++_statistic._retry_send_data;
+      continue;
+    }
     case SSL_ERROR_WANT_WRITE: {
       ++_statistic._retry_send_data;
       continue;
@@ -224,8 +227,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
     case SSL_ERROR_WANT_READ: /* We need more data to finish the frame. */
       return 0;
     case SSL_ERROR_WANT_WRITE: {
-      // TODO: Same as in grpc. need to check, maybe it is actual only for
-      // boringSSL
+      // TODO: Same as in grpc. need to check, maybe it is actual only for boringSSL
       set_connection_state(state::e_failed);
       set_detailed_error("Peer tried to renegotiate SSL connection. This is unsupported. " + ssl_error());
       break;

@@ -62,7 +62,6 @@ bool bind_on_address(proto::ip::full_address &self_address, int file_descr, std:
     if (0 == ::bind(file_descr, reinterpret_cast<sockaddr *>(&local_addr), sizeof(local_addr)))
       return true;
     detailed_error.append("couldn't bind on address - " + self_address.to_string() + ", errno - " + strerror(errno));
-
     break;
   }
   case proto::ip::address::version::e_v6: {
@@ -70,7 +69,6 @@ bool bind_on_address(proto::ip::full_address &self_address, int file_descr, std:
     if (0 == ::bind(file_descr, reinterpret_cast<sockaddr *>(&local_addr), sizeof(local_addr)))
       return true;
     detailed_error.append("couldn't bind on address - " + self_address.to_string() + ", errno - " + strerror(errno));
-
     break;
   }
   default:
@@ -89,7 +87,6 @@ bool bind_on_sctp_address(proto::ip::full_address &self_address, int file_descr,
       return true;
     detailed_error.append("couldn't bind sctp on address - " + self_address.to_string() + ", errno - "
                           + strerror(errno));
-
     break;
   }
   case proto::ip::address::version::e_v6: {
@@ -98,7 +95,6 @@ bool bind_on_sctp_address(proto::ip::full_address &self_address, int file_descr,
       return true;
     detailed_error.append("couldn't bind sctp on address - " + self_address.to_string() + ", errno - "
                           + strerror(errno));
-
     break;
   }
   default:
@@ -140,7 +136,6 @@ bool connect_sctp_streams(proto::ip::full_address const &peer_addr, int file_des
   if (0 == rc || EINPROGRESS == errno)
     return true;
   detailed_error.append("coulnd't connect to server - " + peer_addr.to_string() + ", errno - " + strerror(errno));
-
   return false;
 }
 
@@ -167,7 +162,6 @@ bool connect_stream(const proto::ip::full_address &peer_addr, int file_descr, st
   if (0 == rc || EINPROGRESS == errno)
     return true;
   detailed_error.append("coulnd't connect to server - " + peer_addr.to_string() + ", errno - " + strerror(errno));
-
   return false;
 }
 

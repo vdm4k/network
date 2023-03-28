@@ -99,22 +99,25 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
     sent = ::send(_file_descr, data, data_size, MSG_NOSIGNAL);
     if (sent > 0) {
       ++_statistic._success_send_data;
-      return sent;
-    }
-    if (ssize_t(-1) == sent) {
-      if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
-        set_detailed_error("error occured while send data");
-        set_connection_state(state::e_failed);
-        break;
-      }
-    } else {
-      set_detailed_error("socket error occured while send data");
-      set_connection_state(state::e_failed);
       break;
     }
-    ++_statistic._retry_send_data;
+
+    if (EAGAIN == errno || EWOULDBLOCK == errno || EINTR == errno) {
+      errno = 0;
+      ++_statistic._retry_send_data;
+      continue;
+    }
+
+    // 0 may also be returned if the requested number of bytes to receive from a stream socket was 0
+    if (data_size == 0 && sent == 0)
+      break;
+
+    set_detailed_error("send return error");
+    set_connection_state(state::e_failed);
+    ++_statistic._failed_send_data;
+    sent = -1;
+    break;
   }
-  ++_statistic._failed_send_data;
   return sent;
 }
 
@@ -124,29 +127,25 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
     rec = ::recv(_file_descr, buffer, buffer_size, MSG_NOSIGNAL);
     if (rec > 0) {
       ++_statistic._success_recv_data;
-      return rec;
+      break;
     }
 
-    if (0 == rec) {
-      set_detailed_error("recv return 0 bytes");
-      set_connection_state(state::e_failed);
-      break;
-    } else {
-      if (ssize_t(-1) == rec) {
-        if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
-          set_detailed_error("recv return -1");
-          set_connection_state(state::e_failed);
-          break;
-        }
-      } else {
-        set_detailed_error("recv return error");
-        set_connection_state(state::e_failed);
-        break;
-      }
+    if (EAGAIN == errno || EWOULDBLOCK == errno || EINTR == errno) {
+      errno = 0;
+      ++_statistic._retry_recv_data;
+      continue;
     }
-    ++_statistic._retry_recv_data;
+
+    // 0 may also be returned if the requested number of bytes to receive from a stream socket was 0
+    if (buffer_size == 0 && rec == 0)
+      break;
+
+    set_detailed_error("recv return error");
+    set_connection_state(state::e_failed);
+    ++_statistic._failed_recv_data;
+    rec = -1;
+    break;
   }
-  ++_statistic._failed_recv_data;
   return rec;
 }
 
