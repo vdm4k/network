@@ -19,8 +19,7 @@ namespace bro::net::tcp::ssl::send {
 /**
  * \brief send stream
  */
-class stream : public tcp::send::stream
-{
+class stream : public tcp::send::stream {
 public:
   ~stream() override;
 

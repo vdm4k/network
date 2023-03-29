@@ -88,6 +88,9 @@ protected:
 
   void cleanup();
 
+  void disable_send_cb();
+  void enable_send_cb();
+
 private:
   friend void connection_established_cb(struct ev_loop *, ev_io *w, int);
   virtual settings *current_settings();
@@ -109,6 +112,8 @@ private:
   std::any _param_received_data_cb;         ///< user data for receive data callback
   strm::send_data_cb _send_data_cb;         ///< send data callback
   std::any _param_send_data_cb;             ///< user data for send data callback
+  strm::send_data_cb _send_data_dup_cb;     ///< send data callback
+  std::any _param_send_data_dup_cb;         ///< user data for send data callback
   strm::state_changed_cb _state_changed_cb; ///< state change callback
   std::any _param_state_changed_cb;         ///< user data for state change callback
   settings _settings;                       ///< current settings

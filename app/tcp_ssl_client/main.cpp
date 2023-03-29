@@ -15,14 +15,6 @@ using namespace bro::net;
 using namespace bro::strm;
 
 bool print_debug_info = false;
-size_t data_size = 1500;
-const size_t max_data_size = 65000;
-thread_local std::byte send_data[max_data_size];
-
-struct cb_data {
-  bool *data_received = nullptr;
-  std::unordered_set<stream *> *_need_to_handle = nullptr;
-};
 
 struct per_stream_data {
   per_stream_data(bool received, stream_ptr &&ptr)
@@ -30,6 +22,8 @@ struct per_stream_data {
     , stream(std::move(ptr)) {}
   bool data_received;
   bro::strm::stream_ptr stream;
+  std::vector<std::byte> _unsent_data;
+  std::unordered_set<bro::strm::stream *> *_need_to_handle = nullptr;
 };
 
 struct per_thread_data {
@@ -39,25 +33,61 @@ struct per_thread_data {
   tcp::ssl::send::statistic _stat;
 };
 
+void write_data_cb(stream *stream, std::any data_com) {
+  auto *cdata = std::any_cast<per_stream_data *>(data_com);
+  if (cdata->_unsent_data.empty()) {
+    stream->set_send_data_cb(nullptr, nullptr);
+    return;
+  }
+
+  ssize_t size = stream->send(cdata->_unsent_data.data(), cdata->_unsent_data.size());
+  if (size == 0)
+    return;
+  if (size > 0) {
+    if (size == cdata->_unsent_data.size()) {
+      cdata->_unsent_data.clear();
+      stream->set_send_data_cb(nullptr, nullptr);
+      return;
+    }
+    cdata->_unsent_data.erase(cdata->_unsent_data.begin(), cdata->_unsent_data.begin() + size);
+    return;
+  }
+
+  if (size < 0) {
+    if (print_debug_info)
+      std::cout << "send error - " << stream->get_detailed_error() << std::endl;
+  }
+}
+
 void received_data_cb(stream *stream, std::any data_com) {
-  cb_data cdata = std::any_cast<cb_data>(data_com);
+  per_stream_data *cdata = std::any_cast<per_stream_data *>(data_com);
+  const size_t data_size = 1500;
   std::byte data[data_size];
   ssize_t size = stream->receive(data, data_size);
   if (size == 0)
     return;
   if (size > 0) {
     if (print_debug_info)
-      std::cout << "receive message - " << std::string((char *) data, data_size) << std::endl;
+      std::cout << "receive message - " << std::string((char *) data, size) << std::endl;
   }
-  *cdata.data_received = true;
+  ssize_t const sent = stream->send(data, size);
+  if (sent == 0) {
+    cdata->_unsent_data.insert(cdata->_unsent_data.end(), data, data + size);
+    stream->set_send_data_cb(::write_data_cb, data_com);
+    return;
+  }
+  if (sent <= 0) {
+    if (print_debug_info)
+      std::cout << "send error - " << stream->get_detailed_error() << std::endl;
+  }
 }
 
 void state_changed_cb(stream *stream, std::any data_com) {
   if (print_debug_info)
     std::cout << "state_changed_cb " << stream->get_state() << ", " << stream->get_detailed_error() << std::endl;
   if (!stream->is_active()) {
-    cb_data cdata = std::any_cast<cb_data>(data_com);
-    cdata._need_to_handle->insert(stream);
+    per_stream_data *cdata = std::any_cast<per_stream_data *>(data_com);
+    cdata->_need_to_handle->insert(stream);
   }
 }
 
@@ -67,13 +97,17 @@ void send_data_cb(stream *stream, std::any data_com) {
   }
 }
 
-void fillTestData(int thread_number) {
-  memset(send_data, 1, sizeof(send_data));
-  char data[] = {'c', 'l', 'i', 'e', 'n', 't', ' ', 'h', 'e', 'l', 'l', 'o', '!', ' ',
-                 'f', 'r', 'o', 'm', ' ', 't', 'h', 'r', 'e', 'a', 'd', ' ', '-', ' '};
+void fillTestData(int thread_number, std::vector<std::byte> &data_to_send, size_t data_size) {
+  char send_data[] = {'c', 'l', 'i', 'e', 'n', 't', ' ', 'h', 'e', 'l', 'l', 'o', '!', ' ',
+                      'f', 'r', 'o', 'm', ' ', 't', 'h', 'r', 'e', 'a', 'd', ' ', '-', ' '};
+  data_to_send.assign((std::byte *) send_data, (std::byte *) send_data + sizeof(send_data));
   auto num = std::to_string(thread_number);
-  memcpy(send_data, data, sizeof(data));
-  memcpy(send_data + sizeof(data), num.c_str(), num.size());
+  data_to_send.insert(data_to_send.end(), (std::byte *) num.data(), (std::byte *) num.data() + num.size());
+  if (data_size > data_to_send.size()) {
+    std::vector<char> filler(data_size - data_to_send.size());
+    std::iota(filler.begin(), filler.end(), 1);
+    data_to_send.insert(data_to_send.end(), (std::byte *) filler.data(), (std::byte *) filler.data() + filler.size());
+  }
 }
 
 void thread_fun(proto::ip::address const &server_addr,
@@ -84,10 +118,10 @@ void thread_fun(proto::ip::address const &server_addr,
                 size_t th_num,
                 tcp::ssl::send::statistic &stat,
                 ev_stream_factory &manager,
-                std::unordered_map<stream *, std::unique_ptr<per_stream_data>> &stream_pool) {
+                std::unordered_map<stream *, std::unique_ptr<per_stream_data>> &stream_pool,
+                size_t data_size) {
   tcp::ssl::send::settings settings;
   settings._peer_addr = {server_addr, server_port};
-  fillTestData(th_num);
   std::unordered_set<stream *> _need_to_handle;
 
   while (work.load(std::memory_order_acquire)) {
@@ -96,24 +130,12 @@ void thread_fun(proto::ip::address const &server_addr,
       if (new_stream->is_active()) {
         manager.bind(new_stream);
         auto s_data = std::make_unique<per_stream_data>(true, std::move(new_stream));
-        cb_data cb_data{&s_data->data_received, &_need_to_handle};
-        s_data->stream->set_received_data_cb(::received_data_cb, cb_data);
-        s_data->stream->set_state_changed_cb(::state_changed_cb, cb_data);
-        if (print_send_success)
-          s_data->stream->set_send_data_cb(::send_data_cb, nullptr);
+        fillTestData(th_num, s_data->_unsent_data, data_size);
+        s_data->stream->set_received_data_cb(::received_data_cb, s_data.get());
+        s_data->stream->set_state_changed_cb(::state_changed_cb, s_data.get());
+        s_data->stream->set_send_data_cb(::write_data_cb, s_data.get());
         stream_pool[s_data->stream.get()] = std::move(s_data);
       }
-    }
-
-    for (auto &sp : stream_pool) {
-      auto &per_stream_data = sp.second;
-      auto &send_stream = per_stream_data->stream;
-      if (stream::state::e_established != send_stream->get_state() || !per_stream_data->data_received)
-        continue;
-
-      per_stream_data->data_received = false;
-      manager.proceed();
-      send_stream->send(send_data, data_size);
     }
 
     if (!_need_to_handle.empty()) {
@@ -137,12 +159,13 @@ int main(int argc, char **argv) {
   bool print_send_success = false;
   size_t test_time = 1; // in seconds
   size_t connections_per_thread = 1;
+  size_t data_size = 1500;
 
   app.add_option("-a,--address", server_address_string, "server address")->required();
   app.add_option("-p,--port", server_port, "server port")->required();
   app.add_option("-j,--threads", threads_count, "threads count");
   app.add_option("-l,--log", print_debug_info, "print debug info");
-  app.add_option("-d,--data", data_size, "send data size")->type_size(1, max_data_size);
+  app.add_option("-d,--data", data_size, "send data size");
   app.add_option("-w,--send_success", print_send_success, "print send success");
   app.add_option("-t,--test_time", test_time, "test time in seconds");
   app.add_option("-c,--connecions", connections_per_thread, "connections per thread");
@@ -171,7 +194,8 @@ int main(int argc, char **argv) {
                                i,
                                std::ref(worker_pool.back()._stat),
                                std::ref(*worker_pool.back()._manager),
-                               std::ref(worker_pool.back()._stream_pool));
+                               std::ref(worker_pool.back()._stream_pool),
+                               data_size);
   }
 
   std::this_thread::sleep_for(std::chrono::seconds(test_time));

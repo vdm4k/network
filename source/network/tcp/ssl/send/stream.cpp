@@ -164,11 +164,12 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
     switch (error) {
     case SSL_ERROR_WANT_READ: {
       ++_statistic._retry_send_data;
-      continue;
+      disable_send_cb();
+      return 0;
     }
     case SSL_ERROR_WANT_WRITE: {
       ++_statistic._retry_send_data;
-      continue;
+      return 0;
     }
 
     case SSL_ERROR_SYSCALL: {
@@ -203,6 +204,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
     ERR_clear_error();
     rec = SSL_read(_ctx, buffer, buffer_size);
+    enable_send_cb();
     if (rec > 0) {
       ++_statistic._success_recv_data;
       break;
