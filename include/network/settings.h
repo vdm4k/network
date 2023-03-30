@@ -12,9 +12,10 @@ namespace bro::net {
  * \brief common settings for listen/send stream
  */
 struct settings : public strm::settings {
-  std::optional<size_t> _buffer_size;  ///< send/receive buffer size
+  std::optional<size_t> _buffer_size; ///< send/receive buffer size
+  bool _non_blocking = true;
 };
 
-}  // namespace bro::net
+} // namespace bro::net
 
-/** @} */  // end of network_stream
+/** @} */ // end of network_stream

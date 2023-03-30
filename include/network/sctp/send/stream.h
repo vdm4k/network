@@ -86,6 +86,8 @@ public:
 protected:
   [[nodiscard]] virtual bool connection_established();
   void init_config(settings *send_params);
+  void disable_send_cb();
+  void enable_send_cb();
 
   void cleanup();
   [[nodiscard]] bool connect();
@@ -111,6 +113,8 @@ private:
   std::any _param_received_data_cb;         ///< user data for receive data callback
   strm::send_data_cb _send_data_cb;         ///< send data callback
   std::any _param_send_data_cb;             ///< user data for send data callback
+  strm::send_data_cb _send_data_dup_cb;     ///< send data callback
+  std::any _param_send_data_dup_cb;         ///< user data for send data callback
   strm::state_changed_cb _state_changed_cb; ///< state change callback
   std::any _param_state_changed_cb;         ///< user data for state change callback
   settings _settings;                       ///< current settings

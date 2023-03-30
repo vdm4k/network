@@ -201,10 +201,10 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
 
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec = -1;
+  enable_send_cb();
   while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
     ERR_clear_error();
     rec = SSL_read(_ctx, buffer, buffer_size);
-    enable_send_cb();
     if (rec > 0) {
       ++_statistic._success_recv_data;
       break;

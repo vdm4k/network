@@ -51,7 +51,8 @@ private:
   settings _settings;
   statistic _statistic;
 
-  SSL_CTX *_ctx = nullptr;
+  SSL *_fake_ctx = nullptr;
+  SSL_CTX *_server_ctx = nullptr;
 };
 
 } // namespace bro::net::sctp::ssl::listen

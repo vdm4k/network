@@ -67,15 +67,18 @@ bool stream::create_socket(proto::ip::address::version version, type tp) {
 }
 
 bool stream::set_socket_options() {
-#ifdef FIONBIO
-  int mode = 1;
-  if (-1 == ioctl(_file_descr, FIONBIO, &mode)) {
-    set_detailed_error("coulnd't set non blocking mode for socket");
-    set_connection_state(state::e_failed);
-    return false;
-  }
-#endif // FIONBIO
   settings *sparam = (settings *) get_settings();
+#ifdef FIONBIO
+  if (sparam->_non_blocking) {
+    int mode = 1;
+    if (-1 == ioctl(_file_descr, FIONBIO, &mode)) {
+      set_detailed_error("coulnd't set non blocking mode for socket");
+      set_connection_state(state::e_failed);
+      return false;
+    }
+  }
+
+#endif // FIONBIO
   if (sparam->_buffer_size) {
     int optval = *sparam->_buffer_size;
 #ifdef SO_SNDBUF

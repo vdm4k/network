@@ -174,12 +174,36 @@ void stream::set_received_data_cb(strm::received_data_cb cb, std::any user_data)
 }
 
 void stream::set_send_data_cb(strm::send_data_cb cb, std::any user_data) {
+  if (_send_data_dup_cb) {
+    _send_data_dup_cb = cb;
+    _param_send_data_dup_cb = user_data;
+    return;
+  }
   _send_data_cb = cb;
-  _param_send_data_cb = user_data;
+  if (!_send_data_cb)
+    _param_send_data_cb.reset();
+  else
+    _param_send_data_cb = user_data;
   if (_send_data_cb)
     ev::start(_write_io, _loop);
   else
     ev::stop(_write_io, _loop);
+}
+
+void stream::disable_send_cb() {
+  if (_send_data_cb) {
+    swap(_send_data_dup_cb, _send_data_cb);
+    swap(_param_send_data_dup_cb, _param_send_data_cb);
+    ev::stop(_write_io, _loop);
+  }
+}
+
+void stream::enable_send_cb() {
+  if (_send_data_dup_cb) {
+    swap(_send_data_dup_cb, _send_data_cb);
+    swap(_param_send_data_dup_cb, _param_send_data_cb);
+    ev::start(_write_io, _loop);
+  }
 }
 
 bool stream::is_active() const {

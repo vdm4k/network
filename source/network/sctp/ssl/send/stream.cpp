@@ -17,15 +17,20 @@ stream::~stream() {
 
 void stream::cleanup() {
   sctp::send::stream::cleanup();
+  if (_client_ctx) {
+    SSL_CTX_free(_client_ctx);
+    _client_ctx = nullptr;
+  }
+
   if (_ctx) {
     SSL_shutdown(_ctx);
     SSL_free(_ctx);
     _ctx = nullptr;
   }
 
-  if (_client_ctx) {
-    SSL_CTX_free(_client_ctx);
-    _client_ctx = nullptr;
+  if (_bio) {
+    BIO_free_all(_bio);
+    _bio = nullptr;
   }
 }
 
@@ -44,6 +49,7 @@ bool stream::init(settings *send_params) {
   ERR_clear_error();
 
   _client_ctx = SSL_CTX_new(DTLS_client_method());
+
   if (!_client_ctx) {
     set_detailed_error("couldn't create client_ctx: " + tcp::ssl::ssl_error());
     set_connection_state(state::e_failed);
@@ -63,7 +69,7 @@ bool stream::init(settings *send_params) {
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
   /* unless the user explicitly asks to allow the protocol vulnerability we
-     use the work-around */
+       use the work-around */
   if (!_settings._enable_empty_fragments)
     ctx_options &= ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
 #endif
@@ -149,7 +155,11 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
 
     int error = SSL_get_error(_ctx, sent);
     switch (error) {
-    case SSL_ERROR_WANT_READ:
+    case SSL_ERROR_WANT_READ: {
+      disable_send_cb();
+      ++_statistic._retry_send_data;
+      return 0;
+    }
     case SSL_ERROR_WANT_WRITE: {
       ++_statistic._retry_send_data;
       return 0;
@@ -184,6 +194,7 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
 
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec = -1;
+  enable_send_cb();
   while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
     ERR_clear_error();
     rec = SSL_read(_ctx, buffer, buffer_size);
@@ -194,7 +205,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
 
     int error = SSL_get_error(_ctx, rec);
     switch (error) {
-    case SSL_ERROR_ZERO_RETURN: /* Received a close_notify alert. */ {
+    case SSL_ERROR_ZERO_RETURN: { /* Received a close_notify alert. */
       set_detailed_error("ssl read return 0 bytes " + tcp::ssl::ssl_error());
       set_connection_state(state::e_failed);
       break;
@@ -210,10 +221,9 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
       break;
     }
     case SSL_ERROR_WANT_READ: /* We need more data to finish the frame. */
-      continue;
+      return 0;
     case SSL_ERROR_WANT_WRITE: {
-      // TODO: Same as in grpc. need to check, maybe it is actual only for
-      // boringSSL
+      // TODO: Same as in grpc. need to check, maybe it is actual only for boringSSL
       set_connection_state(state::e_failed);
       set_detailed_error("Peer tried to renegotiate SSL connection. This is unsupported. " + tcp::ssl::ssl_error());
       break;

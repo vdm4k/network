@@ -17,13 +17,13 @@ using namespace bro::strm;
 bool print_debug_info = false;
 
 struct per_stream_data {
-  per_stream_data(bool received, stream_ptr &&ptr)
-    : data_received(received)
-    , stream(std::move(ptr)) {}
-  bool data_received;
+  per_stream_data(stream_ptr &&ptr, std::unordered_set<bro::strm::stream *> *need_to_handle)
+    : stream(std::move(ptr))
+    , _need_to_handle(need_to_handle) {}
+
   bro::strm::stream_ptr stream;
-  std::vector<std::byte> _unsent_data;
   std::unordered_set<bro::strm::stream *> *_need_to_handle = nullptr;
+  std::vector<std::byte> _unsent_data;
 };
 
 struct per_thread_data {
@@ -129,7 +129,7 @@ void thread_fun(proto::ip::address const &server_addr,
       auto new_stream = manager.create_stream(&settings);
       if (new_stream->is_active()) {
         manager.bind(new_stream);
-        auto s_data = std::make_unique<per_stream_data>(true, std::move(new_stream));
+        auto s_data = std::make_unique<per_stream_data>(std::move(new_stream), &_need_to_handle);
         fillTestData(th_num, s_data->_unsent_data, data_size);
         s_data->stream->set_received_data_cb(::received_data_cb, s_data.get());
         s_data->stream->set_state_changed_cb(::state_changed_cb, s_data.get());

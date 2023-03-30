@@ -164,9 +164,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
     $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 
 #sanitizer
-if(NOT DEFINED WITH_SANITIZER)
-    option(WITH_SANITIZER "Enable address sanitizer" OFF)
-endif()
+option(WITH_SANITIZER "Enable address sanitizer" OFF)
 
 if(WITH_SANITIZER)
     target_compile_options(${PROJECT_NAME} INTERFACE -fsanitize=address -fPIC)

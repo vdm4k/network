@@ -104,7 +104,7 @@ bool bind_on_sctp_address(proto::ip::full_address &self_address, int file_descr,
   return false;
 }
 
-bool asconf_on(int file_descr, std::string &detailed_error) {
+bool asconf_on(int /*file_descr*/, std::string & /*detailed_error*/) {
 #ifdef SCTP_AUTO_ASCONF
 //  int optval = 1;
 //  if (setsockopt(file_descr, IPPROTO_SCTP, SCTP_AUTO_ASCONF, &optval, sizeof(optval)) < 0) {

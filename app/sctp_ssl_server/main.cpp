@@ -1,6 +1,7 @@
 #include <network/sctp/ssl/listen/settings.h>
 #include <network/sctp/ssl/listen/statistic.h>
 #include <network/sctp/ssl/send/settings.h>
+#include <network/sctp/ssl/send/statistic.h>
 #include <network/stream_factory.h>
 #include <protocols/ip/full_address.h>
 
@@ -21,15 +22,43 @@ size_t data_size = 65000;
 struct data_per_thread {
   std::unordered_set<stream *> _need_to_handle;
   std::unordered_map<stream *, stream_ptr> _streams;
-  size_t _count = 0;
   ev_stream_factory *_manager;
+  std::vector<std::byte> _unsent_data;
+  bool _received = false;
 };
 
-void received_data_cb(stream *stream, std::any data_com) {
-  std::byte data[data_size];
+void write_data_cb(stream *stream, std::any data_com) {
   data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
-  cdata->_count++;
+  if (cdata->_unsent_data.empty()) {
+    stream->set_send_data_cb(nullptr, nullptr);
+    return;
+  }
+
+  ssize_t size = stream->send(cdata->_unsent_data.data(), cdata->_unsent_data.size());
+  if (size > 0) {
+    if (size == cdata->_unsent_data.size()) {
+      cdata->_unsent_data.clear();
+      stream->set_send_data_cb(nullptr, nullptr);
+      return;
+    }
+    cdata->_unsent_data.erase(cdata->_unsent_data.begin(), cdata->_unsent_data.begin() + size);
+    return;
+  }
+  if (size == 0)
+    return;
+
+  if (size < 0) {
+    if (print_debug_info)
+      std::cout << "send error - " << stream->get_detailed_error() << std::endl;
+    cdata->_need_to_handle.insert(stream);
+  }
+}
+
+void received_data_cb(stream *stream, std::any data_com) {
+  data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
+  std::byte data[data_size];
   ssize_t size = stream->receive(data, data_size);
+  cdata->_received = true;
   if (size == 0)
     return;
   if (size > 0) {
@@ -42,6 +71,11 @@ void received_data_cb(stream *stream, std::any data_com) {
     return;
   }
   ssize_t const sent = stream->send(data, size);
+  if (sent == 0) {
+    cdata->_unsent_data.insert(cdata->_unsent_data.end(), data, data + size);
+    stream->set_send_data_cb(::write_data_cb, data_com);
+    return;
+  }
   if (sent <= 0) {
     if (print_debug_info)
       std::cout << "send error - " << stream->get_detailed_error() << std::endl;
@@ -118,24 +152,26 @@ int main(int argc, char **argv) {
   auto endTime = std::chrono::system_clock::now() + std::chrono::seconds(test_time);
 
   sctp::ssl::listen::statistic stat;
-  size_t message_proceed = 0;
   std::cout << "server start" << std::endl;
+  sctp::ssl::send::statistic client_stat;
 
   while (std::chrono::system_clock::now() < endTime && listen_stream->is_active()) {
     manager.proceed();
     if (!cdata._need_to_handle.empty()) {
       auto it = cdata._need_to_handle.begin();
       if (!(*it)->is_active()) {
+        client_stat += *static_cast<sctp::ssl::send::statistic const *>((*it)->get_statistic());
         cdata._streams.erase((*it));
         cdata._need_to_handle.erase(it);
       }
     }
-    if (cdata._count) {
-      message_proceed += cdata._count;
-      cdata._count = 0;
-    } else {
+    if (!cdata._received) {
       std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
+  }
+
+  for (auto &strm : cdata._streams) {
+    client_stat += *static_cast<sctp::ssl::send::statistic const *>(strm.first->get_statistic());
   }
 
   auto const *stream_stat = static_cast<sctp::ssl::listen::statistic const *>(listen_stream->get_statistic());
@@ -144,7 +180,12 @@ int main(int argc, char **argv) {
 
   work = false;
   std::cout << "server stoped" << std::endl;
-  std::cout << "message proceed - " << message_proceed << std::endl;
   std::cout << "success accept connections - " << stat._success_accept_connections << std::endl;
   std::cout << "failed to accept connections - " << stat._failed_to_accept_connections << std::endl;
+  std::cout << "success_send_data - " << client_stat._success_send_data << std::endl;
+  std::cout << "retry_send_data - " << client_stat._retry_send_data << std::endl;
+  std::cout << "failed_send_data - " << client_stat._failed_send_data << std::endl;
+  std::cout << "success_recv_data - " << client_stat._success_recv_data << std::endl;
+  std::cout << "retry_recv_data - " << client_stat._retry_recv_data << std::endl;
+  std::cout << "failed_recv_data - " << client_stat._failed_recv_data << std::endl;
 }
