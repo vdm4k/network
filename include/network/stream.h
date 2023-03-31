@@ -1,6 +1,7 @@
 #pragma once
 #include <protocols/ip/full_address.h>
 #include <stream/stream.h>
+#include <network/buffer.h>
 #include <string>
 
 namespace bro::net {
@@ -94,6 +95,7 @@ protected:
   void cleanup();
 
   int _file_descr = -1; ///< file descriptor
+  buffer _send_buffer;
 
 private:
   strm::state_changed_cb _state_changed_cb; ///< state changed callback

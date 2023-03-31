@@ -26,7 +26,7 @@ public:
    *  \param [in] len data lenght
    *  \return always return 0
    */
-  ssize_t send(std::byte * /*data*/, size_t /*data_size*/) override;
+  ssize_t send(std::byte const * /*data*/, size_t /*data_size*/) override;
 
   /*!
    *  \brief couldn't receive data in listen stream if call this function
@@ -43,13 +43,6 @@ public:
    * \param [in] param parameter for callback function
    */
   void set_received_data_cb(strm::received_data_cb cb, std::any param) override;
-
-  /*! \brief set callback on data receive ( don't do anything )
-   *  \param [in] cb pointer on callback function if nullptr - non
-   * active
-   * \param [in] param parameter for callback function
-   */
-  void set_send_data_cb(strm::send_data_cb cb, std::any param) override;
 
   /*! \brief get actual stream settings
    *  \return settings
@@ -92,7 +85,7 @@ protected:
   virtual std::unique_ptr<send::stream> generate_send_stream();
   virtual void handle_incoming_connection(accept_connection_res const &result);
 
-  [[nodiscard]] virtual bool fill_send_stream(const accept_connection_res &result, std::unique_ptr<send::stream> &sck);
+  [[nodiscard]] virtual bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<send::stream> &sck);
 
   void cleanup();
 

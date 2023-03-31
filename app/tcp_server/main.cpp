@@ -2,6 +2,7 @@
 #include <network/tcp/listen/settings.h>
 #include <network/tcp/listen/statistic.h>
 #include <network/tcp/send/settings.h>
+#include <network/tcp/send/statistic.h>
 #include <protocols/ip/full_address.h>
 
 #include <atomic>
@@ -113,6 +114,7 @@ int main(int argc, char **argv) {
 
   tcp::listen::statistic stat;
   size_t message_proceed = 0;
+  tcp::send::statistic client_stat;
   std::cout << "server start" << std::endl;
 
   while (std::chrono::system_clock::now() < endTime && listen_stream->is_active()) {
@@ -120,6 +122,7 @@ int main(int argc, char **argv) {
     if (!cdata._need_to_handle.empty()) {
       auto it = cdata._need_to_handle.begin();
       if (!(*it)->is_active()) {
+        client_stat += *static_cast<tcp::send::statistic const *>((*it)->get_statistic());
         cdata._streams.erase((*it));
         cdata._need_to_handle.erase(it);
       }
@@ -132,6 +135,10 @@ int main(int argc, char **argv) {
     }
   }
 
+  for (auto &strm : cdata._streams) {
+    client_stat += *static_cast<tcp::send::statistic const *>(strm.first->get_statistic());
+  }
+
   auto const *stream_stat = static_cast<tcp::listen::statistic const *>(listen_stream->get_statistic());
   stat._failed_to_accept_connections += stream_stat->_failed_to_accept_connections;
   stat._success_accept_connections += stream_stat->_success_accept_connections;
@@ -141,4 +148,10 @@ int main(int argc, char **argv) {
   std::cout << "message proceed - " << message_proceed << std::endl;
   std::cout << "success accept connections - " << stat._success_accept_connections << std::endl;
   std::cout << "failed to accept connections - " << stat._failed_to_accept_connections << std::endl;
+  std::cout << "success_send_data - " << client_stat._success_send_data << std::endl;
+  std::cout << "retry_send_data - " << client_stat._retry_send_data << std::endl;
+  std::cout << "failed_send_data - " << client_stat._failed_send_data << std::endl;
+  std::cout << "success_recv_data - " << client_stat._success_recv_data << std::endl;
+  std::cout << "retry_recv_data - " << client_stat._retry_recv_data << std::endl;
+  std::cout << "failed_recv_data - " << client_stat._failed_recv_data << std::endl;
 }

@@ -1,4 +1,5 @@
 #include <atomic>
+#include <csignal>
 #include <network/tcp/ssl/common.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -43,6 +44,17 @@ enum init_state : int {
   e_init,
 };
 
+bool disable_sig_pipe() {
+  // We need this only for openSSL because openSSL send data directly to socket
+  // and it doesn't set MSG_NOSIGNAL
+  // unfortunately signal(SIGPIPE, SIG_IGN); doesn't work on my Ubuntu 22
+  sigset_t sigpipe_mask;
+  sigemptyset(&sigpipe_mask);
+  sigaddset(&sigpipe_mask, SIGPIPE);
+  sigset_t saved_mask;
+  return sigprocmask(SIG_BLOCK, &sigpipe_mask, &saved_mask) == 0;
+}
+
 bool init_openSSL() {
   static bool res{true};
   static std::atomic<init_state> state{e_not_init};
@@ -54,6 +66,7 @@ bool init_openSSL() {
       ;
     return res;
   }
+
   const uint64_t flags =
 #ifdef OPENSSL_INIT_ENGINE_ALL_BUILTIN
     OPENSSL_INIT_ENGINE_ALL_BUILTIN |
@@ -70,6 +83,10 @@ bool init_openSSL() {
   OpenSSL_add_all_algorithms();
   ERR_load_crypto_strings();
 #endif
+
+  //NOTE: probably not the best place, but do it here very ease
+  if (res)
+    res = disable_sig_pipe();
   state.store(init_state::e_init, std::memory_order_release);
   return res;
 }

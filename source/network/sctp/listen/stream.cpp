@@ -15,7 +15,7 @@ stream::~stream() {
   cleanup();
 }
 
-ssize_t stream::send(std::byte * /*data*/, size_t /*data_size*/) {
+ssize_t stream::send(std::byte const * /*data*/, size_t /*data_size*/) {
   set_detailed_error("couldn't send data by listen stream");
   return 0;
 }
@@ -26,8 +26,6 @@ ssize_t stream::receive(std::byte * /*data*/, size_t /*data_size*/) {
 }
 
 void stream::set_received_data_cb(strm::received_data_cb /*cb*/, std::any /*param*/) {}
-
-void stream::set_send_data_cb(strm::send_data_cb /*cb*/, std::any /*param*/) {}
 
 bool stream::is_active() const {
   return get_state() == state::e_wait;
@@ -46,7 +44,7 @@ bool stream::create_listen_socket() {
          && start_listen(_file_descr, _settings._listen_backlog, get_detailed_error());
 }
 
-bool stream::fill_send_stream(const accept_connection_res &result, std::unique_ptr<send::stream> &sck) {
+bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<send::stream> &sck) {
   if (!result) {
     _statistic._failed_to_accept_connections++;
     sck->set_connection_state(state::e_failed);
@@ -69,7 +67,7 @@ std::unique_ptr<send::stream> stream::generate_send_stream() {
   return std::make_unique<send::stream>();
 }
 
-void stream::handle_incoming_connection(const accept_connection_res &result) {
+void stream::handle_incoming_connection(accept_connection_res const &result) {
   auto sck{generate_send_stream()};
   (void) fill_send_stream(result, sck);
   if (_settings._proc_in_conn)

@@ -13,7 +13,7 @@ namespace bro::net {
  */
 struct settings : public strm::settings {
   std::optional<size_t> _buffer_size; ///< send/receive buffer size
-  bool _non_blocking = true;
+  bool _non_blocking = true;          ///< use non blocking socket
 };
 
 } // namespace bro::net

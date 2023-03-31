@@ -16,7 +16,7 @@ void receive_data_cb(struct ev_loop *, ev_io *w, int) {
 
 void send_data_cb(struct ev_loop *, ev_io *w, int) {
   auto *conn = reinterpret_cast<stream *>(w->data);
-  conn->send_data();
+  conn->send_buffered_data();
 }
 
 void connection_established_cb(struct ev_loop *, ev_io *w, int) {
@@ -34,11 +34,9 @@ void stream::assign_loop(struct ev_loop *loop) {
   _loop = loop;
   ev::init(_read_io, receive_data_cb, _file_descr, EV_READ, this);
   if (state::e_established == get_state()) {
-    ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-    if (_send_data_cb) {
-      ev::start(_write_io, _loop);
-    }
     ev::start(_read_io, _loop);
+    ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
+    enable_send_cb();
   } else {
     ev::init(_write_io, connection_established_cb, _file_descr, EV_WRITE, this);
     ev::start(_write_io, _loop);
@@ -86,14 +84,41 @@ bool stream::connection_established() {
 
   ev::stop(_write_io, _loop);
   ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-  if (_send_data_cb)
-    ev::start(_write_io, _loop);
+  enable_send_cb();
   ev::start(_read_io, _loop);
   set_connection_state(state::e_established);
   return true;
 }
 
-ssize_t stream::send(std::byte *data, size_t data_size) {
+ssize_t stream::send(std::byte const *data, size_t data_size) {
+  // check stream state
+  switch (get_state()) {
+  case state::e_established:
+    break;
+  case state::e_wait: {
+    _send_buffer.append(data, data_size);
+    enable_send_cb();
+    return data_size;
+  }
+  case state::e_failed:
+    [[fallthrough]];
+  case state::e_closed: {
+    return -1;
+  }
+  default:
+    break;
+  }
+
+  // check buffer is not empty
+  if (!_send_buffer.is_empty()) {
+    _send_buffer.append(data, data_size);
+    return data_size;
+  }
+
+  return send_data(data, data_size);
+}
+
+ssize_t stream::send_data(std::byte const *data, size_t data_size, bool /*resend*/) {
   ssize_t sent{0};
   sctp_sndrcvinfo sinfo{0, 0, uint16_t(_settings._unordered ? SCTP_UNORDERED : 0), htonl(_settings._ppid), 0, 0, 0, 0, 0};
   while (true) {
@@ -120,6 +145,41 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
     break;
   }
   return sent;
+}
+
+void stream::send_buffered_data() {
+  if (_send_buffer.is_empty()) {
+    disable_send_cb();
+    return;
+  }
+
+  // check stream state
+  switch (get_state()) {
+  case state::e_established: {
+    auto data = _send_buffer.get_data();
+    bool recend = true;
+    auto sent = send_data(data.first, data.second, recend);
+    if (sent > 0)
+      _send_buffer.pop_front(sent);
+    else if (sent < 0)
+      _send_buffer.clear();
+    break;
+  }
+  case state::e_wait: {
+    break;
+  }
+  case state::e_failed:
+    [[fallthrough]];
+  case state::e_closed: {
+    _send_buffer.clear();
+    return;
+  }
+  default:
+    break;
+  }
+
+  if (_send_buffer.is_empty())
+    disable_send_cb();
 }
 
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
@@ -173,37 +233,13 @@ void stream::set_received_data_cb(strm::received_data_cb cb, std::any user_data)
   _param_received_data_cb = user_data;
 }
 
-void stream::set_send_data_cb(strm::send_data_cb cb, std::any user_data) {
-  if (_send_data_dup_cb) {
-    _send_data_dup_cb = cb;
-    _param_send_data_dup_cb = user_data;
-    return;
-  }
-  _send_data_cb = cb;
-  if (!_send_data_cb)
-    _param_send_data_cb.reset();
-  else
-    _param_send_data_cb = user_data;
-  if (_send_data_cb)
-    ev::start(_write_io, _loop);
-  else
-    ev::stop(_write_io, _loop);
-}
-
 void stream::disable_send_cb() {
-  if (_send_data_cb) {
-    swap(_send_data_dup_cb, _send_data_cb);
-    swap(_param_send_data_dup_cb, _param_send_data_cb);
-    ev::stop(_write_io, _loop);
-  }
+  ev::stop(_write_io, _loop);
 }
 
 void stream::enable_send_cb() {
-  if (_send_data_dup_cb) {
-    swap(_send_data_dup_cb, _send_data_cb);
-    swap(_param_send_data_dup_cb, _param_send_data_cb);
+  if (!_send_buffer.is_empty())
     ev::start(_write_io, _loop);
-  }
 }
 
 bool stream::is_active() const {
@@ -223,11 +259,6 @@ void stream::reset_statistic() {
 void stream::receive_data() {
   if (_received_data_cb)
     _received_data_cb(this, _param_received_data_cb);
-}
-
-void stream::send_data() {
-  if (_send_data_cb)
-    _send_data_cb(this, _param_send_data_cb);
 }
 
 void stream::cleanup() {

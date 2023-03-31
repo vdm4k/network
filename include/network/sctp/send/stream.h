@@ -27,7 +27,7 @@ public:
    *  \return ssize_t if ssize_t is positive - sended data size otherwise
    *  ssize_t interpet as error
    */
-  ssize_t send(std::byte *data, size_t data_size) override;
+  ssize_t send(std::byte const *data, size_t data_size) override;
 
   /*! \brief receive data
    *  \param [in] data pointer on buffer
@@ -43,13 +43,6 @@ public:
    * \param [in] param parameter for callback function
    */
   void set_received_data_cb(strm::received_data_cb cb, std::any param) override;
-
-  /*! \brief set callback on data receive
-   *  \param [in] cb pointer on callback function. If we send
-   * nullptr, we switch off handling this type of events
-   * \param [in] param parameter for callback function
-   */
-  void set_send_data_cb(strm::send_data_cb cb, std::any param) override;
 
   /*! \brief get actual stream settings
    *  \return settings
@@ -92,13 +85,21 @@ protected:
   void cleanup();
   [[nodiscard]] bool connect();
 
+  /*! \brief send data
+   *  \param [in] data pointer on data
+   *  \param [in] data_size data lenght
+   *  \return ssize_t if ssize_t is positive - sended data size otherwise
+   *  ssize_t interpet as error
+   */
+  virtual ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false);
+
 private:
   friend void connection_established_cb(struct ev_loop *, ev_io *w, int);
   virtual settings *current_settings();
+  void send_buffered_data();
 
   void stop_events();
   void receive_data();
-  void send_data();
   bool is_sctp_flags_ok(std::byte *buffer);
 
   friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
@@ -111,10 +112,6 @@ private:
   struct ev_loop *_loop = nullptr;          ///< pointer on base event loop
   strm::received_data_cb _received_data_cb; ///< receive data callback
   std::any _param_received_data_cb;         ///< user data for receive data callback
-  strm::send_data_cb _send_data_cb;         ///< send data callback
-  std::any _param_send_data_cb;             ///< user data for send data callback
-  strm::send_data_cb _send_data_dup_cb;     ///< send data callback
-  std::any _param_send_data_dup_cb;         ///< user data for send data callback
   strm::state_changed_cb _state_changed_cb; ///< state change callback
   std::any _param_state_changed_cb;         ///< user data for state change callback
   settings _settings;                       ///< current settings

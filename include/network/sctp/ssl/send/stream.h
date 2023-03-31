@@ -17,18 +17,9 @@ namespace bro::net::sctp::ssl::send {
 /**
  * \brief send stream
  */
-class stream : public sctp::send::stream
-{
+class stream : public sctp::send::stream {
 public:
   ~stream() override;
-
-  /*! \brief send data
-   *  \param [in] data pointer on data
-   *  \param [in] data_size data lenght
-   *  \return ssize_t if ssize_t is positive - sended data size otherwise
-   *  ssize_t interpet as error
-   */
-  ssize_t send(std::byte *data, size_t data_size) override;
 
   /*! \brief receive data
    *  \param [in] data pointer on buffer
@@ -56,6 +47,14 @@ public:
   bool init(settings *send_params);
 
 protected:
+  /*! \brief send data
+   *  \param [in] data pointer on data
+   *  \param [in] data_size data lenght
+   *  \return ssize_t if ssize_t is positive - sended data size otherwise
+   *  ssize_t interpet as error
+   */
+  ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false) override;
+
   void cleanup();
   settings *current_settings() override;
   [[nodiscard]] bool connection_established() override;

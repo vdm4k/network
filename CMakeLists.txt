@@ -11,6 +11,7 @@ set(H_FILES
     include/network/stream.h
     include/network/stream_factory.h
     include/network/common.h
+    include/network/buffer.h
     include/network/settings.h
     include/network/tcp/stream.h
     include/network/tcp/listen/settings.h
@@ -19,6 +20,9 @@ set(H_FILES
     include/network/tcp/send/settings.h
     include/network/tcp/send/statistic.h
     include/network/tcp/send/stream.h
+    include/network/udp/send/settings.h
+    include/network/udp/send/statistic.h
+    include/network/udp/send/stream.h
 )
 
 # core cpp files
@@ -27,6 +31,7 @@ set(CPP_FILES
     source/network/tcp/stream.cpp
     source/network/tcp/listen/stream.cpp
     source/network/tcp/send/stream.cpp
+    source/network/udp/send/stream.cpp
     source/network/stream_factory.cpp
     source/network/stream.cpp
     source/network/common.cpp
@@ -80,11 +85,11 @@ if(WITH_SCTP)
 
     add_definitions(-DWITH_SCTP)
 
-    #TODO: need to fix it ( maybe )
-    include(CheckIncludeFile)
-    CHECK_INCLUDE_FILE(netinet/sctp.h  HAVE_NETINET_SCTP_H)
-    if(NOT HAVE_NETINET_SCTP_H)
-        message(FATAL_ERROR "please install libsctp-dev library to build with sctp support")
+    list(APPEND CMAKE_REQUIRED_LIBRARIES sctp)
+    include(CheckSymbolExists)
+    check_symbol_exists(sctp_send "netinet/sctp.h" HAVE_SCTP_LIBRARY)
+    if(NOT HAVE_SCTP_LIBRARY)
+        message(FATAL_ERROR "You need to install libsctp")
     endif()
 
     add_definitions(-DWITH_SCTP)
@@ -122,12 +127,12 @@ if(WITH_SCTP_SSL)
     list(APPEND CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
     check_symbol_exists(BIO_new_dgram_sctp "openssl/bio.h" HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
     if(NOT HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
-        message(STATUS "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
-                        Probably cmake can't find right version or you
-                        need build openssl with SCTP support.
-                        You can do something like that -
-                        git clone git://git.openssl.org/openssl.git
-                        ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")
+        message(FATAL_ERROR "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
+                             Probably cmake can't find right version or you
+                             need build openssl with SCTP support.
+                             You can do something like that -
+                             git clone git://git.openssl.org/openssl.git
+                             ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")
     endif()
 
     message(STATUS "don't forget to enable sudo sysctl -w net.sctp.auth_enable=1")

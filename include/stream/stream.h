@@ -44,7 +44,7 @@ public:
    *  \return ssize_t if ssize_t is positive - sended data size otherwise
    *  ssize_t interpet as error
    */
-  virtual ssize_t send(std::byte *data, size_t data_size) = 0;
+  virtual ssize_t send(std::byte const *data, size_t data_size) = 0;
 
   /*! \brief receive data
    *  \param [in] data pointer on buffer
@@ -76,13 +76,6 @@ public:
    * \param [in] param parameter for callback function
    */
   virtual void set_received_data_cb(received_data_cb cb, std::any param) = 0;
-
-  /*! \brief set callback on data receive
-   *  \param [in] cb pointer on callback function. If we send
-   * nullptr, we switch off handling this type of events
-   * \param [in] param parameter for callback function
-   */
-  virtual void set_send_data_cb(send_data_cb cb, std::any param) = 0;
 
   /*! \brief set callback on data receive
    *  \param [in] cb pointer on callback function. If we send

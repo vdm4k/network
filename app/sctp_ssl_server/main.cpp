@@ -19,46 +19,21 @@ using namespace bro::strm;
 bool print_debug_info = false;
 size_t data_size = 65000;
 
+using namespace bro::net;
+using namespace bro::strm;
+
 struct data_per_thread {
   std::unordered_set<stream *> _need_to_handle;
   std::unordered_map<stream *, stream_ptr> _streams;
+  size_t _count = 0;
   ev_stream_factory *_manager;
-  std::vector<std::byte> _unsent_data;
-  bool _received = false;
 };
 
-void write_data_cb(stream *stream, std::any data_com) {
-  data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
-  if (cdata->_unsent_data.empty()) {
-    stream->set_send_data_cb(nullptr, nullptr);
-    return;
-  }
-
-  ssize_t size = stream->send(cdata->_unsent_data.data(), cdata->_unsent_data.size());
-  if (size > 0) {
-    if (size == cdata->_unsent_data.size()) {
-      cdata->_unsent_data.clear();
-      stream->set_send_data_cb(nullptr, nullptr);
-      return;
-    }
-    cdata->_unsent_data.erase(cdata->_unsent_data.begin(), cdata->_unsent_data.begin() + size);
-    return;
-  }
-  if (size == 0)
-    return;
-
-  if (size < 0) {
-    if (print_debug_info)
-      std::cout << "send error - " << stream->get_detailed_error() << std::endl;
-    cdata->_need_to_handle.insert(stream);
-  }
-}
-
 void received_data_cb(stream *stream, std::any data_com) {
-  data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
   std::byte data[data_size];
+  data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
+  cdata->_count++;
   ssize_t size = stream->receive(data, data_size);
-  cdata->_received = true;
   if (size == 0)
     return;
   if (size > 0) {
@@ -71,11 +46,6 @@ void received_data_cb(stream *stream, std::any data_com) {
     return;
   }
   ssize_t const sent = stream->send(data, size);
-  if (sent == 0) {
-    cdata->_unsent_data.insert(cdata->_unsent_data.end(), data, data + size);
-    stream->set_send_data_cb(::write_data_cb, data_com);
-    return;
-  }
   if (sent <= 0) {
     if (print_debug_info)
       std::cout << "send error - " << stream->get_detailed_error() << std::endl;
@@ -92,12 +62,12 @@ void state_changed_cb(stream *stream, std::any data_com) {
   }
 }
 
-auto in_connections = [](stream_ptr &&stream, sctp::ssl::listen::settings::in_conn_handler_data_cb data) {
+auto in_connections = [](stream_ptr &&stream, sctp::listen::settings::in_conn_handler_data_cb data) {
   if (!stream->is_active()) {
     std::cerr << "fail to create incomming connection " << stream->get_detailed_error() << std::endl;
     return;
   }
-  auto *linux_stream = dynamic_cast<sctp::ssl::send::settings const *>(stream->get_settings());
+  auto *linux_stream = dynamic_cast<sctp::send::settings const *>(stream->get_settings());
   std::cout << "incoming connection from - " << linux_stream->_peer_addr << ", to - " << *linux_stream->_self_addr
             << std::endl;
 
@@ -109,7 +79,7 @@ auto in_connections = [](stream_ptr &&stream, sctp::ssl::listen::settings::in_co
 };
 
 int main(int argc, char **argv) {
-  CLI::App app{"ssl_server"};
+  CLI::App app{"sctp_ssl_server"};
   std::string server_address_s;
   uint16_t server_port;
   size_t test_time = 1; // in seconds
@@ -165,7 +135,9 @@ int main(int argc, char **argv) {
         cdata._need_to_handle.erase(it);
       }
     }
-    if (!cdata._received) {
+    if (cdata._count) {
+      cdata._count = 0;
+    } else {
       std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
   }

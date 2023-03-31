@@ -23,14 +23,6 @@ class stream : public tcp::send::stream {
 public:
   ~stream() override;
 
-  /*! \brief send data
-   *  \param [in] data pointer on data
-   *  \param [in] data_size data lenght
-   *  \return ssize_t if ssize_t is positive - sended data size otherwise
-   *  ssize_t interpet as error
-   */
-  ssize_t send(std::byte *data, size_t data_size) override;
-
   /*! \brief receive data
    *  \param [in] data pointer on buffer
    *  \param [in] data_size buffer lenght
@@ -60,6 +52,7 @@ protected:
   void cleanup();
   settings *current_settings() override;
   [[nodiscard]] bool connection_established() override;
+  ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false) override;
 
 private:
   friend class ssl::listen::stream;

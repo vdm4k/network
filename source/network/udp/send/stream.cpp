@@ -1,8 +1,8 @@
 #include <network/common.h>
 #include <network/libev/libev.h>
-#include <network/tcp/send/stream.h>
+#include <network/udp/send/stream.h>
 
-namespace bro::net::tcp::send {
+namespace bro::net::udp::send {
 
 stream::~stream() {
   stop_events();
@@ -15,7 +15,7 @@ void receive_data_cb(struct ev_loop *, ev_io *w, int) {
 
 void send_data_cb(struct ev_loop *, ev_io *w, int) {
   auto *conn = reinterpret_cast<stream *>(w->data);
-  conn->send_buffered_data();
+  conn->send_data();
 }
 
 void connection_established_cb(struct ev_loop *, ev_io *w, int) {
@@ -34,8 +34,10 @@ void stream::assign_loop(struct ev_loop *loop) {
   ev::init(_read_io, receive_data_cb, _file_descr, EV_READ, this);
   if (state::e_established == get_state()) {
     ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
+    //    if (_send_data_cb) {
+    //      ev::start(_write_io, _loop);
+    //    }
     ev::start(_read_io, _loop);
-    enable_send_cb();
   } else {
     ev::init(_write_io, connection_established_cb, _file_descr, EV_WRITE, this);
     ev::start(_write_io, _loop);
@@ -84,42 +86,14 @@ bool stream::connection_established() {
 
   ev::stop(_write_io, _loop);
   ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
+  //  if (_send_data_cb)
+  //    ev::start(_write_io, _loop);
   ev::start(_read_io, _loop);
-  enable_send_cb();
   set_connection_state(state::e_established);
   return true;
 }
 
 ssize_t stream::send(std::byte const *data, size_t data_size) {
-  // check stream state
-  switch (get_state()) {
-  case state::e_established:
-    break;
-  case state::e_wait: {
-    _send_buffer.append(data, data_size);
-    enable_send_cb();
-    return data_size;
-  }
-  case state::e_failed:
-    [[fallthrough]];
-  case state::e_closed: {
-    return -1;
-  }
-  default:
-    break;
-  }
-
-  // check buffer is not empty
-  if (!_send_buffer.is_empty()) {
-    _send_buffer.append(data, data_size);
-    return data_size;
-  }
-
-  return send_data(data, data_size);
-}
-
-ssize_t stream::send_data(std::byte const *data, size_t data_size, bool /*resend*/) {
-  // start to send
   ssize_t sent{0};
   while (true) {
     sent = ::send(_file_descr, data, data_size, MSG_NOSIGNAL);
@@ -210,48 +184,25 @@ void stream::receive_data() {
     _received_data_cb(this, _param_received_data_cb);
 }
 
-void stream::send_buffered_data() {
-  if (_send_buffer.is_empty()) {
-    disable_send_cb();
-    return;
-  }
-
-  // check stream state
-  switch (get_state()) {
-  case state::e_established: {
-    auto data = _send_buffer.get_data();
-    bool recend = true;
-    auto sent = send_data(data.first, data.second, recend);
-    if (sent > 0)
-      _send_buffer.pop_front(sent);
-    else if (sent < 0)
-      _send_buffer.clear();
-    break;
-  }
-  case state::e_wait: {
-    break;
-  }
-  case state::e_failed:
-    [[fallthrough]];
-  case state::e_closed: {
-    _send_buffer.clear();
-    return;
-  }
-  default:
-    break;
-  }
-
-  if (_send_buffer.is_empty())
-    disable_send_cb();
+void stream::send_data() {
+  //  if (_send_data_cb)
+  //    _send_data_cb(this, _param_send_data_cb);
 }
 
 void stream::disable_send_cb() {
-  ev::stop(_write_io, _loop);
+  //  if (_send_data_cb) {
+  //    swap(_send_data_dup_cb, _send_data_cb);
+  //    swap(_param_send_data_dup_cb, _param_send_data_cb);
+  //    ev::stop(_write_io, _loop);
+  //  }
 }
 
 void stream::enable_send_cb() {
-  if (!_send_buffer.is_empty())
-    ev::start(_write_io, _loop);
+  //  if (_send_data_dup_cb) {
+  //    swap(_send_data_dup_cb, _send_data_cb);
+  //    swap(_param_send_data_dup_cb, _param_send_data_cb);
+  //    ev::start(_write_io, _loop);
+  //  }
 }
 
 void stream::cleanup() {
@@ -259,4 +210,4 @@ void stream::cleanup() {
   stop_events();
 }
 
-} // namespace bro::net::tcp::send
+} // namespace bro::net::udp::send

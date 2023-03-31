@@ -140,10 +140,7 @@ bool stream::connection_established() {
   return true;
 }
 
-ssize_t stream::send(std::byte *data, size_t data_size) {
-  if (get_state() == state::e_failed)
-    return -1;
-
+ssize_t stream::send_data(std::byte const *data, size_t data_size, bool resend) {
   ssize_t sent = -1;
   while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
     ERR_clear_error();
@@ -156,13 +153,19 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
     int error = SSL_get_error(_ctx, sent);
     switch (error) {
     case SSL_ERROR_WANT_READ: {
-      disable_send_cb();
       ++_statistic._retry_send_data;
-      return 0;
+      // waiting data from peer
+      // hence just buffer out data
+      disable_send_cb();
+      if (!resend) {
+        _send_buffer.append(data, data_size);
+        return data_size;
+      } else
+        return 0;
     }
     case SSL_ERROR_WANT_WRITE: {
       ++_statistic._retry_send_data;
-      return 0;
+      continue;
     }
 
     case SSL_ERROR_SYSCALL: {
@@ -173,11 +176,6 @@ ssize_t stream::send(std::byte *data, size_t data_size) {
         ++_statistic._retry_send_data;
         continue;
       }
-      break;
-    }
-    case SSL_ERROR_SSL: {
-      set_connection_state(state::e_failed);
-      set_detailed_error("SSL_write failed with error " + tcp::ssl::ssl_error());
       break;
     }
     default: {

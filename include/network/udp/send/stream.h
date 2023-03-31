@@ -5,11 +5,11 @@
 #include "settings.h"
 #include "statistic.h"
 
-namespace bro::net::tcp::listen {
+namespace bro::net::udp::listen {
 class stream;
-} // namespace bro::net::tcp::listen
+} // namespace bro::net::udp::listen
 
-namespace bro::net::tcp::send {
+namespace bro::net::udp::send {
 /** @addtogroup ev_stream
  *  @{
  */
@@ -84,13 +84,6 @@ protected:
   void disable_send_cb();
   void enable_send_cb();
 
-  /*! \brief set callback on data receive
-   *  \param [in] cb pointer on callback function. If we send
-   * nullptr, we switch off handling this type of events
-   * \param [in] param parameter for callback function
-   */
-  virtual ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false);
-
 private:
   friend void connection_established_cb(struct ev_loop *, ev_io *w, int);
   virtual settings *current_settings();
@@ -98,12 +91,12 @@ private:
   [[nodiscard]] bool connect();
   void stop_events();
   void receive_data();
-  void send_buffered_data();
+  void send_data();
 
   friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
   friend void send_data_cb(struct ev_loop *, ev_io *w, int);
 
-  friend class bro::net::tcp::listen::stream;
+  friend class bro::net::udp::listen::stream;
 
   ev_io _read_io;                           ///< wait read event
   ev_io _write_io;                          ///< wait write event
@@ -116,6 +109,6 @@ private:
   statistic _statistic;                     ///< statistics
 };
 
-} // namespace bro::net::tcp::send
+} // namespace bro::net::udp::send
 
 /** @} */ // end of ev_stream
