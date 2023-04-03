@@ -30,19 +30,19 @@ void stream::stop_events() {
 void stream::assign_loop(struct ev_loop *loop) {
   stop_events();
   _loop = loop;
-  ev::init(_read_io, receive_data_cb, _file_descr, EV_READ, this);
+  ev::init(_read_io, receive_data_cb, get_fd(), EV_READ, this);
   if (state::e_established == get_state()) {
-    ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
+    ev::init(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
     ev::start(_read_io, _loop);
     enable_send_cb();
   } else {
-    ev::init(_write_io, connection_established_cb, _file_descr, EV_WRITE, this);
+    ev::init(_write_io, connection_established_cb, get_fd(), EV_WRITE, this);
     ev::start(_write_io, _loop);
   }
 }
 
 bool stream::connection_established() {
-  if (!is_connection_established(_file_descr, get_detailed_error())) {
+  if (!is_connection_established(get_fd(), get_detailed_error())) {
     set_connection_state(state::e_failed);
     return false;
   }
@@ -56,7 +56,7 @@ bool stream::connection_established() {
   }
 
   ev::stop(_write_io, _loop);
-  ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
+  ev::init(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
   ev::start(_read_io, _loop);
   enable_send_cb();
   set_connection_state(state::e_established);

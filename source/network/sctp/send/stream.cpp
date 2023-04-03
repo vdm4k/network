@@ -23,7 +23,7 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size, bool /*resend
   ssize_t sent{0};
   sctp_sndrcvinfo sinfo{0, 0, uint16_t(_settings._unordered ? SCTP_UNORDERED : 0), htonl(_settings._ppid), 0, 0, 0, 0, 0};
   while (true) {
-    sent = sctp_send(_file_descr, data, data_size, &sinfo, MSG_NOSIGNAL);
+    sent = sctp_send(get_fd(), data, data_size, &sinfo, MSG_NOSIGNAL);
 
     if (sent > 0) {
       ++_statistic._success_send_data;
@@ -53,7 +53,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec{-1};
   while (true) {
     int msg_flags = MSG_NOSIGNAL;
-    rec = sctp_recvmsg(_file_descr, buffer, buffer_size, nullptr, 0, &sinfo, &msg_flags);
+    rec = sctp_recvmsg(get_fd(), buffer, buffer_size, nullptr, 0, &sinfo, &msg_flags);
     if (msg_flags & MSG_NOTIFICATION) {
       rec = is_sctp_flags_ok(buffer) ? 0 : -1;
       break;
@@ -84,7 +84,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
 }
 
 bool stream::connect() {
-  if (connect_sctp_streams(get_settings()->_peer_addr, _file_descr, get_detailed_error()))
+  if (connect_sctp_streams(get_settings()->_peer_addr, get_fd(), get_detailed_error()))
     return true;
   set_connection_state(state::e_failed);
   return false;
@@ -176,7 +176,7 @@ bool stream::create_socket(proto::ip::address::version version, socket_type s_ty
   if (!net::stream::create_socket(version, s_type)) {
     return false;
   }
-  if (!set_sctp_options(version, (settings *) get_settings(), _file_descr, get_detailed_error())) {
+  if (!set_sctp_options(version, (settings *) get_settings(), get_fd(), get_detailed_error())) {
     cleanup();
     return false;
   }

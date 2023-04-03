@@ -10,9 +10,9 @@ stream::~stream() {
 
 bool stream::create_listen_socket() {
   return create_socket(_settings._listen_address.get_address().get_version(), socket_type::e_tcp)
-         && reuse_address(_file_descr, get_detailed_error())
-         && bind_on_address(_settings._listen_address, _file_descr, get_detailed_error())
-         && start_listen(_file_descr, _settings._listen_backlog, get_detailed_error());
+         && reuse_address(get_fd(), get_detailed_error())
+         && bind_on_address(_settings._listen_address, get_fd(), get_detailed_error())
+         && start_listen(get_fd(), _settings._listen_backlog, get_detailed_error());
 }
 
 std::unique_ptr<strm::stream> stream::generate_send_stream() {
@@ -40,7 +40,7 @@ bool stream::create_socket(proto::ip::address::version version, socket_type s_ty
   if (!net::stream::create_socket(version, s_type)) {
     return false;
   }
-  if (!set_tcp_options(_file_descr, get_detailed_error())) {
+  if (!set_tcp_options(get_fd(), get_detailed_error())) {
     cleanup();
     return false;
   }

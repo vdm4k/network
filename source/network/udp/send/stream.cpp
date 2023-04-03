@@ -31,15 +31,15 @@
 //void stream::assign_loop(struct ev_loop *loop) {
 //  stop_events();
 //  _loop = loop;
-//  ev::init(_read_io, receive_data_cb, _file_descr, EV_READ, this);
+//  ev::init(_read_io, receive_data_cb, get_fd(), EV_READ, this);
 //  if (state::e_established == get_state()) {
-//    ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
+//    ev::init(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
 //    //    if (_send_data_cb) {
 //    //      ev::start(_write_io, _loop);
 //    //    }
 //    ev::start(_read_io, _loop);
 //  } else {
-//    ev::init(_write_io, connection_established_cb, _file_descr, EV_WRITE, this);
+//    ev::init(_write_io, connection_established_cb, get_fd(), EV_WRITE, this);
 //    ev::start(_write_io, _loop);
 //  }
 //}
@@ -48,8 +48,8 @@
 //  _settings = *send_params;
 //  bool res = create_socket(_settings._peer_addr.get_address().get_version(), type::e_tcp) && connect();
 //  if (res && _settings._self_addr) {
-//    res = reuse_address(_file_descr, get_detailed_error())
-//          && bind_on_address(*_settings._self_addr, _file_descr, get_detailed_error());
+//    res = reuse_address(get_fd(), get_detailed_error())
+//          && bind_on_address(*_settings._self_addr, get_fd(), get_detailed_error());
 //  }
 
 //  if (res) {
@@ -63,7 +63,7 @@
 //bool stream::connection_established() {
 //  int err = -1;
 //  socklen_t len = sizeof(err);
-//  int rc = getsockopt(_file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
+//  int rc = getsockopt(get_fd(), SOL_SOCKET, SO_ERROR, &err, &len);
 
 //  if (0 != rc) {
 //    set_detailed_error("getsockopt error");
@@ -85,7 +85,7 @@
 //  }
 
 //  ev::stop(_write_io, _loop);
-//  ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
+//  ev::init(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
 //  //  if (_send_data_cb)
 //  //    ev::start(_write_io, _loop);
 //  ev::start(_read_io, _loop);
@@ -96,7 +96,7 @@
 //ssize_t stream::send(std::byte const *data, size_t data_size) {
 //  ssize_t sent{0};
 //  while (true) {
-//    sent = ::send(_file_descr, data, data_size, MSG_NOSIGNAL);
+//    sent = ::send(get_fd(), data, data_size, MSG_NOSIGNAL);
 //    if (sent > 0) {
 //      ++_statistic._success_send_data;
 //      break;
@@ -124,7 +124,7 @@
 //ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
 //  ssize_t rec{0};
 //  while (true) {
-//    rec = ::recv(_file_descr, buffer, buffer_size, MSG_NOSIGNAL);
+//    rec = ::recv(get_fd(), buffer, buffer_size, MSG_NOSIGNAL);
 //    if (rec > 0) {
 //      ++_statistic._success_recv_data;
 //      break;
@@ -154,7 +154,7 @@
 //}
 
 //bool stream::connect() {
-//  if (connect_stream(_settings._peer_addr, _file_descr, get_detailed_error()))
+//  if (connect_stream(_settings._peer_addr, get_fd(), get_detailed_error()))
 //    return true;
 //  set_connection_state(state::e_failed);
 //  return false;

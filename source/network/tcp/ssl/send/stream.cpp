@@ -127,7 +127,7 @@ bool stream::connection_established() {
     return false;
   }
 
-  if (!SSL_set_fd(_ctx, _file_descr)) {
+  if (!SSL_set_fd(_ctx, get_fd())) {
     set_detailed_error("couldn't set file descriptor " + tcp::ssl::ssl_error());
     set_connection_state(state::e_failed);
     cleanup();

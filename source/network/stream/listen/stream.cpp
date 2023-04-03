@@ -61,7 +61,7 @@ void stream::handle_incoming_connection(accept_connection_res const &result) {
 
 void stream::assign_loop(struct ev_loop *loop) {
   _loop = loop;
-  ev::init(_connect_io, incoming_connection_cb, _file_descr, EV_READ, this);
+  ev::init(_connect_io, incoming_connection_cb, get_fd(), EV_READ, this);
   ev::start(_connect_io, _loop);
 }
 

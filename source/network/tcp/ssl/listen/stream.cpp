@@ -38,7 +38,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
     return false;
   }
 
-  if (!SSL_set_fd(s->_ctx, s->_file_descr)) {
+  if (!SSL_set_fd(s->_ctx, s->get_fd())) {
     s->set_detailed_error("couldn't set file descriptor " + tcp::ssl::ssl_error());
     s->set_connection_state(state::e_failed);
     s->cleanup();

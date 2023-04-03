@@ -33,7 +33,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
     s->cleanup();
     return false;
   }
-  auto *bio = BIO_new_dgram_sctp(s->_file_descr, BIO_NOCLOSE);
+  auto *bio = BIO_new_dgram_sctp(s->get_fd(), BIO_NOCLOSE);
   if (!bio) {
     s->set_detailed_error("couldn't create new bio " + tcp::ssl::ssl_error());
     s->set_connection_state(state::e_failed);
@@ -121,7 +121,7 @@ bool stream::init(settings *listen_params) {
   }
 
   /* Create DTLS/SCTP BIO and connect */
-  auto *bio = BIO_new_dgram_sctp(_file_descr, BIO_CLOSE);
+  auto *bio = BIO_new_dgram_sctp(get_fd(), BIO_CLOSE);
 
   if (!bio) {
     set_detailed_error("couldn't create bio: " + tcp::ssl::ssl_error());

@@ -96,7 +96,7 @@ bool stream::init(settings *send_params) {
   }
 
   /* Create DTLS/SCTP BIO and connect */
-  _bio = BIO_new_dgram_sctp(_file_descr, BIO_CLOSE);
+  _bio = BIO_new_dgram_sctp(get_fd(), BIO_CLOSE);
 
   if (!_bio) {
     set_detailed_error("couldn't create bio: " + tcp::ssl::ssl_error());

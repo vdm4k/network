@@ -101,7 +101,7 @@ protected:
    */
   void cleanup();
 
-  int _file_descr = -1; ///< file descriptor
+  int get_fd() const noexcept { return _file_descr; }
 
 private:
   friend class bro::net::listen::stream;
@@ -110,6 +110,7 @@ private:
   std::any _param_state_changed_cb;         ///< user data for state changed callback
   std::string _err;                         ///< error description ( if set error )
   state _state = state::e_closed;           ///< current state
+  int _file_descr = -1;                     ///< file descriptor
 };
 
 } // namespace bro::net

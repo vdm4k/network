@@ -7,8 +7,8 @@ bool stream::init(settings *send_params) {
   _settings = *send_params;
   bool res = create_socket(_settings._peer_addr.get_address().get_version(), socket_type::e_tcp) && connect();
   if (res && _settings._self_addr) {
-    res = reuse_address(_file_descr, get_detailed_error())
-          && bind_on_address(*_settings._self_addr, _file_descr, get_detailed_error());
+    res = reuse_address(get_fd(), get_detailed_error())
+          && bind_on_address(*_settings._self_addr, get_fd(), get_detailed_error());
   }
 
   if (res) {
@@ -22,7 +22,7 @@ bool stream::init(settings *send_params) {
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec{0};
   while (true) {
-    rec = ::recv(_file_descr, buffer, buffer_size, MSG_NOSIGNAL);
+    rec = ::recv(get_fd(), buffer, buffer_size, MSG_NOSIGNAL);
     if (rec > 0) {
       ++_statistic._success_recv_data;
       break;
@@ -48,7 +48,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
 }
 
 bool stream::connect() {
-  if (connect_stream(_settings._peer_addr, _file_descr, get_detailed_error()))
+  if (connect_stream(_settings._peer_addr, get_fd(), get_detailed_error()))
     return true;
   set_connection_state(state::e_failed);
   return false;
@@ -58,7 +58,7 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size, bool /*resend
   // start to send
   ssize_t sent{0};
   while (true) {
-    sent = ::send(_file_descr, data, data_size, MSG_NOSIGNAL);
+    sent = ::send(get_fd(), data, data_size, MSG_NOSIGNAL);
     if (sent > 0) {
       ++_statistic._success_send_data;
       break;
@@ -91,7 +91,7 @@ bool stream::create_socket(proto::ip::address::version version, socket_type s_ty
   if (!net::stream::create_socket(version, s_type)) {
     return false;
   }
-  if (!set_tcp_options(_file_descr, get_detailed_error())) {
+  if (!set_tcp_options(get_fd(), get_detailed_error())) {
     cleanup();
     return false;
   }
