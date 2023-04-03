@@ -2,7 +2,7 @@
 #include <network/tcp/listen/settings.h>
 
 namespace bro::net::tcp::ssl::listen {
-/** @addtogroup ev_stream
+/** @addtogroup tcp_ssl_stream
  *  @{
  */
 
@@ -18,4 +18,4 @@ struct settings : tcp::listen::settings {
 
 } // namespace bro::net::tcp::ssl::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of tcp_ssl_stream

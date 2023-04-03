@@ -7,7 +7,7 @@ namespace bro::net::listen {
 void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/) {
   auto *c_stream = reinterpret_cast<stream *>(w->data);
   auto addr_t = ((bro::net::listen::settings *) c_stream->get_settings())->_listen_address.get_address().get_version();
-  c_stream->handle_incoming_connection(accept_connection(addr_t, w->fd, c_stream->get_detailed_error()));
+  c_stream->handle_incoming_connection(accept_connection(addr_t, w->fd, c_stream->get_error_description()));
 }
 
 stream::~stream() {
@@ -61,7 +61,7 @@ void stream::handle_incoming_connection(accept_connection_res const &result) {
 
 void stream::assign_loop(struct ev_loop *loop) {
   _loop = loop;
-  ev::init(_connect_io, incoming_connection_cb, get_fd(), EV_READ, this);
+  ev::init_io(_connect_io, incoming_connection_cb, get_fd(), EV_READ, this);
   ev::start(_connect_io, _loop);
 }
 

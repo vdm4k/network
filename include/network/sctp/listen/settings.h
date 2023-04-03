@@ -3,7 +3,7 @@
 #include <network/sctp/settings.h>
 
 namespace bro::net::sctp::listen {
-/** @addtogroup ev_stream
+/** @addtogroup sctp_stream
  *  @{
  */
 
@@ -13,4 +13,4 @@ struct settings : sctp::settings, net::listen::settings {};
 
 } // namespace bro::net::sctp::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of sctp_stream

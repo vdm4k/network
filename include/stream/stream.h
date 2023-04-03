@@ -33,75 +33,87 @@ public:
                    ///< for client side wait for connection with server
     e_established, ///< connection established
     e_failed       ///< connection failed, can check error with
-                   ///< get_detailed_error
+                   ///< get_error_description
   };
 
   virtual ~stream() = default;
 
-  /*! \brief send data
-   *  \param [in] data pointer on data
+  /*! \brief This function sends the specified data
+   *  \param [in] data pointer on a data to send
    *  \param [in] data_size data lenght
-   *  \return ssize_t if ssize_t is positive - sended data size otherwise
-   *  ssize_t interpet as error
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
+   *
+   *  \note in send we use bufferization, hence we can't send half data
    */
   virtual ssize_t send(std::byte const *data, size_t data_size) = 0;
 
-  /*! \brief receive data
-   *  \param [in] data pointer on buffer
+  /*! \brief This function receive data
+   *  \param [in] data pointer on a buffer
    *  \param [in] data_size buffer lenght
-   *  \return ssize_t can be 3 meanings
-   *                if positive = received data size
-   *                if negative = error ( get_detailed_error )
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
    */
   virtual ssize_t receive(std::byte *data, size_t data_size) = 0;
 
   /*! \brief get detailed description about error
-   *  \return std::string error description
+   *  \return error description
+   *
+   *  \note If happens several errors, will be descriptions about all ocured errors
    */
-  virtual std::string const &get_detailed_error() const = 0;
+  virtual std::string const &get_error_description() const = 0;
 
-  /*! \brief state
-   *  \return connection_state
+  /*! \brief get stream state
+   *  \return state
    */
   virtual state get_state() const = 0;
 
-  /*! \brief check if stream is in active state
-   *  \return bool
+  /*! \brief check stream is in active state
+   *  \return true if stream is in active state, false otherwise
+   *
+   *  \note We can't work with inactive state. Nothing bad will happend, but no
+   *  data will send on received.
    */
   virtual bool is_active() const = 0;
 
   /*! \brief set callback on data receive
-   *  \param [in] cb pointer on callback function. If we send
-   * nullptr, we switch off handling this type of events
-   * \param [in] param parameter for callback function
+   *  \param [in] cb pointer on callback function.
+   *  \param [in] param parameter for callback function
+   *
+   *  \note If we want to switch off, we will send nullptr as cb
    */
   virtual void set_received_data_cb(received_data_cb cb, std::any param) = 0;
 
-  /*! \brief set callback on data receive
-   *  \param [in] cb pointer on callback function. If we send
-   * nullptr, we switch off handling this type of events
-   * \param [in] param parameter for callback
-   * function
+  /*! \brief set callback on state change
+   *  \param [in] cb pointer on callback function.
+   *  \param [in] param parameter for callback function
+   *
+   *  \note If we want to switch off, we will send nullptr as cb
    */
   virtual void set_state_changed_cb(state_changed_cb cb, std::any param) = 0;
 
   /*! \brief get actual stream settings
+   *  \return pointer on actual settings
    *
-   *  will always return a pointer on valid settings, hence we can
-   *  recreate failed stream with settings from failed stream
+   *  \note we will always return a pointer on valid settings, hence we can
+   *        recreate failed stream with settings from failed stream
    *
-   *  example (
-   *  stream_ptr failed_stream;
-   *  failed_stream =
-   *  factory::create_stream(failed_stream->get_settings());
-   *  )
-   *
-   * \return * settings
+   *  \code
+   *     stream_ptr failed_stream;
+   *     failed_stream =
+   *     factory::create_stream(failed_stream->get_settings());
+   *  \endcode
    */
   virtual settings const *get_settings() const = 0;
 
-  /*! \brief get actual stream statistic. need to cast to specific statistic
-   *  \return stream_statistic *
+  /*! \brief get actual stream statistic
+   *  \return pointer on actual statistic
+   *
+   *  \note pointer need to cast to specific statistic
    */
   virtual statistic const *get_statistic() const = 0;
 
@@ -118,7 +130,7 @@ using stream_ptr = std::unique_ptr<stream>;
 /*!
  * @brief convert state to const char * representation
  */
-[[maybe_unused]] static inline const char *connection_state_to_str(stream::state st) {
+[[maybe_unused]] static inline char const *state_to_string(stream::state st) {
   switch (st) {
   case stream::state::e_closed:
     return "closed";
@@ -138,7 +150,7 @@ using stream_ptr = std::unique_ptr<stream>;
  * \return std::ostream
  */
 inline std::ostream &operator<<(std::ostream &out, stream::state st) {
-  return out << connection_state_to_str(st);
+  return out << state_to_string(st);
 }
 
 } // namespace bro::strm

@@ -10,10 +10,10 @@ stream::~stream() {
 
 bool stream::create_listen_socket() {
   return create_socket(_settings._listen_address.get_address().get_version(), socket_type::e_sctp)
-         && reuse_address(get_fd(), get_detailed_error())
-         && bind_on_sctp_address(_settings._listen_address, get_fd(), get_detailed_error())
-         && asconf_on(get_fd(), get_detailed_error())
-         && start_listen(get_fd(), _settings._listen_backlog, get_detailed_error());
+         && reuse_address(get_fd(), get_error_description())
+         && bind_on_sctp_address(_settings._listen_address, get_fd(), get_error_description())
+         && asconf_on(get_fd(), get_error_description())
+         && start_listen(get_fd(), _settings._listen_backlog, get_error_description());
 }
 
 bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) {
@@ -54,7 +54,7 @@ bool stream::create_socket(proto::ip::address::version version, socket_type s_ty
   if (!net::stream::create_socket(version, s_type)) {
     return false;
   }
-  if (!set_sctp_options(version, (settings *) get_settings(), get_fd(), get_detailed_error())) {
+  if (!set_sctp_options(version, (settings *) get_settings(), get_fd(), get_error_description())) {
     cleanup();
     return false;
   }

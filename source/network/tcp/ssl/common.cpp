@@ -6,24 +6,24 @@
 
 namespace bro::net::tcp::ssl {
 
-bool check_ceritficate(SSL_CTX *ctx,
+bool set_check_ceritficate(SSL_CTX *ctx,
                        std::string const &cert_path,
                        std::string const &key_path,
-                       std::string &detailed_error) {
+                       std::string &err) {
   /* Set the key and cert */
   if (SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM) <= 0) {
-    detailed_error = ("server certificate not found. " + ssl_error());
+    err = ("server certificate not found. " + ssl_error());
     return false;
   }
 
   if (SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM) <= 0) {
     std::string err_str(ssl_error());
-    detailed_error = ("key certificate not found. " + ssl_error());
+    err = ("key certificate not found. " + ssl_error());
     return false;
   }
 
   if (!SSL_CTX_check_private_key(ctx)) {
-    detailed_error = "invalid private key. " + ssl_error();
+    err = "invalid private key. " + ssl_error();
     return false;
   }
 

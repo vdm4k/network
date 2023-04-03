@@ -4,7 +4,7 @@
 #include "statistic.h"
 
 namespace bro::net::sctp::send {
-/** @addtogroup ev_stream
+/** @addtogroup sctp_stream
  *  @{
  */
 
@@ -40,7 +40,7 @@ public:
   /*!
    *  \brief init send stream
    *  \param [in] send_params pointer on parameters
-   *  \return true if inited. otherwise false (cause in get_detailed_error )
+   *  \return true if inited. otherwise false (cause in get_error_description )
    */
   bool init(settings *send_params);
 
@@ -55,7 +55,7 @@ protected:
    *  \return ssize_t if ssize_t is positive - sended data size otherwise
    *  ssize_t interpet as error
    */
-  ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false) override;
+  ssize_t send_data(std::byte const *data, size_t data_size) override;
 
   void cleanup();
 
@@ -68,4 +68,4 @@ private:
 
 } // namespace bro::net::sctp::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of sctp_stream

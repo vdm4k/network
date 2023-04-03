@@ -102,10 +102,10 @@ bool stream::init(settings *listen_params) {
   //    but I don't see why we need it and how to handle it SSL_CTX_set_options(_server_ctx, ctx_options);
 
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
-    if (!tcp::ssl::check_ceritficate(_server_ctx,
+    if (!tcp::ssl::set_check_ceritficate(_server_ctx,
                                      _settings._certificate_path,
                                      _settings._key_path,
-                                     get_detailed_error())) {
+                                     get_error_description())) {
       set_connection_state(state::e_failed);
       cleanup();
       return false;

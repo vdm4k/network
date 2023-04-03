@@ -2,7 +2,7 @@
 #include <network/stream/send/statistic.h>
 
 namespace bro::net::sctp::send {
-/** @addtogroup ev_stream
+/** @addtogroup sctp_stream
  *  @{
  */
 
@@ -12,4 +12,4 @@ namespace bro::net::sctp::send {
 struct statistic : public net::send::statistic {};
 } // namespace bro::net::sctp::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of sctp_stream

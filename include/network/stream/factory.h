@@ -51,22 +51,20 @@ public:
   /*! \brief create stream
    *  [in] stream_set pointer on settings
    *
-   * Always create stream.
-   * If success created stream we need to bind stream to factory
-   * bind(stream_ptr& stream).
-   * If something went wront we return stream with
-   * failed state and stream::get_detailed_error this can be used to look
-   * an extended error.
+   * \note We always create stream. Even if creaion failed.
+   * If stream created successfully we need to bind stream \ref bind(stream_ptr& stream).
+   * If something went wront we return stream with failed state and
+   * \ref stream::get_error_description can be called to get an error
    *
    *  \return stream_ptr created stream
    */
   strm::stream_ptr create_stream(strm::settings *stream_set) override;
 
   /*! \brief bind stream
-   *  [in] stream
+   *  [in] stream - stream to bind
    *
-   * We always need to bind created stream to factory. Only after that we start
-   * to handle all events
+   * \note We always need to bind created stream to factory. Only after that we start
+   * to handle all events for this stream.
    */
   void bind(strm::stream_ptr &stream) override;
 
@@ -78,7 +76,7 @@ public:
   void proceed() override;
 
 private:
-  struct ev_loop *_ev_loop = nullptr;
+  struct ev_loop *_ev_loop = nullptr; ///< pointer on main loop
 };
 
 } // namespace bro::net::ev

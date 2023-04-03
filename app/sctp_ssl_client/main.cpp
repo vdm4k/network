@@ -35,13 +35,13 @@ void received_data_cb(stream *stream, std::any data_com) {
   ssize_t const sent = stream->send(data, size);
   if (sent <= 0) {
     if (print_debug_info)
-      std::cout << "send error - " << stream->get_detailed_error() << std::endl;
+      std::cout << "send error - " << stream->get_error_description() << std::endl;
   }
 }
 
 void state_changed_cb(stream *stream, std::any data_com) {
   if (print_debug_info)
-    std::cout << "state_changed_cb " << stream->get_state() << ", " << stream->get_detailed_error() << std::endl;
+    std::cout << "state_changed_cb " << stream->get_state() << ", " << stream->get_error_description() << std::endl;
   if (!stream->is_active()) {
     auto *need_to_handle = std::any_cast<std::unordered_set<bro::strm::stream *> *>(data_com);
     need_to_handle->insert(stream);

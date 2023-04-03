@@ -39,14 +39,14 @@ void received_data_cb(stream *stream, std::any data_com) {
       std::cout << "receive message - " << std::string((char *) data, size) << std::endl;
   } else {
     if (print_debug_info)
-      std::cout << "error message - " << stream->get_detailed_error() << std::endl;
+      std::cout << "error message - " << stream->get_error_description() << std::endl;
     cdata->_need_to_handle.insert(stream);
     return;
   }
   ssize_t const sent = stream->send(data, size);
   if (sent <= 0) {
     if (print_debug_info)
-      std::cout << "send error - " << stream->get_detailed_error() << std::endl;
+      std::cout << "send error - " << stream->get_error_description() << std::endl;
     cdata->_need_to_handle.insert(stream);
   }
 }
@@ -62,7 +62,7 @@ void state_changed_cb(stream *stream, std::any data_com) {
 
 auto in_connections = [](stream_ptr &&stream, tcp::listen::settings::in_conn_handler_data_cb data) {
   if (!stream->is_active()) {
-    std::cerr << "fail to create incomming connection " << stream->get_detailed_error() << std::endl;
+    std::cerr << "fail to create incomming connection " << stream->get_error_description() << std::endl;
     return;
   }
   auto *linux_stream = dynamic_cast<tcp::send::settings const *>(stream->get_settings());
@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
   settings._key_path = key_path;
   auto listen_stream = manager.create_stream(&settings);
   if (!listen_stream->is_active()) {
-    std::cerr << "couldn't create listen stream, cause - " << listen_stream->get_detailed_error() << std::endl;
+    std::cerr << "couldn't create listen stream, cause - " << listen_stream->get_error_description() << std::endl;
     return -1;
   }
   manager.bind(listen_stream);

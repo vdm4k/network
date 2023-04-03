@@ -76,10 +76,10 @@ bool stream::init(settings *send_params) {
   SSL_CTX_set_options(_client_ctx, ctx_options);
 
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
-    if (!tcp::ssl::check_ceritficate(_client_ctx,
-                                     _settings._certificate_path,
-                                     _settings._key_path,
-                                     get_detailed_error())) {
+    if (!tcp::ssl::set_check_ceritficate(_client_ctx,
+                                         _settings._certificate_path,
+                                         _settings._key_path,
+                                         get_error_description())) {
       set_connection_state(state::e_failed);
       cleanup();
       return false;
@@ -134,7 +134,7 @@ bool stream::connection_established() {
   return true;
 }
 
-ssize_t stream::send_data(std::byte const *data, size_t data_size, bool resend) {
+ssize_t stream::send_data(std::byte const *data, size_t data_size) {
   ssize_t sent = -1;
   while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
     ERR_clear_error();
@@ -151,11 +151,7 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size, bool resend) 
       // waiting data from peer
       // hence just buffer out data
       disable_send_cb();
-      if (!resend) {
-        _send_buffer.append(data, data_size);
-        return data_size;
-      } else
-        return 0;
+      return 0;
     }
     case SSL_ERROR_WANT_WRITE: {
       ++_statistic._retry_send_data;

@@ -66,7 +66,7 @@
 //  /*!
 //   *  \brief init send stream
 //   *  \param [in] send_params pointer on parameters
-//   *  \return true if inited. otherwise false (cause in get_detailed_error )
+//   *  \return true if inited. otherwise false (cause in get_error_description )
 //   */
 //  bool init(settings *send_params);
 

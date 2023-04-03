@@ -3,7 +3,7 @@
 #include <stream/statistic.h>
 
 namespace bro::net::listen {
-/** @addtogroup ev_stream
+/** @addtogroup network_stream
  *  @{
  */
 
@@ -11,13 +11,15 @@ namespace bro::net::listen {
  * \brief statistic for listen streams
  */
 struct statistic : public strm::statistic {
+  /*! \brief reset statistics
+   */
   void reset() override {
     _success_accept_connections = 0;
     _failed_to_accept_connections = 0;
   }
   uint64_t _success_accept_connections = 0;   ///< accepted connection. fully created streams
-  uint64_t _failed_to_accept_connections = 0; ///< fail to accept connection. reason in stream::get_detailed_error
+  uint64_t _failed_to_accept_connections = 0; ///< fail to accept connection. reason in stream::get_error_description
 };
 } // namespace bro::net::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of network_stream

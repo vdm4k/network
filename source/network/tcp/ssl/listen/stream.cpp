@@ -144,7 +144,7 @@ bool stream::init(settings *listen_params) {
   SSL_CTX_set_options(_ctx, ctx_options);
 
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
-    if (!check_ceritficate(_ctx, _settings._certificate_path, _settings._key_path, get_detailed_error())) {
+    if (!set_check_ceritficate(_ctx, _settings._certificate_path, _settings._key_path, get_error_description())) {
       set_connection_state(state::e_failed);
       cleanup();
       return false;

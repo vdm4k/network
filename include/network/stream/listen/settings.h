@@ -4,7 +4,7 @@
 #include <stream/stream.h>
 
 namespace bro::net::listen {
-/** @addtogroup ev_stream
+/** @addtogroup network_stream
  *  @{
  */
 
@@ -21,4 +21,4 @@ struct settings : net::settings {
 
 } // namespace bro::net::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of network_stream

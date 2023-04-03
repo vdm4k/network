@@ -9,7 +9,7 @@ class stream;
 } // namespace bro::net::tcp::ssl::listen
 
 namespace bro::net::tcp::ssl::send {
-/** @addtogroup ev_stream
+/** @addtogroup tcp_ssl_stream
  *  @{
  */
 
@@ -41,24 +41,24 @@ public:
   /*!
    *  \brief init send stream
    *  \param [in] send_params pointer on parameters
-   *  \return true if inited. otherwise false (cause in get_detailed_error )
+   *  \return true if inited. otherwise false (cause in get_error_description )
    */
   bool init(settings *send_params);
 
 protected:
   void cleanup();
   [[nodiscard]] bool connection_established() override;
-  ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false) override;
+  ssize_t send_data(std::byte const *data, size_t data_size) override;
 
 private:
   friend class ssl::listen::stream;
 
-  SSL *_ctx = nullptr;
-  SSL_CTX *_client_ctx = nullptr;
-  settings _settings;   ///< current settings
-  statistic _statistic; ///< statistics
+  SSL *_ctx = nullptr;            ///< pointer on ssl session
+  SSL_CTX *_client_ctx = nullptr; ///< pointer on ssl context
+  settings _settings;             ///< current settings
+  statistic _statistic;           ///< statistics
 };
 
 } // namespace bro::net::tcp::ssl::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of tcp_ssl_stream

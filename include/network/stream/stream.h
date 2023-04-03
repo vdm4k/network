@@ -56,7 +56,7 @@ public:
   /*! \brief get detailed description about error
    *  \return std::string error description
    */
-  std::string const &get_detailed_error() const override;
+  std::string const &get_error_description() const override;
 
   /*! \brief state
    *  \return connection_state
@@ -95,12 +95,15 @@ protected:
    */
   void set_detailed_error(char const *const err);
 
-  std::string &get_detailed_error();
+  std::string &get_error_description();
 
   /*! \brief cleanup current stream
    */
   void cleanup();
 
+  /*! \brief return actual file descriptor
+   *  \return file descriptor
+   */
   int get_fd() const noexcept { return _file_descr; }
 
 private:

@@ -7,7 +7,7 @@
 
 namespace bro::net::listen {
 
-/** @addtogroup ev_stream
+/** @addtogroup network_stream
  *  @{
  */
 
@@ -29,7 +29,7 @@ public:
 
   /*!
    *  \brief couldn't receive data in listen stream if call this function
-   * stream::get_detailed_error will be set \param [in] ptr pointer on data
+   * stream::get_error_description will be set \param [in] ptr pointer on data
    *  \param [in] ptr pointer on buffer
    *  \param [in] len buffer lenght
    *  \return always return 0
@@ -57,20 +57,28 @@ public:
    */
   void reset_statistic() override;
 
-  /*!
-   *  \brief assign event loop to current stream
+  /*! \brief assign event loop to current stream
    *  \param [in] loop pointer on loop
    */
   void assign_loop(struct ev_loop *loop);
 
 protected:
+  /*! \brief generate send stream of specific type
+   *  \return generated send stream
+   */
   virtual std::unique_ptr<strm::stream> generate_send_stream() = 0;
 
+  /*! \brief process new incomming connection
+   */
   virtual void handle_incoming_connection(accept_connection_res const &result);
 
+  /*! \brief add to new stream specific parameters
+   */
   [[nodiscard]] virtual bool fill_send_stream(accept_connection_res const &result,
                                               std::unique_ptr<strm::stream> &new_stream);
 
+  /*! \brief cleanup/free resources
+   */
   void cleanup();
 
 private:
@@ -83,4 +91,4 @@ private:
 
 } // namespace bro::net::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of network_stream

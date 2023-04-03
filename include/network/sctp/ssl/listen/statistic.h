@@ -2,7 +2,7 @@
 #include <network/sctp/listen/statistic.h>
 
 namespace bro::net::sctp::ssl::listen {
-/** @addtogroup ev_stream
+/** @addtogroup sctp_ssl_stream
  *  @{
  */
 
@@ -12,4 +12,4 @@ namespace bro::net::sctp::ssl::listen {
 struct statistic : public sctp::listen::statistic {};
 } // namespace bro::net::sctp::ssl::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of sctp_ssl_stream

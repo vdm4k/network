@@ -2,7 +2,7 @@
 #include <network/stream/listen/settings.h>
 
 namespace bro::net::tcp::listen {
-/** @addtogroup ev_stream
+/** @addtogroup tcp_stream
  *  @{
  */
 
@@ -12,4 +12,4 @@ struct settings : net::listen::settings {};
 
 } // namespace bro::net::tcp::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of tcp_stream

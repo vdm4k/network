@@ -3,7 +3,7 @@
 #include <stream/statistic.h>
 
 namespace bro::net::send {
-/** @addtogroup ev_stream
+/** @addtogroup network_stream
  *  @{
  */
 
@@ -11,6 +11,8 @@ namespace bro::net::send {
  * \brief statistic for send streams
  */
 struct statistic : public strm::statistic {
+  /*! \brief reset statistics
+   */
   void reset() override {
     _success_send_data = 0;
     _retry_send_data = 0;
@@ -20,6 +22,8 @@ struct statistic : public strm::statistic {
     _failed_recv_data = 0;
   }
 
+  /*! \brief add function
+   */
   statistic &operator+=(statistic const &rhs) {
     _success_send_data += rhs._success_send_data;
     _retry_send_data += rhs._retry_send_data;
@@ -39,4 +43,4 @@ struct statistic : public strm::statistic {
 };
 } // namespace bro::net::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of network_stream

@@ -3,15 +3,54 @@
 
 namespace bro::net::ev {
 
+/** @defgroup libev
+ *  @{
+ */
+
+/*! \brief create new event loop
+ *  \result pointer on event loop
+ */
 struct ev_loop *init();
+
+/*! \brief proceed event loop
+ *  \param loop to proceed
+ */
 void proceed(struct ev_loop *loop);
+
+/*! \brief cleanup event loop
+ *  \result pointer on event loop
+ */
 void clean_up(struct ev_loop *&loop);
-bool is_active(ev_io const &io_active);
-void start(ev_io &active, struct ev_loop *loop);
-void stop(ev_io &active, struct ev_loop *loop);
 
-using io_callback_t = void (*)(struct ev_loop *loop, ev_io *watcher, int flags);
-void init(ev_io &watcher, io_callback_t callback, int fd, int flags,
-          void *connection);
+/*! \brief check if current io is active
+ *  \param io to check
+ *  \result true on succes. false otherwise
+ */
+bool is_active(ev_io const &io);
 
-}  // namespace bro::net::ev
+/*! \brief start io on specific event loop
+ *  \param io to start
+ *  \param loop - main event loop
+ */
+void start(ev_io &io, struct ev_loop *loop);
+
+/*! \brief stop io on event loop
+ *  \param io to start
+ *  \param loop - main event loop
+ */
+void stop(ev_io &io, struct ev_loop *loop);
+
+using io_callback_t = void (*)(struct ev_loop *loop, ev_io *watcher,
+                               int flags); ///< io callback type
+/*! \brief init io with specific parameters
+ *  \param io to feel
+ *  \param callback that will be called
+ *  \param file_descriptor on which will be processing
+ *  \param flags - event type
+ *  \param pointer on associated data
+ */
+void init_io(ev_io &io, io_callback_t callback, int file_descriptor, int flags, void *connection);
+
+} // namespace bro::net::ev
+
+/** @} */ // end of libev

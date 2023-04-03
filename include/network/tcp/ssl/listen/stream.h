@@ -7,7 +7,7 @@
 
 namespace bro::net::tcp::ssl::listen {
 
-/** @addtogroup ev_stream
+/** @addtogroup tcp_ssl_stream
  *  @{
  */
 
@@ -31,7 +31,7 @@ public:
   /*!
    *  \brief init listen stream
    *  \param [in] listen_params pointer on parameters
-   *  \return true if inited. otherwise false (cause in get_detailed_error )
+   *  \return true if inited. otherwise false (cause in get_error_description )
    */
   bool init(settings *listen_params);
 
@@ -51,4 +51,4 @@ private:
 
 } // namespace bro::net::tcp::ssl::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of tcp_ssl_stream

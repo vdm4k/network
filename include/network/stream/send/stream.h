@@ -8,7 +8,7 @@ class stream;
 } // namespace bro::net::listen
 
 namespace bro::net::send {
-/** @addtogroup ev_stream
+/** @addtogroup network_stream
  *  @{
  */
 
@@ -52,7 +52,7 @@ protected:
    * \param [in] param parameter for callback function
    * \param [in] resend - if in resend procedure
    */
-  virtual ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false) = 0;
+  virtual ssize_t send_data(std::byte const *data, size_t data_size) = 0;
 
   /*!
    *  \brief if connection established prepare internal settings
@@ -75,17 +75,25 @@ protected:
    */
   void enable_send_cb();
 
-  buffer _send_buffer;
-
 private:
   friend void connection_established_cb(struct ev_loop *, ev_io *w, int);
-
-  void stop_events();
-  void receive_data();
-  void send_buffered_data();
-
   friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
   friend void send_data_cb(struct ev_loop *, ev_io *w, int);
+
+  /*!
+   *  \brief stop all events
+   */
+  void stop_events();
+
+  /*!
+   *  \brief process incomming data
+   */
+  void receive_data();
+
+  /*!
+   *  \brief send data from buffer
+   */
+  void send_buffered_data();
 
   ev_io _read_io;                           ///< wait read event
   ev_io _write_io;                          ///< wait write event
@@ -94,8 +102,9 @@ private:
   std::any _param_received_data_cb;         ///< user data for receive data callback
   strm::state_changed_cb _state_changed_cb; ///< state change callback
   std::any _param_state_changed_cb;         ///< user data for state change callback
+  buffer _send_buffer;                      ///< send buffer
 };
 
 } // namespace bro::net::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of network_stream

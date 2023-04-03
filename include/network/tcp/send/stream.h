@@ -4,7 +4,7 @@
 #include "statistic.h"
 
 namespace bro::net::tcp::send {
-/** @addtogroup ev_stream
+/** @addtogroup tcp_stream
  *  @{
  */
 
@@ -38,12 +38,12 @@ public:
   /*!
    *  \brief init send stream
    *  \param [in] send_params pointer on parameters
-   *  \return true if inited. otherwise false (cause in get_detailed_error )
+   *  \return true if inited. otherwise false (cause in get_error_description )
    */
   bool init(settings *send_params);
 
 protected:
-  ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false) override;
+  ssize_t send_data(std::byte const *data, size_t data_size) override;
 
   [[nodiscard]] bool create_socket(proto::ip::address::version version, socket_type s_type) override;
 
@@ -58,4 +58,4 @@ private:
 
 } // namespace bro::net::tcp::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of tcp_stream

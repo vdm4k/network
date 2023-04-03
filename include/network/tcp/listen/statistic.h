@@ -2,7 +2,7 @@
 #include <network/stream/listen/statistic.h>
 
 namespace bro::net::tcp::listen {
-/** @addtogroup ev_stream
+/** @addtogroup tcp_stream
  *  @{
  */
 
@@ -12,4 +12,4 @@ namespace bro::net::tcp::listen {
 struct statistic : public net::listen::statistic {};
 } // namespace bro::net::tcp::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of tcp_stream

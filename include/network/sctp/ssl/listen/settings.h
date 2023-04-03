@@ -2,7 +2,7 @@
 #include <network/sctp/listen/settings.h>
 
 namespace bro::net::sctp::ssl::listen {
-/** @addtogroup ev_stream
+/** @addtogroup sctp_ssl_stream
  *  @{
  */
 
@@ -18,4 +18,4 @@ struct settings : sctp::listen::settings {
 
 } // namespace bro::net::sctp::ssl::listen
 
-/** @} */ // end of ev_stream
+/** @} */ // end of sctp_ssl_stream

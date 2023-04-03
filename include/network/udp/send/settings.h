@@ -4,18 +4,18 @@
 
 #include <optional>
 
-namespace bro::net::udp::send {
-/** @addtogroup ev_stream
- *  @{
- */
+//namespace bro::net::udp::send {
+///** @addtogroup ev_stream
+// *  @{
+// */
 
-/*!\brief tcp send stream settings
- */
-struct settings : net::settings {
-  proto::ip::full_address _peer_addr;                ///< peer address
-  std::optional<proto::ip::full_address> _self_addr; ///< self address
-};
+///*!\brief tcp send stream settings
+// */
+//struct settings : net::settings {
+//  proto::ip::full_address _peer_addr;                ///< peer address
+//  std::optional<proto::ip::full_address> _self_addr; ///< self address
+//};
 
-} // namespace bro::net::udp::send
+//} // namespace bro::net::udp::send
 
 /** @} */ // end of ev_stream

@@ -2,7 +2,7 @@
 #include <network/tcp/send/statistic.h>
 
 namespace bro::net::tcp::ssl::send {
-/** @addtogroup ev_stream
+/** @addtogroup tcp_ssl_stream
  *  @{
  */
 
@@ -12,4 +12,4 @@ namespace bro::net::tcp::ssl::send {
 struct statistic : public tcp::send::statistic {};
 } // namespace bro::net::tcp::ssl::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of tcp_ssl_stream

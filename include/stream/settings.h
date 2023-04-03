@@ -9,10 +9,10 @@ namespace bro::strm {
  * \brief stream settings interface
  */
 class settings {
- public:
+public:
   virtual ~settings(){};
 };
 
-}  // namespace bro::strm
+} // namespace bro::strm
 
-/** @} */  // end of network
+/** @} */ // end of stream

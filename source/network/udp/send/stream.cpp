@@ -48,8 +48,8 @@
 //  _settings = *send_params;
 //  bool res = create_socket(_settings._peer_addr.get_address().get_version(), type::e_tcp) && connect();
 //  if (res && _settings._self_addr) {
-//    res = reuse_address(get_fd(), get_detailed_error())
-//          && bind_on_address(*_settings._self_addr, get_fd(), get_detailed_error());
+//    res = reuse_address(get_fd(), get_error_description())
+//          && bind_on_address(*_settings._self_addr, get_fd(), get_error_description());
 //  }
 
 //  if (res) {
@@ -154,7 +154,7 @@
 //}
 
 //bool stream::connect() {
-//  if (connect_stream(_settings._peer_addr, get_fd(), get_detailed_error()))
+//  if (connect_stream(_settings._peer_addr, get_fd(), get_error_description()))
 //    return true;
 //  set_connection_state(state::e_failed);
 //  return false;

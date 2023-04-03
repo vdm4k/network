@@ -2,7 +2,7 @@
 #include <network/stream/send/settings.h>
 
 namespace bro::net::tcp::send {
-/** @addtogroup ev_stream
+/** @addtogroup tcp_stream
  *  @{
  */
 
@@ -12,4 +12,4 @@ struct settings : net::send::settings {};
 
 } // namespace bro::net::tcp::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of tcp_stream

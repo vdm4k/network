@@ -2,7 +2,7 @@
 #include <network/sctp/send/settings.h>
 
 namespace bro::net::sctp::ssl::send {
-/** @addtogroup ev_stream
+/** @addtogroup sctp_ssl_stream
  *  @{
  */
 
@@ -17,4 +17,4 @@ struct settings : sctp::send::settings {
 
 } // namespace bro::net::sctp::ssl::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of sctp_ssl_stream

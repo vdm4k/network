@@ -30,19 +30,19 @@ void stream::stop_events() {
 void stream::assign_loop(struct ev_loop *loop) {
   stop_events();
   _loop = loop;
-  ev::init(_read_io, receive_data_cb, get_fd(), EV_READ, this);
+  ev::init_io(_read_io, receive_data_cb, get_fd(), EV_READ, this);
   if (state::e_established == get_state()) {
-    ev::init(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
+    ev::init_io(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
     ev::start(_read_io, _loop);
     enable_send_cb();
   } else {
-    ev::init(_write_io, connection_established_cb, get_fd(), EV_WRITE, this);
+    ev::init_io(_write_io, connection_established_cb, get_fd(), EV_WRITE, this);
     ev::start(_write_io, _loop);
   }
 }
 
 bool stream::connection_established() {
-  if (!is_connection_established(get_fd(), get_detailed_error())) {
+  if (!is_connection_established(get_fd(), get_error_description())) {
     set_connection_state(state::e_failed);
     return false;
   }
@@ -50,13 +50,13 @@ bool stream::connection_established() {
   if (get_state() != state::e_wait) {
     set_detailed_error(std::string("connection established, but tcp state not in "
                                    "listen state. state is - ")
-                       + connection_state_to_str(get_state()));
+                       + state_to_string(get_state()));
     set_connection_state(state::e_failed);
     return false;
   }
 
   ev::stop(_write_io, _loop);
-  ev::init(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
+  ev::init_io(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
   ev::start(_read_io, _loop);
   enable_send_cb();
   set_connection_state(state::e_established);
@@ -89,7 +89,7 @@ ssize_t stream::send(std::byte const *data, size_t data_size) {
   }
 
   ssize_t sent = send_data(data, data_size);
-  if (sent > 0 && (size_t) sent != data_size) {
+  if (sent >= 0 && (size_t) sent != data_size) {
     _send_buffer.append(data + sent, data_size - sent);
     enable_send_cb();
     return data_size;
@@ -122,10 +122,9 @@ void stream::send_buffered_data() {
   switch (get_state()) {
   case state::e_established: {
     auto data = _send_buffer.get_data();
-    bool recend = true;
-    auto sent = send_data(data.first, data.second, recend);
+    auto sent = send_data(data.first, data.second);
     if (sent > 0)
-      _send_buffer.pop_front(sent);
+      _send_buffer.erase(sent);
     else if (sent < 0)
       _send_buffer.clear();
     break;

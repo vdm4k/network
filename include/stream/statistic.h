@@ -10,9 +10,12 @@ namespace bro::strm {
  */
 struct statistic {
   virtual ~statistic(){};
+
+  /*! \brief reset statistics
+   */
   virtual void reset() = 0;
 };
 
 } // namespace bro::strm
 
-/** @} */ // end of tratata2
+/** @} */ // end of stream

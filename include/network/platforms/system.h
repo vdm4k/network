@@ -6,7 +6,7 @@
 
 namespace bro::net {
 
-/** @addtogroup network_stream
+/** @defgroup platforms
  *  @{
  */
 
@@ -201,4 +201,4 @@ bool set_sctp_options(proto::ip::address::version ver,
 
 } // namespace bro::net
 
-/** @} */ // end of network_stream
+/** @} */ // end of platforms

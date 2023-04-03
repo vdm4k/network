@@ -4,7 +4,7 @@
 #include <protocols/ip/full_address.h>
 
 namespace bro::net::send {
-/** @addtogroup ev_stream
+/** @addtogroup network_stream
  *  @{
  */
 
@@ -17,4 +17,4 @@ struct settings : net::settings {
 
 } // namespace bro::net::send
 
-/** @} */ // end of ev_stream
+/** @} */ // end of network_stream
