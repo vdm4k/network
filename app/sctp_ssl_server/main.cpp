@@ -26,7 +26,7 @@ struct data_per_thread {
   std::unordered_set<stream *> _need_to_handle;
   std::unordered_map<stream *, stream_ptr> _streams;
   size_t _count = 0;
-  stream_factory *_manager;
+  ev::factory *_manager;
 };
 
 void received_data_cb(stream *stream, std::any data_com) {
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  stream_factory manager;
+  ev::factory manager;
   sctp::ssl::listen::settings settings;
   std::atomic_bool work(true);
 

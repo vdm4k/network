@@ -6,8 +6,8 @@ namespace bro::net::listen {
 
 void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/) {
   auto *c_stream = reinterpret_cast<stream *>(w->data);
-  auto *c_set = (bro::net::listen::settings *) c_stream->get_settings();
-  c_stream->handle_incoming_connection(accept_connection(c_set->_listen_address.get_address().get_version(), w->fd));
+  auto addr_t = ((bro::net::listen::settings *) c_stream->get_settings())->_listen_address.get_address().get_version();
+  c_stream->handle_incoming_connection(accept_connection(addr_t, w->fd, c_stream->get_detailed_error()));
 }
 
 stream::~stream() {
@@ -31,17 +31,10 @@ bool stream::is_active() const {
 }
 
 bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &new_stream) {
-  auto *n_stream = dynamic_cast<bro::net::stream *>(new_stream.get());
-  if (!n_stream) {
-    _statistic._failed_to_accept_connections++;
-    set_connection_state(state::e_failed);
-    set_detailed_error("wrong new stream type");
-    return false;
-  }
+  auto *n_stream = (bro::net::stream *) (new_stream.get());
   if (!result) {
     _statistic._failed_to_accept_connections++;
     n_stream->set_connection_state(state::e_failed);
-    n_stream->set_detailed_error("couldn't accept new incomming connection");
     return false;
   }
 

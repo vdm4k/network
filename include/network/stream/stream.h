@@ -90,6 +90,11 @@ protected:
    */
   void set_detailed_error(std::string const &err);
 
+  /*! \brief set detailed error for stream
+   * \param [in] err error description
+   */
+  void set_detailed_error(char const *const err);
+
   std::string &get_detailed_error();
 
   /*! \brief cleanup current stream
@@ -103,7 +108,7 @@ private:
 
   strm::state_changed_cb _state_changed_cb; ///< state changed callback
   std::any _param_state_changed_cb;         ///< user data for state changed callback
-  std::string _detailed_error;              ///< error description ( if set error )
+  std::string _err;                         ///< error description ( if set error )
   state _state = state::e_closed;           ///< current state
 };
 

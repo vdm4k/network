@@ -15,15 +15,15 @@
 #include <network/platforms/libev/libev.h>
 #include <network/tcp/listen/stream.h>
 
-namespace bro::net {
-stream_factory::stream_factory() noexcept
+namespace bro::net::ev {
+factory::factory() noexcept
   : _ev_loop{ev::init()} {}
 
-stream_factory::~stream_factory() {
+factory::~factory() {
   ev::clean_up(_ev_loop);
 }
 
-strm::stream_ptr stream_factory::create_stream(strm::settings *stream_set) {
+strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
 #ifdef WITH_SCTP_SSL
   if (auto *param = dynamic_cast<sctp::ssl::listen::settings *>(stream_set); param) {
     auto sck = std::make_unique<sctp::ssl::listen::stream>();
@@ -73,7 +73,7 @@ strm::stream_ptr stream_factory::create_stream(strm::settings *stream_set) {
   return nullptr;
 }
 
-void stream_factory::bind(strm::stream_ptr &stream) {
+void factory::bind(strm::stream_ptr &stream) {
 #ifdef WITH_SCTP
   if (auto *st = dynamic_cast<sctp::send::stream *>(stream.get()); st) {
     st->assign_loop(_ev_loop);
@@ -94,8 +94,8 @@ void stream_factory::bind(strm::stream_ptr &stream) {
   }
 }
 
-void stream_factory::proceed() {
+void factory::proceed() {
   ev::proceed(_ev_loop);
 }
 
-} // namespace bro::net
+} // namespace bro::net::ev

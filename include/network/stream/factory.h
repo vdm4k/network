@@ -2,7 +2,7 @@
 #include <stream/factory.h>
 struct ev_loop;
 
-namespace bro::net {
+namespace bro::net::ev {
 /** @defgroup network_stream
  *  @{
  */
@@ -10,19 +10,19 @@ namespace bro::net {
 /**
  * \brief stream factory (based on libev)
  */
-class stream_factory : public strm::factory {
+class factory : public strm::factory {
 public:
   /**
    * default constructor
    */
-  stream_factory() noexcept;
+  factory() noexcept;
 
   /**
    * \brief disabled copy ctor
    *
    * We can't copy and handle event loop
    */
-  stream_factory(stream_factory const &) = delete;
+  factory(factory const &) = delete;
 
   /**
    * \brief disabled move ctor
@@ -30,7 +30,7 @@ public:
    * Can be dangerous. Need to remeber all binded streams.
    * (If we override existing loop with already binded streams)
    */
-  stream_factory(stream_factory &&) = delete;
+  factory(factory &&) = delete;
 
   /**
    * \brief disabled move assign operator
@@ -38,15 +38,15 @@ public:
    * Can be dangerous. Need to remeber all binded streams.
    * (If we override existing loop with already binded streams)
    */
-  stream_factory &operator=(stream_factory &&) = delete;
+  factory &operator=(factory &&) = delete;
 
   /**
    * \brief disabled assign operator
    *
    * We can't copy and handle event loop
    */
-  stream_factory &operator=(stream_factory const &) = delete;
-  ~stream_factory();
+  factory &operator=(factory const &) = delete;
+  ~factory();
 
   /*! \brief create stream
    *  [in] stream_set pointer on settings
@@ -81,6 +81,6 @@ private:
   struct ev_loop *_ev_loop = nullptr;
 };
 
-} // namespace bro::net
+} // namespace bro::net::ev
 
 /** @} */ // end of network_stream

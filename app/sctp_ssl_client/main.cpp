@@ -68,7 +68,7 @@ void thread_fun(proto::ip::address const &server_addr,
                 size_t thread_number,
                 sctp::ssl::send::statistic &stat,
                 size_t data_size) {
-  stream_factory manager;
+  ev::factory manager;
   sctp::ssl::send::settings settings;
   settings._peer_addr = {server_addr, server_port};
   settings._non_blocking_socket = false;

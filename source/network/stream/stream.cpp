@@ -8,11 +8,11 @@ stream::~stream() {
 }
 
 std::string const &stream::get_detailed_error() const {
-  return _detailed_error;
+  return _err;
 }
 
 std::string &stream::get_detailed_error() {
-  return _detailed_error;
+  return _err;
 }
 
 stream::state stream::get_state() const {
@@ -32,11 +32,12 @@ void stream::set_connection_state(state new_state) {
     _state_changed_cb(this, _param_state_changed_cb);
 }
 
-void stream::set_detailed_error(std::string const &str) {
-  if (!_detailed_error.empty())
-    _detailed_error += "; " + fill_error(str);
-  else
-    _detailed_error = fill_error(str);
+void stream::set_detailed_error(std::string const &err) {
+  append_error(_err, err);
+}
+
+void stream::set_detailed_error(char const *const err) {
+  append_error(_err, err);
 }
 
 bool stream::create_socket(proto::ip::address::version version, socket_type s_type) {

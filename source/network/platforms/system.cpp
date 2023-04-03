@@ -11,55 +11,70 @@
 #endif
 namespace bro::net {
 
-std::string fill_error(char const *const error_des) {
-  std::string status(error_des);
+std::string fill_error(char const *const err) {
   if (errno) {
+    std::string status(err);
     status = status + ", errno - " + strerror(errno);
     errno = 0;
+    return status;
   }
-  return status;
+  return err;
 }
 
-std::string fill_error(std::string const &error_des) {
-  std::string status(error_des);
+std::string fill_error(std::string const &err) {
   if (errno) {
+    std::string status(err);
     status = status + ", errno - " + strerror(errno);
     errno = 0;
+    return status;
   }
-  return status;
+  return err;
 }
 
-bool set_tcp_options(int file_descr, std::string &detailed_error) {
+void append_error(std::string &to, std::string const &new_err) {
+  if (!to.empty())
+    to += "; " + fill_error(new_err);
+  else
+    to = fill_error(new_err);
+}
+
+void append_error(std::string &to, char const *const new_err) {
+  if (!to.empty())
+    to += "; " + fill_error(new_err);
+  else
+    to = fill_error(new_err);
+}
+
+bool set_tcp_options(int file_descr, std::string &err) {
 #if defined __linux__ && defined TCP_NODELAY
   /* Set the NODELAY option */
   int optval = 1;
   if (0 != ::setsockopt(file_descr, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char const *>(&optval), sizeof(optval))) {
-    detailed_error.append(fill_error("set tcp no delay failed"));
+    append_error(err, "set tcp no delay failed");
     errno = 0;
     return false;
   }
-  return true;
 #endif // TCP_NODELAY
   return true;
 }
 
-bool is_connection_established(int file_descr, std::string &detailed_error) {
-  int err = -1;
-  socklen_t len = sizeof(err);
-  int rc = getsockopt(file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
+bool is_connection_established(int file_descr, std::string &err) {
+  int optval = -1;
+  socklen_t optlen = sizeof(optval);
+  int rc = getsockopt(file_descr, SOL_SOCKET, SO_ERROR, &optval, &optlen);
 
   if (0 != rc) {
-    detailed_error.append(fill_error("getsockopt error"));
+    append_error(err, "getsockopt error");
     return false;
   }
-  if (0 != err) {
-    detailed_error.append(fill_error("connection not established"));
+  if (0 != optval) {
+    append_error(err, "connection not established");
     return false;
   }
   return true;
 }
 
-std::optional<proto::ip::full_address> get_address_from_fd(proto::ip::address::version ver, int file_descr) {
+std::optional<proto::ip::full_address> get_address_from_file_descr(proto::ip::address::version ver, int file_descr) {
   switch (ver) {
   case proto::ip::address::version::e_v4: {
     struct sockaddr_in t_local_addr = {0, 0, {0}, {0}};
@@ -81,16 +96,14 @@ std::optional<proto::ip::full_address> get_address_from_fd(proto::ip::address::v
   return std::nullopt;
 }
 
-proto::ip::full_address get_address_from_fd(proto::ip::address::version ver,
-                                            int file_descr,
-                                            std::string &detailed_error) {
+proto::ip::full_address get_address_from_file_descr(proto::ip::address::version ver, int file_descr, std::string &err) {
   switch (ver) {
   case proto::ip::address::version::e_v4: {
     struct sockaddr_in t_local_addr = {0, 0, {0}, {0}};
     socklen_t addrlen = sizeof(t_local_addr);
     if (0 == getsockname(file_descr, (struct sockaddr *) &t_local_addr, &addrlen))
       return proto::ip::full_address(t_local_addr);
-    detailed_error.append(fill_error("couldn't get address from file descriptor(ipv4)"));
+    append_error(err, "couldn't get address from file descriptor(ipv4)");
     break;
   }
   case proto::ip::address::version::e_v6: {
@@ -98,76 +111,76 @@ proto::ip::full_address get_address_from_fd(proto::ip::address::version ver,
     socklen_t addrlen = sizeof(t_local_addr);
     if (0 == getsockname(file_descr, (struct sockaddr *) &t_local_addr, &addrlen))
       return proto::ip::full_address(t_local_addr);
-    detailed_error.append(fill_error("couldn't get address from file descriptor(ipv6)"));
+    append_error(err, "couldn't get address from file descriptor(ipv6)");
     break;
   }
   case proto::ip::address::version::e_none: {
-    detailed_error = "incorrect address type";
+    append_error(err, "incorrect address type");
     break;
   }
   }
   return {};
 }
 
-bool bind_on_address(proto::ip::full_address &self_address, int file_descr, std::string &detailed_error) {
+bool bind_on_address(proto::ip::full_address &self_address, int file_descr, std::string &err) {
   switch (self_address.get_address().get_version()) {
   case proto::ip::address::version::e_v4: {
     sockaddr_in local_addr = self_address.to_native_v4();
     if (0 == ::bind(file_descr, reinterpret_cast<sockaddr *>(&local_addr), sizeof(local_addr)))
       return true;
-    detailed_error.append(fill_error("couldn't bind on address - " + self_address.to_string()));
+    append_error(err, "couldn't bind on address - " + self_address.to_string());
     break;
   }
   case proto::ip::address::version::e_v6: {
     sockaddr_in6 local_addr = self_address.to_native_v6();
     if (0 == ::bind(file_descr, reinterpret_cast<sockaddr *>(&local_addr), sizeof(local_addr)))
       return true;
-    detailed_error.append(fill_error("couldn't bind on address - " + self_address.to_string()));
+    append_error(err, "couldn't bind on address - " + self_address.to_string());
     break;
   }
   default:
-    detailed_error.append("incorrect self address pass to function bind_on_address");
+    append_error(err, "incorrect self address pass to function bind_on_address");
     break;
   }
   return false;
 }
 
 #ifdef WITH_SCTP
-bool bind_on_sctp_address(proto::ip::full_address &self_address, int file_descr, std::string &detailed_error) {
+bool bind_on_sctp_address(proto::ip::full_address &self_address, int file_descr, std::string &err) {
   switch (self_address.get_address().get_version()) {
   case proto::ip::address::version::e_v4: {
     sockaddr_in local_addr = self_address.to_native_v4();
     if (0 == sctp_bindx(file_descr, reinterpret_cast<sockaddr *>(&local_addr), 1, SCTP_BINDX_ADD_ADDR))
       return true;
-    detailed_error.append(fill_error("couldn't bind on sctp address - " + self_address.to_string()));
+    append_error(err, "couldn't bind on sctp address - " + self_address.to_string());
     break;
   }
   case proto::ip::address::version::e_v6: {
     sockaddr_in6 local_addr = self_address.to_native_v6();
     if (0 == sctp_bindx(file_descr, reinterpret_cast<sockaddr *>(&local_addr), 1, SCTP_BINDX_ADD_ADDR))
       return true;
-    detailed_error.append(fill_error("couldn't bind on sctp address - " + self_address.to_string()));
+    append_error(err, "couldn't bind on sctp address - " + self_address.to_string());
     break;
   }
   default:
-    detailed_error.append("incorrect self address pass to function bind_on_address");
+    append_error(err, "incorrect self address pass to function bind_on_address");
     break;
   }
   return false;
 }
 
-bool asconf_on(int /*file_descr*/, std::string & /*detailed_error*/) {
+bool asconf_on(int /*file_descr*/, std::string & /*err*/) {
 #ifdef SCTP_AUTO_ASCONF
 //  int optval = 1;
 //  if (setsockopt(file_descr, IPPROTO_SCTP, SCTP_AUTO_ASCONF, &optval, sizeof(optval)) < 0) {
-//    detailed_error.append(std::string("couldn't set option asconf for sctp, errno - ") + strerror(errno));
+//    err.append(std::string("couldn't set option asconf for sctp, errno - ") + strerror(errno));
 //    return false;
 //  }
 #endif /* SCTP_AUTO_ASCONF */
   return true;
 }
 
-bool connect_sctp_streams(proto::ip::full_address const &peer_addr, int file_descr, std::string &detailed_error) {
+bool connect_sctp_streams(proto::ip::full_address const &peer_addr, int file_descr, std::string &err) {
   int rc = -1;
   switch (peer_addr.get_address().get_version()) {
   case proto::ip::address::version::e_v4: {
@@ -181,21 +194,21 @@ bool connect_sctp_streams(proto::ip::full_address const &peer_addr, int file_des
     break;
   }
   default: {
-    detailed_error.append("incorrect peer address");
+    append_error(err, "incorrect peer address");
     return false;
   }
   }
   if (0 == rc || EINPROGRESS == errno)
     return true;
 
-  detailed_error.append(fill_error("coulnd't connect to sctp server - " + peer_addr.to_string()));
+  append_error(err, "coulnd't connect to sctp server - " + peer_addr.to_string());
   return false;
 }
 
 bool set_sctp_options(proto::ip::address::version ver,
                       bro::net::sctp::settings *settings,
                       int file_descr,
-                      std::string &detailed_error) {
+                      std::string &err) {
   /* Set the NODELAY option (Nagle-like algorithm) */
 
 /* Set the association parameters: max number of retransmits, ... */
@@ -207,7 +220,7 @@ bool set_sctp_options(proto::ip::address::version ver,
   /* Note that this must remain less than the sum of retransmission parameters
    * of the different paths. */
   if (-1 == setsockopt(file_descr, IPPROTO_SCTP, SCTP_ASSOCINFO, &assoc, sizeof(assoc))) {
-    detailed_error.append("coulnd't set sctp maximum number of retransmit");
+    append_error(err, "coulnd't set sctp maximum number of retransmit");
     return false;
   }
 #endif // SCTP_ASSOCINFO
@@ -223,7 +236,7 @@ bool set_sctp_options(proto::ip::address::version ver,
   init.sinit_max_attempts = settings->_sinit_max_attempts;
   init.sinit_max_instreams = settings->_sinit_num_istreams;
   if (-1 == setsockopt(file_descr, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init))) {
-    detailed_error.append("coulnd't set sctp init message parameters");
+    append_error(err, "coulnd't set sctp init message parameters");
     return false;
   }
 #endif // SCTP_INITMSG
@@ -237,7 +250,7 @@ bool set_sctp_options(proto::ip::address::version ver,
     linger.l_linger = 0; /* Ignored, but it would mean : Return immediately when closing (=>
               abort) (graceful shutdown in background) */
     if (-1 == setsockopt(file_descr, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger))) {
-      detailed_error.append("coulnd't set sctp so linger option");
+      append_error(err, "coulnd't set sctp so linger option");
       return false;
     }
   }
@@ -250,7 +263,7 @@ bool set_sctp_options(proto::ip::address::version ver,
       //            bind fails in some environments */
       ;
       if (-1 == setsockopt(file_descr, IPPROTO_SCTP, SCTP_I_WANT_MAPPED_V4_ADDR, &v4mapped, sizeof(v4mapped))) {
-        detailed_error.append("coulnd't enable mapped if v4 address for sctp");
+        append_error(err, "coulnd't enable mapped if v4 address for sctp");
         return false;
       }
     }
@@ -275,7 +288,7 @@ bool set_sctp_options(proto::ip::address::version ver,
   event.sctp_authentication_event = settings->_sctp_authentication_event;     /* when new key is made active */
 
   if (-1 == setsockopt(file_descr, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event))) {
-    detailed_error.append("coulnd't enable sctp events");
+    append_error(err, "coulnd't enable sctp events");
     return false;
   }
 
@@ -287,7 +300,7 @@ bool set_sctp_options(proto::ip::address::version ver,
     int nofrag = 0;
     /* We turn ON the fragmentation, since Diameter  messages & TLS messages can be quite large. */
     if (-1 == setsockopt(file_descr, IPPROTO_SCTP, SCTP_DISABLE_FRAGMENTS, &nofrag, sizeof(nofrag))) {
-      detailed_error.append("coulnd't enable fragmentation for sctp messages");
+      append_error(err, "coulnd't enable fragmentation for sctp messages");
       return false;
     }
   }
@@ -311,7 +324,7 @@ bool set_sctp_options(proto::ip::address::version ver,
 
     /* Set the option to the socket */
     if (-1 == setsockopt(file_descr, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &parms, sizeof(parms))) {
-      detailed_error.append("coulnd't enable sctp heart beats");
+      append_error(err, "coulnd't enable sctp heart beats");
       return false;
     };
 
@@ -323,7 +336,7 @@ bool set_sctp_options(proto::ip::address::version ver,
 
 #endif // WITH_SCTP
 
-bool connect_stream(proto::ip::full_address const &peer_addr, int file_descr, std::string &detailed_error) {
+bool connect_stream(proto::ip::full_address const &peer_addr, int file_descr, std::string &err) {
   int rc = -1;
   switch (peer_addr.get_address().get_version()) {
   case proto::ip::address::version::e_v4: {
@@ -337,45 +350,45 @@ bool connect_stream(proto::ip::full_address const &peer_addr, int file_descr, st
     break;
   }
   default: {
-    detailed_error.append("incorrect peer address");
+    append_error(err, "incorrect peer address");
     return false;
   }
   }
   if (0 == rc || EINPROGRESS == errno)
     return true;
-  detailed_error.append(fill_error("coulnd't connect to server - " + peer_addr.to_string()));
+  append_error(err, "coulnd't connect to server - " + peer_addr.to_string());
   return false;
 }
 
-bool reuse_address(int file_descr, std::string &detailed_error) {
+bool reuse_address(int file_descr, std::string &err) {
   int reuseaddr = 1;
   if (-1 == setsockopt(file_descr, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<void const *>(&reuseaddr), sizeof(int))) {
-    detailed_error.append(fill_error("couldn't reuse address"));
+    append_error(err, "couldn't reuse address");
     return false;
   }
   return true;
 }
 
-bool start_listen(int file_descr, int listen_backlog, std::string &detailed_error) {
+bool start_listen(int file_descr, int listen_backlog, std::string &err) {
   if (0 != ::listen(file_descr, listen_backlog)) {
-    detailed_error.append(fill_error("server listen is failed"));
+    append_error(err, "server listen is failed");
     return false;
   }
   return true;
 }
 
-bool set_non_blocking_mode(int file_descr, std::string &detailed_error) {
+bool set_non_blocking_mode(int file_descr, std::string &err) {
 #ifdef FIONBIO
   int mode = 1;
   if (-1 == ioctl(file_descr, FIONBIO, &mode)) {
-    detailed_error.append(fill_error("coulnd't set non blocking mode for socket"));
+    append_error(err, "coulnd't set non blocking mode for socket");
     return false;
   }
 #endif // FIONBIO
   return true;
 }
 
-bool set_socket_buffer_size(int file_descr, int buffer_size, std::string &detailed_error) {
+bool set_socket_buffer_size(int file_descr, int buffer_size, std::string &err) {
 #ifdef SO_SNDBUF
   if (-1
       == setsockopt(file_descr,
@@ -383,7 +396,7 @@ bool set_socket_buffer_size(int file_descr, int buffer_size, std::string &detail
                     SO_SNDBUF,
                     reinterpret_cast<char const *>(&buffer_size),
                     sizeof(buffer_size))) {
-    detailed_error.append(fill_error("coulnd't set send buffer size"));
+    append_error(err, "coulnd't set send buffer size");
     return false;
   }
 #endif // SO_SNDBUF
@@ -394,29 +407,27 @@ bool set_socket_buffer_size(int file_descr, int buffer_size, std::string &detail
                     SO_RCVBUF,
                     reinterpret_cast<char const *>(&buffer_size),
                     sizeof(buffer_size))) {
-    detailed_error.append(fill_error("coulnd't set receive buffer size"));
+    append_error(err, "coulnd't set receive buffer size");
     return false;
   }
 #endif // SO_RCVBUF
   return true;
 }
 
-bool close_socket(int &file_descr, std::string &detailed_error) {
+bool close_socket(int &file_descr, std::string &err) {
   bool res = true;
   if (-1 != file_descr) {
     if (-1 == ::close(file_descr)) {
       res = false;
-      detailed_error.append(fill_error("close socket return an error"));
+      append_error(err, "close socket return an error");
     }
     file_descr = -1;
   }
   return res;
 }
 
-std::optional<int> create_socket(proto::ip::address::version proto_ver,
-                                 socket_type s_type,
-                                 std::string &detailed_error) {
-  int af_type = proto::ip::address::version::e_v6 == proto_ver ? AF_INET6 : AF_INET;
+std::optional<int> create_socket(proto::ip::address::version ver, socket_type s_type, std::string &err) {
+  int af_type = proto::ip::address::version::e_v6 == ver ? AF_INET6 : AF_INET;
   int protocol = 0;
   int type = 0;
   switch (s_type) {
@@ -433,22 +444,22 @@ std::optional<int> create_socket(proto::ip::address::version proto_ver,
     type = SOCK_DGRAM;
     break;
   default:
-    detailed_error = "incorrect socket type";
+    append_error(err, "incorrect socket type");
     return std::nullopt;
   }
 
   int file_des = ::socket(af_type, type, protocol);
   if (-1 == file_des) {
-    detailed_error.append(fill_error("coulnd't create socket"));
+    append_error(err, "coulnd't create socket");
     return std::nullopt;
   }
   return file_des;
 }
 
-accept_connection_res accept_connection(proto::ip::address::version ip_version, int server_fd) {
-  new_connection_details res;
+accept_connection_res accept_connection(proto::ip::address::version ver, int server_fd, std::string &err) {
+  accept_connection_details res;
   res._client_fd = -1;
-  switch (ip_version) {
+  switch (ver) {
   case proto::ip::address::version::e_v4: {
     struct sockaddr_in t_peer_addr = {0, 0, {0}, {0}};
     socklen_t addrlen = sizeof(t_peer_addr);
@@ -484,10 +495,11 @@ accept_connection_res accept_connection(proto::ip::address::version ip_version, 
     break;
   }
   if (-1 != res._client_fd) {
-    if (auto addr = get_address_from_fd(ip_version, res._client_fd); addr) // NOTE: actualy it never fails
+    if (auto addr = get_address_from_file_descr(ver, res._client_fd); addr) // NOTE: actualy it never fails
       res._self_address = *addr;
     return res;
-  }
+  } else
+    append_error(err, "coulnd't accept connection");
   return std::nullopt;
 }
 

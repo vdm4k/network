@@ -93,7 +93,7 @@ public:
    *  example (
    *  stream_ptr failed_stream;
    *  failed_stream =
-   * stream_factory::create_stream(failed_stream->get_settings());
+   *  factory::create_stream(failed_stream->get_settings());
    *  )
    *
    * \return * settings

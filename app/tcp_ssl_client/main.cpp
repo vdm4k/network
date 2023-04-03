@@ -68,7 +68,7 @@ void thread_fun(proto::ip::address const &server_addr,
                 tcp::ssl::send::statistic &stat,
                 size_t data_size) {
   tcp::ssl::send::settings settings;
-  stream_factory manager;
+  ev::factory manager;
   settings._peer_addr = {server_addr, server_port};
   std::vector<std::byte> initial_data;
   fillTestData(thread_number, initial_data, data_size);
