@@ -1,5 +1,5 @@
 #include <ev.h>
-#include <network/libev/libev.h>
+#include <network/platforms/libev/libev.h>
 
 #include <climits>
 #include <string>
@@ -15,7 +15,9 @@ void clean_up(struct ev_loop *&loop) {
   loop = nullptr;
 }
 
-bool is_active(struct ev_io const &io_active) { return 0 != io_active.active; }
+bool is_active(struct ev_io const &io_active) {
+  return 0 != io_active.active;
+}
 
 void start(struct ev_io &active, struct ev_loop *loop) {
   if (!is_active(active)) {
@@ -29,8 +31,7 @@ void stop(struct ev_io &active, struct ev_loop *loop) {
   }
 }
 
-void init(ev_io &watcher, io_callback_t callback, int fd, int flags,
-          void *connection) {
+void init(ev_io &watcher, io_callback_t callback, int fd, int flags, void *connection) {
   memset(&watcher, 0, sizeof(watcher));
   watcher.fd = fd;
   watcher.cb = callback;
@@ -38,6 +39,8 @@ void init(ev_io &watcher, io_callback_t callback, int fd, int flags,
   watcher.data = connection;
 }
 
-void proceed(struct ev_loop *loop) { ev_loop(loop, EVRUN_ONCE | EVRUN_NOWAIT); }
+void proceed(struct ev_loop *loop) {
+  ev_loop(loop, EVRUN_ONCE | EVRUN_NOWAIT);
+}
 
-}  // namespace bro::net::ev
+} // namespace bro::net::ev

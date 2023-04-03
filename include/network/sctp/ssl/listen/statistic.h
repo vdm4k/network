@@ -1,6 +1,5 @@
 #pragma once
 #include <network/sctp/listen/statistic.h>
-#include <stdint.h>
 
 namespace bro::net::sctp::ssl::listen {
 /** @addtogroup ev_stream

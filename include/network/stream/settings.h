@@ -1,6 +1,5 @@
 #pragma once
 #include <stream/settings.h>
-
 #include <optional>
 
 namespace bro::net {
@@ -9,11 +8,11 @@ namespace bro::net {
  */
 
 /**
- * \brief common settings for listen/send stream
+ * \brief common settings for both listen and send streams
  */
 struct settings : public strm::settings {
   std::optional<size_t> _buffer_size; ///< send/receive buffer size
-  bool _non_blocking = true;          ///< use non blocking socket
+  bool _non_blocking_socket = true;   ///< use non blocking socket
 };
 
 } // namespace bro::net

@@ -8,21 +8,21 @@ namespace bro::net {
  */
 
 /**
- * \brief stream factory based on libev
+ * \brief stream factory (based on libev)
  */
-class ev_stream_factory : public strm::factory {
+class stream_factory : public strm::factory {
 public:
   /**
    * default constructor
    */
-  ev_stream_factory() noexcept;
+  stream_factory() noexcept;
 
   /**
    * \brief disabled copy ctor
    *
    * We can't copy and handle event loop
    */
-  ev_stream_factory(ev_stream_factory const &) = delete;
+  stream_factory(stream_factory const &) = delete;
 
   /**
    * \brief disabled move ctor
@@ -30,7 +30,7 @@ public:
    * Can be dangerous. Need to remeber all binded streams.
    * (If we override existing loop with already binded streams)
    */
-  ev_stream_factory(ev_stream_factory &&) = delete;
+  stream_factory(stream_factory &&) = delete;
 
   /**
    * \brief disabled move assign operator
@@ -38,15 +38,15 @@ public:
    * Can be dangerous. Need to remeber all binded streams.
    * (If we override existing loop with already binded streams)
    */
-  ev_stream_factory &operator=(ev_stream_factory &&) = delete;
+  stream_factory &operator=(stream_factory &&) = delete;
 
   /**
    * \brief disabled assign operator
    *
    * We can't copy and handle event loop
    */
-  ev_stream_factory &operator=(ev_stream_factory const &) = delete;
-  ~ev_stream_factory();
+  stream_factory &operator=(stream_factory const &) = delete;
+  ~stream_factory();
 
   /*! \brief create stream
    *  [in] stream_set pointer on settings

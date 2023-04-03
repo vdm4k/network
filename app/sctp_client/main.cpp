@@ -1,6 +1,6 @@
 #include <network/sctp/send/settings.h>
 #include <network/sctp/send/statistic.h>
-#include <network/stream_factory.h>
+#include <network/stream/factory.h>
 #include <protocols/ip/full_address.h>
 
 #include <atomic>
@@ -69,7 +69,7 @@ void thread_fun(proto::ip::address const &server_addr,
                 size_t data_size) {
   sctp::send::settings settings;
 
-  ev_stream_factory manager;
+  stream_factory manager;
   settings._peer_addr = {server_addr, server_port};
   std::vector<std::byte> initial_data;
   fillTestData(thread_number, initial_data, data_size);

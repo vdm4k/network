@@ -7,34 +7,41 @@ set(H_FILES
     include/stream/factory.h
     include/stream/settings.h
     include/stream/statistic.h
-    include/network/libev/libev.h
-    include/network/stream.h
-    include/network/stream_factory.h
-    include/network/common.h
-    include/network/buffer.h
-    include/network/settings.h
-    include/network/tcp/stream.h
+    include/network/stream/stream.h
+    include/network/stream/factory.h
+    include/network/stream/settings.h
+    include/network/stream/send/settings.h
+    include/network/stream/send/statistic.h
+    include/network/stream/send/stream.h
+    include/network/stream/listen/settings.h
+    include/network/stream/listen/statistic.h
+    include/network/stream/listen/stream.h
+
     include/network/tcp/listen/settings.h
     include/network/tcp/listen/statistic.h
     include/network/tcp/listen/stream.h
     include/network/tcp/send/settings.h
     include/network/tcp/send/statistic.h
-    include/network/tcp/send/stream.h
+    include/network/tcp/send/stream.h    
     include/network/udp/send/settings.h
     include/network/udp/send/statistic.h
     include/network/udp/send/stream.h
+    include/network/common/buffer.h
+    include/network/platforms/system.h
+    include/network/platforms/libev/libev.h
 )
 
 # core cpp files
 set(CPP_FILES
-    source/network/libev/libev.cpp
-    source/network/tcp/stream.cpp
     source/network/tcp/listen/stream.cpp
     source/network/tcp/send/stream.cpp
     source/network/udp/send/stream.cpp
-    source/network/stream_factory.cpp
-    source/network/stream.cpp
-    source/network/common.cpp
+    source/network/stream/send/stream.cpp
+    source/network/stream/listen/stream.cpp
+    source/network/stream/factory.cpp
+    source/network/stream/stream.cpp
+    source/network/platforms/libev/libev.cpp
+    source/network/platforms/system.cpp
 )
 
 # SSL
@@ -95,7 +102,6 @@ if(WITH_SCTP)
     add_definitions(-DWITH_SCTP)
     set(H_FILES ${H_FILES}
         include/network/sctp/settings.h
-        include/network/sctp/stream.h
         include/network/sctp/listen/settings.h
         include/network/sctp/listen/statistic.h
         include/network/sctp/listen/stream.h
@@ -105,7 +111,6 @@ if(WITH_SCTP)
     )
 
     set(CPP_FILES ${CPP_FILES}
-        source/network/sctp/stream.cpp
         source/network/sctp/listen/stream.cpp
         source/network/sctp/send/stream.cpp
     )

@@ -1,50 +1,11 @@
-#include <network/common.h>
-#include <network/libev/libev.h>
+#include <network/platforms/system.h>
 #include <network/tcp/send/stream.h>
 
 namespace bro::net::tcp::send {
 
-stream::~stream() {
-  stop_events();
-}
-
-void receive_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<stream *>(w->data);
-  conn->receive_data();
-}
-
-void send_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<stream *>(w->data);
-  conn->send_buffered_data();
-}
-
-void connection_established_cb(struct ev_loop *, ev_io *w, int) {
-  auto *tr = reinterpret_cast<stream *>(w->data);
-  tr->connection_established();
-}
-
-void stream::stop_events() {
-  ev::stop(_read_io, _loop);
-  ev::stop(_write_io, _loop);
-}
-
-void stream::assign_loop(struct ev_loop *loop) {
-  stop_events();
-  _loop = loop;
-  ev::init(_read_io, receive_data_cb, _file_descr, EV_READ, this);
-  if (state::e_established == get_state()) {
-    ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-    ev::start(_read_io, _loop);
-    enable_send_cb();
-  } else {
-    ev::init(_write_io, connection_established_cb, _file_descr, EV_WRITE, this);
-    ev::start(_write_io, _loop);
-  }
-}
-
 bool stream::init(settings *send_params) {
   _settings = *send_params;
-  bool res = create_socket(_settings._peer_addr.get_address().get_version(), type::e_tcp) && connect();
+  bool res = create_socket(_settings._peer_addr.get_address().get_version(), socket_type::e_tcp) && connect();
   if (res && _settings._self_addr) {
     res = reuse_address(_file_descr, get_detailed_error())
           && bind_on_address(*_settings._self_addr, _file_descr, get_detailed_error());
@@ -58,64 +19,39 @@ bool stream::init(settings *send_params) {
   return res;
 }
 
-bool stream::connection_established() {
-  int err = -1;
-  socklen_t len = sizeof(err);
-  int rc = getsockopt(_file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
+ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
+  ssize_t rec{0};
+  while (true) {
+    rec = ::recv(_file_descr, buffer, buffer_size, MSG_NOSIGNAL);
+    if (rec > 0) {
+      ++_statistic._success_recv_data;
+      break;
+    }
 
-  if (0 != rc) {
-    set_detailed_error("getsockopt error");
-    set_connection_state(state::e_failed);
-    return false;
-  }
-  if (0 != err) {
-    set_detailed_error("connection not established");
-    set_connection_state(state::e_failed);
-    return false;
-  }
+    if (EAGAIN == errno || EWOULDBLOCK == errno || EINTR == errno) {
+      errno = 0;
+      ++_statistic._retry_recv_data;
+      continue;
+    }
 
-  if (get_state() != state::e_wait) {
-    set_detailed_error(std::string("connection established, but tcp state not in "
-                                   "listen state. state is - ")
-                       + connection_state_to_str(get_state()));
-    set_connection_state(state::e_failed);
-    return false;
-  }
+    // 0 may also be returned if the requested number of bytes to receive from a stream socket was 0
+    if (buffer_size == 0 && rec == 0)
+      break;
 
-  ev::stop(_write_io, _loop);
-  ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-  ev::start(_read_io, _loop);
-  enable_send_cb();
-  set_connection_state(state::e_established);
-  return true;
+    set_detailed_error("recv return error");
+    set_connection_state(state::e_failed);
+    ++_statistic._failed_recv_data;
+    rec = -1;
+    break;
+  }
+  return rec;
 }
 
-ssize_t stream::send(std::byte const *data, size_t data_size) {
-  // check stream state
-  switch (get_state()) {
-  case state::e_established:
-    break;
-  case state::e_wait: {
-    _send_buffer.append(data, data_size);
-    enable_send_cb();
-    return data_size;
-  }
-  case state::e_failed:
-    [[fallthrough]];
-  case state::e_closed: {
-    return -1;
-  }
-  default:
-    break;
-  }
-
-  // check buffer is not empty
-  if (!_send_buffer.is_empty()) {
-    _send_buffer.append(data, data_size);
-    return data_size;
-  }
-
-  return send_data(data, data_size);
+bool stream::connect() {
+  if (connect_stream(_settings._peer_addr, _file_descr, get_detailed_error()))
+    return true;
+  set_connection_state(state::e_failed);
+  return false;
 }
 
 ssize_t stream::send_data(std::byte const *data, size_t data_size, bool /*resend*/) {
@@ -147,116 +83,19 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size, bool /*resend
   return sent;
 }
 
-ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
-  ssize_t rec{0};
-  while (true) {
-    rec = ::recv(_file_descr, buffer, buffer_size, MSG_NOSIGNAL);
-    if (rec > 0) {
-      ++_statistic._success_recv_data;
-      break;
-    }
-
-    if (EAGAIN == errno || EWOULDBLOCK == errno || EINTR == errno) {
-      errno = 0;
-      ++_statistic._retry_recv_data;
-      continue;
-    }
-
-    // 0 may also be returned if the requested number of bytes to receive from a stream socket was 0
-    if (buffer_size == 0 && rec == 0)
-      break;
-
-    set_detailed_error("recv return error");
-    set_connection_state(state::e_failed);
-    ++_statistic._failed_recv_data;
-    rec = -1;
-    break;
-  }
-  return rec;
-}
-
-settings *stream::current_settings() {
-  return &_settings;
-}
-
-bool stream::connect() {
-  if (connect_stream(_settings._peer_addr, _file_descr, get_detailed_error()))
-    return true;
-  set_connection_state(state::e_failed);
-  return false;
-}
-
-void stream::set_received_data_cb(strm::received_data_cb cb, std::any user_data) {
-  _received_data_cb = cb;
-  _param_received_data_cb = user_data;
-}
-
-bool stream::is_active() const {
-  auto st = get_state();
-  return st == state::e_wait || st == state::e_established;
-}
-
 void stream::reset_statistic() {
-  _statistic._success_send_data = 0;
-  _statistic._retry_send_data = 0;
-  _statistic._failed_send_data = 0;
-  _statistic._success_recv_data = 0;
-  _statistic._retry_recv_data = 0;
-  _statistic._failed_recv_data = 0;
+  _statistic.reset();
 }
 
-void stream::receive_data() {
-  if (_received_data_cb)
-    _received_data_cb(this, _param_received_data_cb);
-}
-
-void stream::send_buffered_data() {
-  if (_send_buffer.is_empty()) {
-    disable_send_cb();
-    return;
+bool stream::create_socket(proto::ip::address::version version, socket_type s_type) {
+  if (!net::stream::create_socket(version, s_type)) {
+    return false;
   }
-
-  // check stream state
-  switch (get_state()) {
-  case state::e_established: {
-    auto data = _send_buffer.get_data();
-    bool recend = true;
-    auto sent = send_data(data.first, data.second, recend);
-    if (sent > 0)
-      _send_buffer.pop_front(sent);
-    else if (sent < 0)
-      _send_buffer.clear();
-    break;
+  if (!set_tcp_options(_file_descr, get_detailed_error())) {
+    cleanup();
+    return false;
   }
-  case state::e_wait: {
-    break;
-  }
-  case state::e_failed:
-    [[fallthrough]];
-  case state::e_closed: {
-    _send_buffer.clear();
-    return;
-  }
-  default:
-    break;
-  }
-
-  if (_send_buffer.is_empty())
-    disable_send_cb();
-}
-
-void stream::disable_send_cb() {
-  ev::stop(_write_io, _loop);
-}
-
-void stream::enable_send_cb() {
-  if (!_send_buffer.is_empty())
-    ev::start(_write_io, _loop);
-}
-
-void stream::cleanup() {
-  tcp::stream::cleanup();
-  stop_events();
+  return true;
 }
 
 } // namespace bro::net::tcp::send

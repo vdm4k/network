@@ -10,25 +10,27 @@
 #include <network/sctp/ssl/listen/stream.h>
 #include <network/sctp/ssl/send/stream.h>
 #endif
-#include <network/settings.h>
-#include <network/stream_factory.h>
+#include <network/stream/settings.h>
+#include <network/stream/factory.h>
+#include <network/platforms/libev/libev.h>
 #include <network/tcp/listen/stream.h>
 
 namespace bro::net {
-ev_stream_factory::ev_stream_factory() noexcept : _ev_loop{ev::init()} {}
+stream_factory::stream_factory() noexcept
+  : _ev_loop{ev::init()} {}
 
-ev_stream_factory::~ev_stream_factory() { ev::clean_up(_ev_loop); }
+stream_factory::~stream_factory() {
+  ev::clean_up(_ev_loop);
+}
 
-strm::stream_ptr ev_stream_factory::create_stream(strm::settings *stream_set) {
+strm::stream_ptr stream_factory::create_stream(strm::settings *stream_set) {
 #ifdef WITH_SCTP_SSL
-  if (auto *param = dynamic_cast<sctp::ssl::listen::settings *>(stream_set);
-      param) {
+  if (auto *param = dynamic_cast<sctp::ssl::listen::settings *>(stream_set); param) {
     auto sck = std::make_unique<sctp::ssl::listen::stream>();
     sck->init(param);
     return sck;
   }
-  if (auto *param = dynamic_cast<sctp::ssl::send::settings *>(stream_set);
-      param) {
+  if (auto *param = dynamic_cast<sctp::ssl::send::settings *>(stream_set); param) {
     auto sck = std::make_unique<sctp::ssl::send::stream>();
     sck->init(param);
     return sck;
@@ -47,14 +49,12 @@ strm::stream_ptr ev_stream_factory::create_stream(strm::settings *stream_set) {
   }
 #endif
 #ifdef WITH_SSL
-  if (auto *param = dynamic_cast<tcp::ssl::listen::settings *>(stream_set);
-      param) {
+  if (auto *param = dynamic_cast<tcp::ssl::listen::settings *>(stream_set); param) {
     auto sck = std::make_unique<tcp::ssl::listen::stream>();
     sck->init(param);
     return sck;
   }
-  if (auto *param = dynamic_cast<tcp::ssl::send::settings *>(stream_set);
-      param) {
+  if (auto *param = dynamic_cast<tcp::ssl::send::settings *>(stream_set); param) {
     auto sck = std::make_unique<tcp::ssl::send::stream>();
     sck->init(param);
     return sck;
@@ -73,7 +73,7 @@ strm::stream_ptr ev_stream_factory::create_stream(strm::settings *stream_set) {
   return nullptr;
 }
 
-void ev_stream_factory::bind(strm::stream_ptr &stream) {
+void stream_factory::bind(strm::stream_ptr &stream) {
 #ifdef WITH_SCTP
   if (auto *st = dynamic_cast<sctp::send::stream *>(stream.get()); st) {
     st->assign_loop(_ev_loop);
@@ -94,6 +94,8 @@ void ev_stream_factory::bind(strm::stream_ptr &stream) {
   }
 }
 
-void ev_stream_factory::proceed() { ev::proceed(_ev_loop); }
+void stream_factory::proceed() {
+  ev::proceed(_ev_loop);
+}
 
 } // namespace bro::net

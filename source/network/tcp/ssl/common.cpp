@@ -4,8 +4,6 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#include <mutex>
-
 namespace bro::net::tcp::ssl {
 
 bool check_ceritficate(SSL_CTX *ctx,

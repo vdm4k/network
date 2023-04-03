@@ -10,4 +10,6 @@ namespace bro::net::tcp::ssl {
                                      std::string &detailed_error);
 [[nodiscard]] bool init_openSSL();
 std::string ssl_error();
+
+bool disable_sig_pipe();
 } // namespace bro::net::tcp::ssl

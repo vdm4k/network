@@ -1,8 +1,11 @@
 #pragma once
 #include <protocols/ip/full_address.h>
+#include <network/platforms/system.h>
 #include <stream/stream.h>
-#include <network/buffer.h>
-#include <string>
+
+namespace bro::net::listen {
+class stream;
+} // namespace bro::net::listen
 
 namespace bro::net {
 /** @defgroup network_stream
@@ -10,7 +13,8 @@ namespace bro::net {
  */
 
 /**
- * \brief common stream for listen/send stream
+ * \brief This class common for all listen and send streams.
+ *        Here we process create/delete socket and error handling.
  */
 class stream : public strm::stream {
 public:
@@ -68,14 +72,12 @@ public:
   void set_state_changed_cb(strm::state_changed_cb cb, std::any param) override;
 
 protected:
-  enum class type { e_tcp, e_sctp };
-
-  [[nodiscard]] virtual bool set_socket_specific_options(proto::ip::address::version addr_ver) = 0;
-
   /*! \brief create new socket
    */
-  [[nodiscard]] bool create_socket(proto::ip::address::version version, type tp);
+  [[nodiscard]] virtual bool create_socket(proto::ip::address::version version, socket_type s_type);
 
+  /*! \brief set base socket options
+   */
   [[nodiscard]] bool set_socket_options();
 
   /*! \brief set state for stream
@@ -86,7 +88,7 @@ protected:
   /*! \brief set detailed error for stream
    * \param [in] err error description
    */
-  void set_detailed_error(const std::string &err);
+  void set_detailed_error(std::string const &err);
 
   std::string &get_detailed_error();
 
@@ -95,9 +97,10 @@ protected:
   void cleanup();
 
   int _file_descr = -1; ///< file descriptor
-  buffer _send_buffer;
 
 private:
+  friend class bro::net::listen::stream;
+
   strm::state_changed_cb _state_changed_cb; ///< state changed callback
   std::any _param_state_changed_cb;         ///< user data for state changed callback
   std::string _detailed_error;              ///< error description ( if set error )

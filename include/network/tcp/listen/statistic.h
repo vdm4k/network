@@ -1,6 +1,5 @@
 #pragma once
-#include <stdint.h>
-#include <stream/statistic.h>
+#include <network/stream/listen/statistic.h>
 
 namespace bro::net::tcp::listen {
 /** @addtogroup ev_stream
@@ -10,12 +9,7 @@ namespace bro::net::tcp::listen {
 /**
  * \brief statistic for listen stream
  */
-struct statistic : public strm::statistic {
-  uint64_t _success_accept_connections =
-      0;  ///< accepted connection. fully created streams
-  uint64_t _failed_to_accept_connections =
-      0;  ///< fail to accept connection. reason in stream::get_detailed_error
-};
-}  // namespace bro::net::tcp::listen
+struct statistic : public net::listen::statistic {};
+} // namespace bro::net::tcp::listen
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

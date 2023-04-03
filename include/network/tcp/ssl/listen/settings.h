@@ -1,9 +1,5 @@
 #pragma once
 #include <network/tcp/listen/settings.h>
-#include <protocols/ip/full_address.h>
-
-#include <any>
-#include <functional>
 
 namespace bro::net::tcp::ssl::listen {
 /** @addtogroup ev_stream
@@ -20,6 +16,6 @@ struct settings : tcp::listen::settings {
   bool _enable_http2 = false;
 };
 
-}  // namespace bro::net::tcp::ssl::listen
+} // namespace bro::net::tcp::ssl::listen
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

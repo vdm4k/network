@@ -1,9 +1,8 @@
 #pragma once
+#include <openssl/types.h>
+#include <network/sctp/send/stream.h>
 #include "settings.h"
 #include "statistic.h"
-#include <network/sctp/send/stream.h>
-#include <openssl/bio.h>
-#include <openssl/ssl.h>
 
 namespace bro::net::sctp::ssl::listen {
 class stream;
@@ -56,7 +55,6 @@ protected:
   ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false) override;
 
   void cleanup();
-  settings *current_settings() override;
   [[nodiscard]] bool connection_established() override;
 
 private:

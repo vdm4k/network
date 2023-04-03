@@ -1,13 +1,9 @@
 #pragma once
-#include <network/libev/libev.h>
+#include <openssl/types.h>
 #include <network/tcp/listen/stream.h>
-#include <network/tcp/ssl/send/stream.h>
 
 #include "settings.h"
 #include "statistic.h"
-
-typedef struct ssl_st SSL;
-typedef struct ssl_ctx_st SSL_CTX;
 
 namespace bro::net::tcp::ssl::listen {
 
@@ -40,10 +36,9 @@ public:
   bool init(settings *listen_params);
 
 protected:
-  std::unique_ptr<bro::net::tcp::send::stream> generate_send_stream() override;
+  std::unique_ptr<strm::stream> generate_send_stream() override;
 
-  [[nodiscard]] bool fill_send_stream(accept_connection_res const &result,
-                                      std::unique_ptr<bro::net::tcp::send::stream> &sck) override;
+  [[nodiscard]] bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) override;
 
   void cleanup();
 

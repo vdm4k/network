@@ -1,6 +1,7 @@
-#include <network/stream_factory.h>
+#include <network/stream/factory.h>
 #include <network/sctp/ssl/send/settings.h>
 #include <network/sctp/ssl/send/statistic.h>
+#include <network/tcp/ssl/common.h>
 #include <protocols/ip/full_address.h>
 
 #include <atomic>
@@ -67,9 +68,10 @@ void thread_fun(proto::ip::address const &server_addr,
                 size_t thread_number,
                 sctp::ssl::send::statistic &stat,
                 size_t data_size) {
-  ev_stream_factory manager;
+  stream_factory manager;
   sctp::ssl::send::settings settings;
   settings._peer_addr = {server_addr, server_port};
+  settings._non_blocking_socket = false;
   std::vector<std::byte> initial_data;
   fillTestData(thread_number, initial_data, data_size);
   std::unordered_set<stream *> need_to_handle;
@@ -121,6 +123,8 @@ int main(int argc, char **argv) {
   app.add_option("-t,--test_time", test_time, "test time in seconds");
   app.add_option("-c,--connecions", connections_per_thread, "connections per thread");
   CLI11_PARSE(app, argc, argv);
+
+  bro::net::tcp::ssl::disable_sig_pipe();
 
   proto::ip::address server_address(server_address_string);
   if (server_address.get_version() == proto::ip::address::version::e_none) {

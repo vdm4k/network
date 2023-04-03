@@ -1,4 +1,3 @@
-#include <network/libev/libev.h>
 #include <network/sctp/ssl/listen/stream.h>
 #include <network/sctp/ssl/send/stream.h>
 #include <network/tcp/ssl/common.h>
@@ -10,11 +9,7 @@
 //#include <openssl/x509.h>
 //#include <openssl/x509_vfy.h>
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 typedef uint64_t ctx_option_t;
-#else
-typedef long ctx_option_t;
-#endif
 
 namespace bro::net::sctp::ssl::listen {
 
@@ -22,11 +17,11 @@ stream::~stream() {
   cleanup();
 }
 
-std::unique_ptr<bro::net::sctp::send::stream> stream::generate_send_stream() {
+std::unique_ptr<strm::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::sctp::ssl::send::stream>();
 }
 
-bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<sctp::send::stream> &sck) {
+bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) {
   if (!sctp::listen::stream::fill_send_stream(result, sck))
     return false;
 
@@ -148,8 +143,6 @@ bool stream::init(settings *listen_params) {
 }
 
 void stream::cleanup() {
-  sctp::listen::stream::cleanup();
-
   if (_fake_ctx) {
     SSL_shutdown(_fake_ctx);
     SSL_free(_fake_ctx);
@@ -160,6 +153,7 @@ void stream::cleanup() {
     SSL_CTX_free(_server_ctx);
     _server_ctx = nullptr;
   }
+  sctp::listen::stream::cleanup();
 }
 
 } // namespace bro::net::sctp::ssl::listen

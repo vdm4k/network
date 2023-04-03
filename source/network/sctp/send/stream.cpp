@@ -1,121 +1,22 @@
-#include "network/common.h"
+#include "network/platforms/system.h"
 #include <netinet/sctp.h>
-#include <network/libev/libev.h>
 #include <network/sctp/send/stream.h>
 
 namespace bro::net::sctp::send {
 
 stream::~stream() {
-  stop_events();
-}
-
-void receive_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<stream *>(w->data);
-  conn->receive_data();
-}
-
-void send_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<stream *>(w->data);
-  conn->send_buffered_data();
-}
-
-void connection_established_cb(struct ev_loop *, ev_io *w, int) {
-  auto *tr = reinterpret_cast<stream *>(w->data);
-  (void) tr->connection_established();
-}
-
-void stream::stop_events() {
-  ev::stop(_read_io, _loop);
-  ev::stop(_write_io, _loop);
-}
-
-void stream::assign_loop(struct ev_loop *loop) {
-  stop_events();
-  _loop = loop;
-  ev::init(_read_io, receive_data_cb, _file_descr, EV_READ, this);
-  if (state::e_established == get_state()) {
-    ev::start(_read_io, _loop);
-    ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-    enable_send_cb();
-  } else {
-    ev::init(_write_io, connection_established_cb, _file_descr, EV_WRITE, this);
-    ev::start(_write_io, _loop);
-  }
-}
-
-void stream::init_config(settings *send_params) {
-  _settings = *send_params;
+  cleanup();
 }
 
 bool stream::init(settings *send_params) {
-  init_config(send_params);
-  bool res = create_socket(_settings._peer_addr.get_address().get_version(), type::e_sctp) && connect();
+  _settings = *send_params;
+  bool res = create_socket(_settings._peer_addr.get_address().get_version(), socket_type::e_sctp) && connect();
   if (res) {
     set_connection_state(state::e_wait);
   } else {
     cleanup();
   }
   return res;
-}
-
-bool stream::connection_established() {
-  int err = -1;
-  socklen_t len = sizeof(err);
-  int rc = getsockopt(_file_descr, SOL_SOCKET, SO_ERROR, &err, &len);
-
-  if (0 != rc) {
-    set_detailed_error("getsockopt error");
-    set_connection_state(state::e_failed);
-    return false;
-  }
-  if (0 != err) {
-    set_detailed_error("connection not established");
-    set_connection_state(state::e_failed);
-    return false;
-  }
-
-  if (get_state() != state::e_wait) {
-    set_detailed_error(std::string("connection established, but tcp state not in "
-                                   "listen state. state is - ")
-                       + connection_state_to_str(get_state()));
-    set_connection_state(state::e_failed);
-    return false;
-  }
-
-  ev::stop(_write_io, _loop);
-  ev::init(_write_io, send_data_cb, _file_descr, EV_WRITE, this);
-  enable_send_cb();
-  ev::start(_read_io, _loop);
-  set_connection_state(state::e_established);
-  return true;
-}
-
-ssize_t stream::send(std::byte const *data, size_t data_size) {
-  // check stream state
-  switch (get_state()) {
-  case state::e_established:
-    break;
-  case state::e_wait: {
-    _send_buffer.append(data, data_size);
-    enable_send_cb();
-    return data_size;
-  }
-  case state::e_failed:
-    [[fallthrough]];
-  case state::e_closed: {
-    return -1;
-  }
-  default:
-    break;
-  }
-
-  // check buffer is not empty
-  if (!_send_buffer.is_empty()) {
-    _send_buffer.append(data, data_size);
-    return data_size;
-  }
-
-  return send_data(data, data_size);
 }
 
 ssize_t stream::send_data(std::byte const *data, size_t data_size, bool /*resend*/) {
@@ -145,41 +46,6 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size, bool /*resend
     break;
   }
   return sent;
-}
-
-void stream::send_buffered_data() {
-  if (_send_buffer.is_empty()) {
-    disable_send_cb();
-    return;
-  }
-
-  // check stream state
-  switch (get_state()) {
-  case state::e_established: {
-    auto data = _send_buffer.get_data();
-    bool recend = true;
-    auto sent = send_data(data.first, data.second, recend);
-    if (sent > 0)
-      _send_buffer.pop_front(sent);
-    else if (sent < 0)
-      _send_buffer.clear();
-    break;
-  }
-  case state::e_wait: {
-    break;
-  }
-  case state::e_failed:
-    [[fallthrough]];
-  case state::e_closed: {
-    _send_buffer.clear();
-    return;
-  }
-  default:
-    break;
-  }
-
-  if (_send_buffer.is_empty())
-    disable_send_cb();
 }
 
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
@@ -217,53 +83,19 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   return rec;
 }
 
-settings *stream::current_settings() {
-  return &_settings;
-}
-
 bool stream::connect() {
-  if (connect_sctp_streams(_settings._peer_addr, _file_descr, get_detailed_error()))
+  if (connect_sctp_streams(get_settings()->_peer_addr, _file_descr, get_detailed_error()))
     return true;
   set_connection_state(state::e_failed);
   return false;
 }
 
-void stream::set_received_data_cb(strm::received_data_cb cb, std::any user_data) {
-  _received_data_cb = cb;
-  _param_received_data_cb = user_data;
-}
-
-void stream::disable_send_cb() {
-  ev::stop(_write_io, _loop);
-}
-
-void stream::enable_send_cb() {
-  if (!_send_buffer.is_empty())
-    ev::start(_write_io, _loop);
-}
-
-bool stream::is_active() const {
-  auto st = get_state();
-  return st == state::e_wait || st == state::e_established;
-}
-
 void stream::reset_statistic() {
-  _statistic._success_send_data = 0;
-  _statistic._retry_send_data = 0;
-  _statistic._failed_send_data = 0;
-  _statistic._success_recv_data = 0;
-  _statistic._retry_recv_data = 0;
-  _statistic._failed_recv_data = 0;
-}
-
-void stream::receive_data() {
-  if (_received_data_cb)
-    _received_data_cb(this, _param_received_data_cb);
+  _statistic.reset();
 }
 
 void stream::cleanup() {
-  sctp::stream::cleanup();
-  stop_events();
+  net::send::stream::cleanup();
 }
 
 bool stream::is_sctp_flags_ok(std::byte *buffer) {
@@ -336,6 +168,17 @@ bool stream::is_sctp_flags_ok(std::byte *buffer) {
     // immediately send up this notification.
   case SCTP_SENDER_DRY_EVENT:
     break;
+  }
+  return true;
+}
+
+bool stream::create_socket(proto::ip::address::version version, socket_type s_type) {
+  if (!net::stream::create_socket(version, s_type)) {
+    return false;
+  }
+  if (!set_sctp_options(version, (settings *) get_settings(), _file_descr, get_detailed_error())) {
+    cleanup();
+    return false;
   }
   return true;
 }

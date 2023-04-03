@@ -1,8 +1,5 @@
 #pragma once
 #include <network/sctp/send/settings.h>
-#include <protocols/ip/full_address.h>
-
-#include <optional>
 
 namespace bro::net::sctp::ssl::send {
 /** @addtogroup ev_stream

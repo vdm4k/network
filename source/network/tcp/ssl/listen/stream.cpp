@@ -1,9 +1,6 @@
-#include <network/libev/libev.h>
 #include <network/tcp/ssl/common.h>
 #include <network/tcp/ssl/listen/stream.h>
 #include <network/tcp/ssl/send/stream.h>
-
-#include <mutex>
 
 //#include <openssl/bio.h>
 #include <openssl/err.h>
@@ -24,11 +21,11 @@ stream::~stream() {
   cleanup();
 }
 
-std::unique_ptr<bro::net::tcp::send::stream> stream::generate_send_stream() {
+std::unique_ptr<strm::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::tcp::ssl::send::stream>();
 }
 
-bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<tcp::send::stream> &sck) {
+bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) {
   if (!tcp::listen::stream::fill_send_stream(result, sck))
     return false;
 
@@ -59,7 +56,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
   }
 
   if (_settings._enable_http2) {
-    const unsigned char *alpn = nullptr;
+    unsigned char const *alpn = nullptr;
     unsigned int alpnlen = 0;
 #ifndef OPENSSL_NO_NEXTPROTONEG
     SSL_get0_next_proto_negotiated(s->_ctx, &alpn, &alpnlen);
@@ -157,11 +154,11 @@ bool stream::init(settings *listen_params) {
 }
 
 void stream::cleanup() {
-  tcp::listen::stream::cleanup();
   if (_ctx) {
     SSL_CTX_free(_ctx);
     _ctx = nullptr;
   }
+  tcp::listen::stream::cleanup();
 }
 
 } // namespace bro::net::tcp::ssl::listen

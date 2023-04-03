@@ -1,8 +1,5 @@
 #pragma once
-#include <network/settings.h>
-#include <protocols/ip/full_address.h>
-
-#include <optional>
+#include <network/stream/send/settings.h>
 
 namespace bro::net::tcp::send {
 /** @addtogroup ev_stream
@@ -11,11 +8,8 @@ namespace bro::net::tcp::send {
 
 /*!\brief tcp send stream settings
  */
-struct settings : net::settings {
-  proto::ip::full_address _peer_addr;                 ///< peer address
-  std::optional<proto::ip::full_address> _self_addr;  ///< self address
-};
+struct settings : net::send::settings {};
 
-}  // namespace bro::net::tcp::send
+} // namespace bro::net::tcp::send
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

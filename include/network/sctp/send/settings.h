@@ -1,8 +1,6 @@
 #pragma once
 #include <network/sctp/settings.h>
-#include <protocols/ip/full_address.h>
-
-#include <optional>
+#include <network/stream/send/settings.h>
 
 namespace bro::net::sctp::send {
 /** @addtogroup ev_stream
@@ -11,11 +9,8 @@ namespace bro::net::sctp::send {
 
 /*!\brief sctp send stream settings
  */
-struct settings : sctp::settings {
-  proto::ip::full_address _peer_addr;                 ///< peer address
-  std::optional<proto::ip::full_address> _self_addr;  ///< self address
-};
+struct settings : sctp::settings, net::send::settings {};
 
-}  // namespace bro::net::sctp::send
+} // namespace bro::net::sctp::send
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

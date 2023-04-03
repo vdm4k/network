@@ -1,21 +1,20 @@
 #pragma once
+#include <optional>
 #include <network/stream/settings.h>
 #include <protocols/ip/full_address.h>
 
-#include <optional>
-
-namespace bro::net::udp::send {
+namespace bro::net::send {
 /** @addtogroup ev_stream
  *  @{
  */
 
-/*!\brief tcp send stream settings
+/*!\brief setting for send streams
  */
 struct settings : net::settings {
   proto::ip::full_address _peer_addr;                ///< peer address
   std::optional<proto::ip::full_address> _self_addr; ///< self address
 };
 
-} // namespace bro::net::udp::send
+} // namespace bro::net::send
 
 /** @} */ // end of ev_stream

@@ -1,4 +1,3 @@
-#include <network/libev/libev.h>
 #include <network/tcp/ssl/common.h>
 #include <network/tcp/ssl/send/stream.h>
 #include <openssl/err.h>
@@ -11,7 +10,6 @@ stream::~stream() {
 }
 
 void stream::cleanup() {
-  tcp::send::stream::cleanup();
   if (_ctx) {
     SSL_shutdown(_ctx);
     SSL_free(_ctx);
@@ -22,6 +20,7 @@ void stream::cleanup() {
     SSL_CTX_free(_client_ctx);
     _client_ctx = nullptr;
   }
+  tcp::send::stream::cleanup();
 }
 
 bool stream::init(settings *send_params) {
@@ -247,10 +246,6 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
     break;
   }
   return rec;
-}
-
-settings *stream::current_settings() {
-  return &_settings;
 }
 
 } // namespace bro::net::tcp::ssl::send

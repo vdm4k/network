@@ -1,8 +1,5 @@
 #pragma once
 #include <network/tcp/send/settings.h>
-#include <protocols/ip/full_address.h>
-
-#include <optional>
 
 namespace bro::net::tcp::ssl::send {
 /** @addtogroup ev_stream

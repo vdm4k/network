@@ -1,8 +1,3 @@
-#ifdef __linux__
-#include <netinet/in.h>
-#include <linux/sctp.h>
-#endif
-#include <network/libev/libev.h>
 #include <network/sctp/ssl/send/stream.h>
 #include <network/tcp/ssl/common.h>
 #include <openssl/bio.h>
@@ -16,7 +11,6 @@ stream::~stream() {
 }
 
 void stream::cleanup() {
-  sctp::send::stream::cleanup();
   if (_client_ctx) {
     SSL_CTX_free(_client_ctx);
     _client_ctx = nullptr;
@@ -32,6 +26,7 @@ void stream::cleanup() {
     BIO_free_all(_bio);
     _bio = nullptr;
   }
+  sctp::send::stream::cleanup();
 }
 
 bool stream::init(settings *send_params) {
@@ -41,10 +36,9 @@ bool stream::init(settings *send_params) {
     cleanup();
     return false;
   }
-  init_config(send_params);
   _settings = *send_params;
 
-  if (!create_socket(_settings._peer_addr.get_address().get_version(), type::e_sctp))
+  if (!create_socket(_settings._peer_addr.get_address().get_version(), socket_type::e_sctp))
     return false;
   ERR_clear_error();
 
@@ -69,7 +63,7 @@ bool stream::init(settings *send_params) {
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
   /* unless the user explicitly asks to allow the protocol vulnerability we
-       use the work-around */
+         use the work-around */
   if (!_settings._enable_empty_fragments)
     ctx_options &= ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
 #endif
@@ -240,10 +234,6 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
     break;
   }
   return rec;
-}
-
-settings *stream::current_settings() {
-  return &_settings;
 }
 
 } // namespace bro::net::sctp::ssl::send

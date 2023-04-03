@@ -1,4 +1,4 @@
-#include <network/stream_factory.h>
+#include <network/stream/factory.h>
 #include <network/tcp/listen/settings.h>
 #include <network/tcp/listen/statistic.h>
 #include <network/tcp/send/settings.h>
@@ -23,7 +23,7 @@ struct data_per_thread {
   std::unordered_set<stream *> _need_to_handle;
   std::unordered_map<stream *, stream_ptr> _streams;
   size_t _count = 0;
-  ev_stream_factory *_manager;
+  stream_factory *_manager;
 };
 
 void received_data_cb(stream *stream, std::any data_com) {
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  ev_stream_factory manager;
+  stream_factory manager;
   tcp::listen::settings settings;
   std::atomic_bool work(true);
 

@@ -1,5 +1,5 @@
 #pragma once
-#include <network/settings.h>
+#include <network/stream/settings.h>
 #include <stdint.h>
 
 #include <optional>
@@ -12,8 +12,9 @@ namespace bro::net::sctp {
 /**
  * \brief common settings for listen/send sctp stream
  */
-struct settings : public net::settings {
-    enum ppid {
+struct settings {
+  virtual ~settings(){};
+enum ppid {
         e_plain_text = 46,
         e_ssl = 47
     };
@@ -43,6 +44,6 @@ struct settings : public net::settings {
     bool _unordered = false;                    ///< Send/receive message unordered
 };
 
-}  // namespace bro::net::sctp
+} // namespace bro::net::sctp
 
-/** @} */  // end of ev_stream
+/** @} */ // end of ev_stream

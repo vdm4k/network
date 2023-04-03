@@ -1,11 +1,8 @@
 #pragma once
 #include <network/tcp/send/stream.h>
-
+#include <openssl/types.h>
 #include "settings.h"
 #include "statistic.h"
-
-typedef struct ssl_st SSL;
-typedef struct ssl_ctx_st SSL_CTX;
 
 namespace bro::net::tcp::ssl::listen {
 class stream;
@@ -50,7 +47,6 @@ public:
 
 protected:
   void cleanup();
-  settings *current_settings() override;
   [[nodiscard]] bool connection_established() override;
   ssize_t send_data(std::byte const *data, size_t data_size, bool resend = false) override;
 
