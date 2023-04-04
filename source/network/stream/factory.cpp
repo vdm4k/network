@@ -10,10 +10,11 @@
 #include <network/sctp/ssl/listen/stream.h>
 #include <network/sctp/ssl/send/stream.h>
 #endif
-#include <network/stream/settings.h>
 #include <network/stream/factory.h>
 #include <network/platforms/libev/libev.h>
 #include <network/tcp/listen/stream.h>
+#include <network/tcp/send/stream.h>
+#include <network/udp/send/stream.h>
 
 namespace bro::net::ev {
 factory::factory() noexcept
@@ -60,6 +61,11 @@ strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
     return sck;
   }
 #endif
+  if (auto *param = dynamic_cast<udp::send::settings *>(stream_set); param) {
+    auto sck = std::make_unique<udp::send::stream>();
+    sck->init(param);
+    return sck;
+  }
   if (auto *param = dynamic_cast<tcp::send::settings *>(stream_set); param) {
     auto sck = std::make_unique<tcp::send::stream>();
     sck->init(param);
@@ -89,6 +95,10 @@ void factory::bind(strm::stream_ptr &stream) {
     return;
   }
   if (auto *st = dynamic_cast<tcp::listen::stream *>(stream.get()); st) {
+    st->assign_loop(_ev_loop);
+    return;
+  }
+  if (auto *st = dynamic_cast<udp::send::stream *>(stream.get()); st) {
     st->assign_loop(_ev_loop);
     return;
   }

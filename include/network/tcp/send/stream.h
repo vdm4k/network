@@ -44,13 +44,10 @@ public:
 
 protected:
   ssize_t send_data(std::byte const *data, size_t data_size) override;
-
   [[nodiscard]] bool create_socket(proto::ip::address::version version, socket_type s_type) override;
 
 private:
   [[nodiscard]] bool connect();
-  void receive_data();
-  void send_buffered_data();
 
   settings _settings;   ///< current settings
   statistic _statistic; ///< statistics

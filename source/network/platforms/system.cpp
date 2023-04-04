@@ -126,7 +126,7 @@ bool bind_on_address(proto::ip::full_address &self_address, int file_descr, std:
   switch (self_address.get_address().get_version()) {
   case proto::ip::address::version::e_v4: {
     sockaddr_in local_addr = self_address.to_native_v4();
-    if (0 == ::bind(file_descr, reinterpret_cast<sockaddr *>(&local_addr), sizeof(local_addr)))
+    if (0 == ::bind(file_descr, reinterpret_cast<sockaddr *>(&local_addr), sizeof(struct sockaddr_in)))
       return true;
     append_error(err, "couldn't bind on address - " + self_address.to_string());
     break;
