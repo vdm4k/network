@@ -68,7 +68,7 @@ protected:
 
   /*! \brief process new incomming connection
    */
-  virtual void handle_incoming_connection(accept_connection_res const &result);
+  virtual void handle_incoming_connection();
 
   /*! \brief fill/set send stream with specific parameters
    */

@@ -6,8 +6,7 @@ namespace bro::net::listen {
 
 void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/) {
   auto *c_stream = reinterpret_cast<stream *>(w->data);
-  auto addr_t = ((bro::net::listen::settings *) c_stream->get_settings())->_listen_address.get_address().get_version();
-  c_stream->handle_incoming_connection(accept_connection(addr_t, w->fd, c_stream->get_error_description()));
+  c_stream->handle_incoming_connection();
 }
 
 stream::~stream() {
@@ -51,12 +50,14 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
   return true;
 }
 
-void stream::handle_incoming_connection(accept_connection_res const &result) {
-  auto sck{generate_send_stream()};
-  (void) fill_send_stream(result, sck);
+void stream::handle_incoming_connection() {
   auto *set = (bro::net::listen::settings *) get_settings();
-  if (set->_proc_in_conn)
-    set->_proc_in_conn(std::move(sck), set->_in_conn_handler_data);
+  if (!set->_proc_in_conn)
+    return;
+  auto addr_t = ((bro::net::listen::settings *) get_settings())->_listen_address.get_address().get_version();
+  auto sck{generate_send_stream()};
+  (void) fill_send_stream(accept_connection(addr_t, _file_descr, get_error_description()), sck);
+  set->_proc_in_conn(std::move(sck), set->_in_conn_handler_data);
 }
 
 void stream::assign_loop(struct ev_loop *loop) {
