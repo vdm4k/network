@@ -11,5 +11,3 @@ namespace bro::net::tcp::ssl::send {
  */
 struct statistic : public tcp::send::statistic {};
 } // namespace bro::net::tcp::ssl::send
-
-/** @} */ // end of tcp_ssl_stream

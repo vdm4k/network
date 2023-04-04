@@ -8,7 +8,7 @@ class stream;
 } // namespace bro::net::listen
 
 namespace bro::net {
-/** @defgroup network_stream
+/** @defgroup network_stream network_stream
  *  @{
  */
 
@@ -72,7 +72,7 @@ public:
   void set_state_changed_cb(strm::state_changed_cb cb, std::any param) override;
 
 protected:
-  /*! \brief create new socket
+  /*! \brief create new socket with specific type
    */
   [[nodiscard]] virtual bool create_socket(proto::ip::address::version version, socket_type s_type);
 
@@ -95,6 +95,11 @@ protected:
    */
   void set_detailed_error(char const *const err);
 
+  /*! \brief get detailed description about error
+   *  \return error description
+   *
+   *  \note If happens several errors, will be descriptions about all ocured errors
+   */
   std::string &get_error_description();
 
   /*! \brief cleanup current stream
@@ -117,5 +122,3 @@ private:
 };
 
 } // namespace bro::net
-
-/** @} */ // end of network_stream

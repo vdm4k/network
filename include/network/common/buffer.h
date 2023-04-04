@@ -4,7 +4,7 @@
 
 namespace bro::net {
 
-/** @defgroup common
+/** @defgroup common common
  *  @{
  */
 
@@ -60,5 +60,3 @@ private:
 };
 
 } // namespace bro::net
-
-/** @} */ // end of common

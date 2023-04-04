@@ -11,5 +11,3 @@ namespace bro::net::tcp::listen {
  */
 struct statistic : public net::listen::statistic {};
 } // namespace bro::net::tcp::listen
-
-/** @} */ // end of tcp_stream

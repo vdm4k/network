@@ -4,7 +4,7 @@
 #include "statistic.h"
 
 namespace bro::net::udp::send {
-/** @addtogroup tcp_stream
+/** @defgroup udp_stream udp_stream
  *  @{
  */
 
@@ -13,11 +13,13 @@ namespace bro::net::udp::send {
  */
 class stream : public net::send::stream {
 public:
-  /*! \brief receive data
-   *  \param [in] data pointer on buffer
+  /*! \brief This function receive data
+   *  \param [in] data pointer on a buffer
    *  \param [in] data_size buffer lenght
-   *  \return ssize_t if ssize_t is positive - received data size otherwise
-   * ssize_t interpet as error
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
    */
   ssize_t receive(std::byte *data, size_t data_size) override;
 
@@ -35,17 +37,27 @@ public:
    */
   void reset_statistic() override;
 
-  /*!
-   *  \brief init send stream
+  /*! \brief init send stream
    *  \param [in] send_params pointer on parameters
    *  \return true if inited. otherwise false (cause in get_error_description )
    */
   bool init(settings *send_params);
 
 protected:
+  /*! \brief send data using underlying protocol
+   *  \param [in] data pointer on a data to send
+   *  \param [in] data_size data lenght
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
+   */
   ssize_t send_data(std::byte const *data, size_t data_size) override;
 
 private:
+  /*! \brief connect stream
+   *  \return true if inited. otherwise false (cause in get_error_description )
+   */
   [[nodiscard]] bool connect();
 
   settings _settings;   ///< current settings
@@ -53,5 +65,3 @@ private:
 };
 
 } // namespace bro::net::udp::send
-
-/** @} */ // end of tcp_stream

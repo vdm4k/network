@@ -20,5 +20,3 @@ struct settings : net::settings {
 };
 
 } // namespace bro::net::listen
-
-/** @} */ // end of network_stream

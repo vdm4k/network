@@ -6,7 +6,7 @@
 
 namespace bro::net::sctp::ssl::listen {
 
-/** @addtogroup sctp_ssl_stream
+/** @defgroup sctp_ssl_stream sctp_ssl_stream
  *  @{
  */
 
@@ -35,20 +35,24 @@ public:
   bool init(settings *listen_params);
 
 protected:
+  /*! \brief generate send sctp ssl stream
+   *  \return generated send stream
+   */
   std::unique_ptr<strm::stream> generate_send_stream() override;
 
+  /*! \brief fill/set send stream with specific parameters
+   */
   [[nodiscard]] bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) override;
 
+  /*! \brief cleanup/free resources
+   */
   void cleanup();
 
 private:
-  settings _settings;
-  statistic _statistic;
-
-  SSL *_fake_ctx = nullptr;
-  SSL_CTX *_server_ctx = nullptr;
+  SSL_CTX *_server_ctx = nullptr; ///< pointer on ssl context
+  SSL *_dtls_ctx = nullptr;       ///< pointer on inited dtls context. We need this only for init dtls in ssl
+  settings _settings;             ///< current settings
+  statistic _statistic;           ///< statistics
 };
 
 } // namespace bro::net::sctp::ssl::listen
-
-/** @} */ // end of sctp_ssl_stream

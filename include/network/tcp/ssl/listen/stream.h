@@ -36,19 +36,23 @@ public:
   bool init(settings *listen_params);
 
 protected:
+  /*! \brief generate send tcp ssl stream
+   *  \return generated send stream
+   */
   std::unique_ptr<strm::stream> generate_send_stream() override;
 
+  /*! \brief fill/set send stream with specific parameters
+   */
   [[nodiscard]] bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) override;
 
+  /*! \brief cleanup/free resources
+   */
   void cleanup();
 
 private:
-  settings _settings;
-  statistic _statistic;
-
-  SSL_CTX *_ctx = nullptr;
+  settings _settings;      ///< current settings
+  statistic _statistic;    ///< statistics
+  SSL_CTX *_ctx = nullptr; ///< pointer on ssl context
 };
 
 } // namespace bro::net::tcp::ssl::listen
-
-/** @} */ // end of tcp_ssl_stream

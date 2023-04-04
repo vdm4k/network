@@ -3,7 +3,7 @@
 
 namespace bro::net::ev {
 
-/** @defgroup libev
+/** @defgroup libev libev
  *  @{
  */
 
@@ -47,10 +47,8 @@ using io_callback_t = void (*)(struct ev_loop *loop, ev_io *watcher,
  *  \param callback that will be called
  *  \param file_descriptor on which will be processing
  *  \param flags - event type
- *  \param pointer on associated data
+ *  \param user_data on associated data
  */
-void init_io(ev_io &io, io_callback_t callback, int file_descriptor, int flags, void *connection);
+void init_io(ev_io &io, io_callback_t callback, int file_descriptor, int flags, void *user_data);
 
 } // namespace bro::net::ev
-
-/** @} */ // end of libev

@@ -103,24 +103,24 @@ bool stream::init(settings *listen_params) {
 
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
     if (!tcp::ssl::set_check_ceritficate(_server_ctx,
-                                     _settings._certificate_path,
-                                     _settings._key_path,
-                                     get_error_description())) {
+                                         _settings._certificate_path,
+                                         _settings._key_path,
+                                         get_error_description())) {
       set_connection_state(state::e_failed);
       cleanup();
       return false;
     }
   }
 
-  _fake_ctx = SSL_new(_server_ctx);
-  if (!_fake_ctx) {
+  _dtls_ctx = SSL_new(_server_ctx);
+  if (!_dtls_ctx) {
     set_detailed_error("couldn't create ssl ctx: " + tcp::ssl::ssl_error());
     set_connection_state(state::e_failed);
     cleanup();
     return false;
   }
 
-  /* Create DTLS/SCTP BIO and connect */
+  /* Create DTLS/SCTP BIO. Init support dtls in ssl*/
   auto *bio = BIO_new_dgram_sctp(get_fd(), BIO_CLOSE);
 
   if (!bio) {
@@ -130,7 +130,8 @@ bool stream::init(settings *listen_params) {
     return false;
   }
 
-  SSL_set_bio(_fake_ctx, bio, bio);
+  // _dtls_ctx is a fake context. use this only for managering bio memory
+  SSL_set_bio(_dtls_ctx, bio, bio);
 
   //NOTE: Client has to authenticate
   if (_settings._need_auth) {
@@ -143,10 +144,10 @@ bool stream::init(settings *listen_params) {
 }
 
 void stream::cleanup() {
-  if (_fake_ctx) {
-    SSL_shutdown(_fake_ctx);
-    SSL_free(_fake_ctx);
-    _fake_ctx = nullptr;
+  if (_dtls_ctx) {
+    SSL_shutdown(_dtls_ctx);
+    SSL_free(_dtls_ctx);
+    _dtls_ctx = nullptr;
   }
 
   if (_server_ctx) {

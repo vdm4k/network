@@ -11,5 +11,3 @@ namespace bro::net::tcp::ssl::listen {
  */
 struct statistic : public tcp::listen::statistic {};
 } // namespace bro::net::tcp::ssl::listen
-
-/** @} */ // end of tcp_ssl_stream

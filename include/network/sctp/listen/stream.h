@@ -33,20 +33,32 @@ public:
   bool init(settings *listen_params);
 
 protected:
+  /*! \brief generate send sctp stream
+   *  \return generated send stream
+   */
   std::unique_ptr<strm::stream> generate_send_stream() override;
+
+  /*! \brief fill/set send stream with specific parameters
+   */
   [[nodiscard]] bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) override;
 
+  /*! \brief cleanup/free resources
+   */
   void cleanup();
+
+  /*! \brief create new sctp socket and set sctp parammeters
+   */
   bool create_socket(proto::ip::address::version version, socket_type s_type) override;
 
 private:
   friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/);
 
+  /*! \brief create listen sctp socket
+   *  \return true if init complete successful
+   */
   [[nodiscard]] bool create_listen_socket();
 
   net::sctp::listen::settings _settings; ///< current settings
 };
 
 } // namespace bro::net::sctp::listen
-
-/** @} */ // end of sctp_stream

@@ -12,5 +12,3 @@ namespace bro::net::sctp::listen {
 struct settings : sctp::settings, net::listen::settings {};
 
 } // namespace bro::net::sctp::listen
-
-/** @} */ // end of sctp_stream

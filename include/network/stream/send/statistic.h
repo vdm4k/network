@@ -42,5 +42,3 @@ struct statistic : public strm::statistic {
   uint64_t _failed_recv_data = 0;  ///< failed to receive
 };
 } // namespace bro::net::send
-
-/** @} */ // end of network_stream

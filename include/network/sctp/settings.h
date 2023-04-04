@@ -5,7 +5,7 @@
 #include <optional>
 
 namespace bro::net::sctp {
-/** @addtogroup sctp_stream
+/** @defgroup sctp_stream sctp_stream
  *  @{
  */
 
@@ -14,7 +14,14 @@ namespace bro::net::sctp {
  */
 struct settings {
   virtual ~settings(){};
-  enum ppid { e_plain_text = 46, e_ssl = 47 };
+
+  /**
+ * \brief type of data chunks in sctp
+ */
+  enum ppid {
+    e_plain_text = 46, ///< plain text
+    e_ssl = 47         ///< crypted data
+  };
 
   uint32_t _ppid
     = e_plain_text; ///< https://tools.ietf.org/html/rfc6733 46 is for Diameter messages in clear text SCTP DATA chunks, and the PPID value 47
@@ -46,5 +53,3 @@ struct settings {
 };
 
 } // namespace bro::net::sctp
-
-/** @} */ // end of sctp_stream

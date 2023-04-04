@@ -11,5 +11,3 @@ namespace bro::net::sctp::send {
  */
 struct statistic : public net::send::statistic {};
 } // namespace bro::net::sctp::send
-
-/** @} */ // end of sctp_stream

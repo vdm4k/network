@@ -20,11 +20,13 @@ class stream : public sctp::send::stream {
 public:
   ~stream() override;
 
-  /*! \brief receive data
-   *  \param [in] data pointer on buffer
+  /*! \brief This function receive data
+   *  \param [in] data pointer on a buffer
    *  \param [in] data_size buffer lenght
-   *  \return ssize_t if ssize_t is positive - received data size otherwise
-   * ssize_t interpet as error
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
    */
   ssize_t receive(std::byte *data, size_t data_size) override;
 
@@ -46,27 +48,33 @@ public:
   bool init(settings *send_params);
 
 protected:
-  /*! \brief send data
-   *  \param [in] data pointer on data
+  /*! \brief send data using underlying protocol
+   *  \param [in] data pointer on a data to send
    *  \param [in] data_size data lenght
-   *  \return ssize_t if ssize_t is positive - sended data size otherwise
-   *  ssize_t interpet as error
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
    */
   ssize_t send_data(std::byte const *data, size_t data_size) override;
 
+  /*! \brief cleanup/free resources
+   */
   void cleanup();
+
+  /*! \brief if connection established succesfully will prepare connection for receiving events
+   *  \return true if init complete successful
+   */
   [[nodiscard]] bool connection_established() override;
 
 private:
   friend class ssl::listen::stream;
 
-  SSL *_ctx = nullptr;
-  BIO *_bio = nullptr;
-  SSL_CTX *_client_ctx = nullptr;
-  settings _settings;   ///< current settings
-  statistic _statistic; ///< statistics
+  SSL_CTX *_client_ctx = nullptr; ///< pointer on ssl context
+  SSL *_ctx = nullptr;            ///< pointer on ssl session
+  BIO *_bio = nullptr;            ///< temporary pointer on bio. Need to set bio after connection established
+  settings _settings;             ///< current settings
+  statistic _statistic;           ///< statistics
 };
 
 } // namespace bro::net::sctp::ssl::send
-
-/** @} */ // end of sctp_ssl_stream

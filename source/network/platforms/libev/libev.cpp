@@ -35,12 +35,12 @@ void stop(struct ev_io &io, struct ev_loop *loop) {
   }
 }
 
-void init_io(ev_io &io, io_callback_t callback, int file_descriptor, int flags, void *connection) {
+void init_io(ev_io &io, io_callback_t callback, int file_descriptor, int flags, void *user_data) {
   memset(&io, 0, sizeof(io));
   io.fd = file_descriptor;
   io.cb = callback;
   io.events = flags | EV__IOFDSET;
-  io.data = connection;
+  io.data = user_data;
 }
 
 } // namespace bro::net::ev

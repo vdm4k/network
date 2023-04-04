@@ -9,12 +9,10 @@ namespace bro::net::sctp::ssl::send {
 /*!\brief sctp send stream settings
  */
 struct settings : sctp::send::settings {
-  std::string _certificate_path;
-  std::string _key_path;
-  bool _enable_sslv2 = true;
-  bool _enable_empty_fragments = false;
+  std::string _certificate_path;        ///< path to certificate file
+  std::string _key_path;                ///< path to key file
+  bool _enable_sslv2 = true;            ///< enable sslv2
+  bool _enable_empty_fragments = false; ///< enable emplty fragments
 };
 
 } // namespace bro::net::sctp::ssl::send
-
-/** @} */ // end of sctp_ssl_stream

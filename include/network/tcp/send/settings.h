@@ -11,5 +11,3 @@ namespace bro::net::tcp::send {
 struct settings : net::send::settings {};
 
 } // namespace bro::net::tcp::send
-
-/** @} */ // end of tcp_stream

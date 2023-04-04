@@ -9,13 +9,11 @@ namespace bro::net::sctp::ssl::listen {
 /*! \brief sctp receive connections settings
  */
 struct settings : sctp::listen::settings {
-  std::string _certificate_path;
-  std::string _key_path;
-  bool _enable_sslv2 = true;
-  bool _enable_empty_fragments = false;
-  bool _need_auth = false;
+  std::string _certificate_path;        ///< path to certificate file
+  std::string _key_path;                ///< path to key file
+  bool _enable_sslv2 = true;            ///< enable sslv2
+  bool _enable_empty_fragments = false; ///< enable emplty fragments
+  bool _need_auth = false;              ///< need authorization for incomming streams
 };
 
 } // namespace bro::net::sctp::ssl::listen
-
-/** @} */ // end of sctp_ssl_stream

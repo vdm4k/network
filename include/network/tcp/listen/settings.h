@@ -11,5 +11,3 @@ namespace bro::net::tcp::listen {
 struct settings : net::listen::settings {};
 
 } // namespace bro::net::tcp::listen
-
-/** @} */ // end of tcp_stream

@@ -2,7 +2,7 @@
 #include <network/stream/send/statistic.h>
 
 namespace bro::net::udp::send {
-/** @addtogroup tcp_stream
+/** @addtogroup udp_stream
  *  @{
  */
 
@@ -11,5 +11,3 @@ namespace bro::net::udp::send {
  */
 struct statistic : public net::send::statistic {};
 } // namespace bro::net::udp::send
-
-/** @} */ // end of tcp_stream

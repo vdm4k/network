@@ -16,12 +16,12 @@ stream::~stream() {
 
 ssize_t stream::send(std::byte const * /*data*/, size_t /*data_size*/) {
   set_detailed_error("couldn't send data by listen stream");
-  return 0;
+  return -1;
 }
 
 ssize_t stream::receive(std::byte * /*data*/, size_t /*data_size*/) {
   set_detailed_error("couldn't receive data in listen stream");
-  return 0;
+  return -1;
 }
 
 void stream::set_received_data_cb(strm::received_data_cb /*cb*/, std::any /*param*/) {}

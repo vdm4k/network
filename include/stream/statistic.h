@@ -17,5 +17,3 @@ struct statistic {
 };
 
 } // namespace bro::strm
-
-/** @} */ // end of stream

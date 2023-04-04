@@ -19,22 +19,20 @@ class stream : public net::stream {
 public:
   ~stream();
 
-  /*! \brief send data
+  /*! \brief default implementation for send function - do nothing here
    *  \param [in] data pointer on data
    *  \param [in] data_size data lenght
-   *  \return ssize_t if ssize_t is positive - sended data size otherwise
-   *  ssize_t interpet as error
+   *  \return -1 (it is wrong to send data in listen stream)
    */
   ssize_t send(std::byte const *data, size_t data_size) override;
 
   /*!
-   *  \brief couldn't receive data in listen stream if call this function
-   * stream::get_error_description will be set \param [in] ptr pointer on data
-   *  \param [in] ptr pointer on buffer
-   *  \param [in] len buffer lenght
-   *  \return always return 0
+   *  \brief default implementation for listen function - do nothing here
+   *  \param [in] data pointer on buffer
+   *  \param [in] data_size buffer lenght
+   *  \return -1 (it is wrong to receive data from listen stream)
    */
-  ssize_t receive(std::byte * /*data*/, size_t /*data_size*/) override;
+  ssize_t receive(std::byte *data, size_t data_size) override;
 
   /*! \brief set callback on data receive ( don't do anything )
    *  \param [in] cb pointer on callback function if nullptr - non
@@ -72,7 +70,7 @@ protected:
    */
   virtual void handle_incoming_connection(accept_connection_res const &result);
 
-  /*! \brief add to new stream specific parameters
+  /*! \brief fill/set send stream with specific parameters
    */
   [[nodiscard]] virtual bool fill_send_stream(accept_connection_res const &result,
                                               std::unique_ptr<strm::stream> &new_stream);
@@ -90,5 +88,3 @@ private:
 };
 
 } // namespace bro::net::listen
-
-/** @} */ // end of network_stream

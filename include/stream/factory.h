@@ -15,24 +15,22 @@ public:
   virtual ~factory() {}
 
   /*! \brief create stream
-   * [in] stream_set pointer on settings
+   *  [in] stream_set pointer on settings
    *
-   * Always create stream.
-   * If success created stream we need to bind stream to factory
-   * bind(stream_ptr& stream).
-   * If something went wront we return stream with
-   * failed state and stream::get_error_description this can be used to look
-   * an extended error.
+   * \note We always create stream. Even if creaion is failed.
+   * If stream created successfully we need to bind stream \ref factory::bind
+   * If something went wront we return stream with failed state and
+   * \ref stream::get_error_description can be called to get an error
    *
    *  \return stream_ptr created stream
    */
   virtual stream_ptr create_stream(settings *stream_set) = 0;
 
   /*! \brief bind stream
-   *  [in] stream
+   *  [in] stream - stream to bind
    *
-   * We always need to bind created stream to factory. Only after that we start
-   * to handle all events
+   * \note We always need to bind created stream to factory. Only after that we start
+   * to handle all events for this stream.
    */
   virtual void bind(stream_ptr &stream) = 0;
 
@@ -45,5 +43,3 @@ public:
 };
 
 } // namespace bro::strm
-
-/** @} */ // end of stream

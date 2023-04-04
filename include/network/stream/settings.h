@@ -16,5 +16,3 @@ struct settings : public strm::settings {
 };
 
 } // namespace bro::net
-
-/** @} */ // end of network_stream

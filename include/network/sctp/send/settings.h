@@ -12,5 +12,3 @@ namespace bro::net::sctp::send {
 struct settings : sctp::settings, net::send::settings {};
 
 } // namespace bro::net::sctp::send
-
-/** @} */ // end of sctp_stream

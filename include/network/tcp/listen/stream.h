@@ -5,7 +5,7 @@
 
 namespace bro::net::tcp::listen {
 
-/** @defgroup tcp_stream
+/** @defgroup tcp_stream tcp_stream
  *  @{
  */
 
@@ -34,17 +34,25 @@ public:
   bool init(settings *listen_params);
 
 protected:
+  /*! \brief generate send tcp stream
+   *  \return generated send stream
+   */
   std::unique_ptr<strm::stream> generate_send_stream() override;
+
+  /*! \brief create new tcp listen socket and set sctp parammeters
+   */
   bool create_socket(proto::ip::address::version version, socket_type s_type) override;
 
+  /*! \brief cleanup/free resources
+   */
   void cleanup();
 
 private:
+  /*! \brief create and set settings socket
+   */
   [[nodiscard]] bool create_listen_socket();
 
   settings _settings; ///< current settings
 };
 
 } // namespace bro::net::tcp::listen
-
-/** @} */ // end of tcp_stream

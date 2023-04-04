@@ -3,7 +3,7 @@
 struct ev_loop;
 
 namespace bro::net::ev {
-/** @defgroup network_stream
+/** @addtogroup network_stream
  *  @{
  */
 
@@ -51,8 +51,8 @@ public:
   /*! \brief create stream
    *  [in] stream_set pointer on settings
    *
-   * \note We always create stream. Even if creaion failed.
-   * If stream created successfully we need to bind stream \ref bind(stream_ptr& stream).
+   * \note We always create stream. Even if creaion is failed.
+   * If stream created successfully we need to bind stream \ref factory::bind
    * If something went wront we return stream with failed state and
    * \ref stream::get_error_description can be called to get an error
    *
@@ -80,5 +80,3 @@ private:
 };
 
 } // namespace bro::net::ev
-
-/** @} */ // end of network_stream

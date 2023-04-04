@@ -21,5 +21,3 @@ struct statistic : public strm::statistic {
   uint64_t _failed_to_accept_connections = 0; ///< fail to accept connection. reason in stream::get_error_description
 };
 } // namespace bro::net::listen
-
-/** @} */ // end of network_stream

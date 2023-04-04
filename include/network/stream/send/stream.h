@@ -19,11 +19,15 @@ class stream : public net::stream {
 public:
   ~stream() override;
 
-  /*! \brief send data
-   *  \param [in] data pointer on data
+  /*! \brief This function sends the specified data
+   *  \param [in] data pointer on a data to send
    *  \param [in] data_size data lenght
-   *  \return ssize_t if ssize_t is positive - sended data size otherwise
-   *  ssize_t interpet as error
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
+   *
+   *  \note in send we use bufferization, hence we can't send half data
    */
   ssize_t send(std::byte const *data, size_t data_size) override;
 
@@ -46,16 +50,17 @@ public:
   void assign_loop(struct ev_loop *loop);
 
 protected:
-  /*! \brief send data as is
-   *  \param [in] cb pointer on callback function. If we send
-   * nullptr, we switch off handling this type of events
-   * \param [in] param parameter for callback function
-   * \param [in] resend - if in resend procedure
+  /*! \brief send data using underlying protocol
+   *  \param [in] data pointer on a data to send
+   *  \param [in] data_size data lenght
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
    */
   virtual ssize_t send_data(std::byte const *data, size_t data_size) = 0;
 
-  /*!
-   *  \brief if connection established prepare internal settings
+  /*! \brief if connection established succesfully will prepare connection for receiving events
    *  \return true if init complete successful
    */
   virtual bool connection_established();
@@ -106,5 +111,3 @@ private:
 };
 
 } // namespace bro::net::send
-
-/** @} */ // end of network_stream

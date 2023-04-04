@@ -4,7 +4,7 @@
 
 namespace bro::net::tcp::ssl {
 
-/** @defgroup ssl
+/** @defgroup tcp_ssl_stream tcp_ssl_stream
  *  @{
  */
 
@@ -41,5 +41,3 @@ std::string ssl_error();
 bool disable_sig_pipe();
 
 } // namespace bro::net::tcp::ssl
-
-/** @} */ // end of ssl

@@ -15,11 +15,13 @@ class stream : public bro::net::send::stream {
 public:
   ~stream() override;
 
-  /*! \brief receive data
-   *  \param [in] data pointer on buffer
+  /*! \brief This function receive data
+   *  \param [in] data pointer on a buffer
    *  \param [in] data_size buffer lenght
-   *  \return ssize_t if ssize_t is positive - received data size otherwise
-   * ssize_t interpet as error
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
    */
   ssize_t receive(std::byte *data, size_t data_size) override;
 
@@ -45,27 +47,36 @@ public:
   bool init(settings *send_params);
 
 protected:
+  /*! \brief connect stream
+   *  \return true if inited. otherwise false (cause in get_error_description )
+   */
   [[nodiscard]] bool connect();
 
+  /*! \brief create new sctp send socket
+   */
   bool create_socket(proto::ip::address::version version, socket_type s_type) override;
 
-  /*! \brief send data
-   *  \param [in] data pointer on data
+  /*! \brief send data using underlying protocol
+   *  \param [in] data pointer on a data to send
    *  \param [in] data_size data lenght
-   *  \return ssize_t if ssize_t is positive - sended data size otherwise
-   *  ssize_t interpet as error
+   *  \return ssize_t 3 options
+   *  1. Positive - The number of bytes sent
+   *  2. Negative - an error occurred
+   *  3. Zero - only if pass zero data_size
    */
   ssize_t send_data(std::byte const *data, size_t data_size) override;
 
+  /*! \brief cleanup/free resources
+   */
   void cleanup();
 
 private:
-  bool is_sctp_flags_ok(std::byte *buffer);
+  /*! \brief parse sctp notification and handle if needed
+   */
+  bool is_notification_ok(std::byte *buffer);
 
   settings _settings;               ///< current settings
   sctp::send::statistic _statistic; ///< statistics
 };
 
 } // namespace bro::net::sctp::send
-
-/** @} */ // end of sctp_stream

@@ -16,5 +16,3 @@ struct settings : net::settings {
 };
 
 } // namespace bro::net::send
-
-/** @} */ // end of network_stream

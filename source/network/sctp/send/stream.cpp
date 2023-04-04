@@ -55,7 +55,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
     int msg_flags = MSG_NOSIGNAL;
     rec = sctp_recvmsg(get_fd(), buffer, buffer_size, nullptr, 0, &sinfo, &msg_flags);
     if (msg_flags & MSG_NOTIFICATION) {
-      rec = is_sctp_flags_ok(buffer) ? 0 : -1;
+      rec = is_notification_ok(buffer) ? 0 : -1;
       break;
     }
 
@@ -98,7 +98,7 @@ void stream::cleanup() {
   net::send::stream::cleanup();
 }
 
-bool stream::is_sctp_flags_ok(std::byte *buffer) {
+bool stream::is_notification_ok(std::byte *buffer) {
   union sctp_notification *notif = (union sctp_notification *) buffer;
   switch (notif->sn_header.sn_type) {
   //  The attached datagram could not be sent

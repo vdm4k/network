@@ -9,7 +9,7 @@
 #include "statistic.h"
 
 namespace bro::strm {
-/** @defgroup stream
+/** @defgroup stream stream
  *  @{
  */
 
@@ -154,5 +154,3 @@ inline std::ostream &operator<<(std::ostream &out, stream::state st) {
 }
 
 } // namespace bro::strm
-
-/** @} */ // end of stream

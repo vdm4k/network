@@ -9,13 +9,11 @@ namespace bro::net::tcp::ssl::listen {
 /*! \brief tcp receive connections settings
  */
 struct settings : tcp::listen::settings {
-  std::string _certificate_path;
-  std::string _key_path;
-  bool _enable_sslv2 = true;
-  bool _enable_empty_fragments = false;
-  bool _enable_http2 = false;
+  std::string _certificate_path;        ///< path to certificate file
+  std::string _key_path;                ///< path to key file
+  bool _enable_sslv2 = true;            ///< enable sslv2
+  bool _enable_empty_fragments = false; ///< enable emplty fragments
+  bool _enable_http2 = false;           ///< switch on/off http2 support in ssl
 };
 
 } // namespace bro::net::tcp::ssl::listen
-
-/** @} */ // end of tcp_ssl_stream
