@@ -1,3 +1,5 @@
+#include "openssl/rand.h"
+#include <array>
 #include <atomic>
 #include <csignal>
 #include <network/tcp/ssl/common.h>
@@ -6,10 +8,7 @@
 
 namespace bro::net::tcp::ssl {
 
-bool set_check_ceritficate(SSL_CTX *ctx,
-                       std::string const &cert_path,
-                       std::string const &key_path,
-                       std::string &err) {
+bool set_check_ceritficate(SSL_CTX *ctx, std::string const &cert_path, std::string const &key_path, std::string &err) {
   /* Set the key and cert */
   if (SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM) <= 0) {
     err = ("server certificate not found. " + ssl_error());
@@ -53,6 +52,18 @@ bool disable_sig_pipe() {
   return sigprocmask(SIG_BLOCK, &sigpipe_mask, &saved_mask) == 0;
 }
 
+enum class cookie_secret : size_t { e_lenght = 16 };
+
+static std::array<unsigned char, (size_t) cookie_secret::e_lenght> secret_cookie;
+
+std::pair<unsigned char *, size_t> get_salt() {
+  return {secret_cookie.data(), secret_cookie.size()};
+}
+
+static bool init_secret_cookie() {
+  return RAND_bytes(secret_cookie.data(), (size_t) cookie_secret::e_lenght) > 0;
+}
+
 bool init_openSSL() {
   static bool res{true};
   static std::atomic<init_state> state{e_not_init};
@@ -83,8 +94,7 @@ bool init_openSSL() {
 #endif
 
   //NOTE: probably not the best place, but do it here very ease
-  if (res)
-    res = disable_sig_pipe();
+  res = res && disable_sig_pipe() && init_secret_cookie();
   state.store(init_state::e_init, std::memory_order_release);
   return res;
 }

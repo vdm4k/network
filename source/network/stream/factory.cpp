@@ -1,15 +1,19 @@
 #ifdef WITH_SSL
 #include <network/tcp/ssl/listen/stream.h>
 #include <network/tcp/ssl/send/stream.h>
-#endif
+#endif // WITH_SSL
 #ifdef WITH_SCTP
 #include <network/sctp/listen/stream.h>
 #include <network/sctp/send/stream.h>
-#endif
+#endif // WITH_SCTP
 #ifdef WITH_SCTP_SSL
 #include <network/sctp/ssl/listen/stream.h>
 #include <network/sctp/ssl/send/stream.h>
-#endif
+#endif // WITH_SCTP_SSL
+#ifdef WITH_UDP_SSL
+#include <network/udp/ssl/listen/stream.h>
+#include <network/udp/ssl/send/stream.h>
+#endif // WITH_UDP_SSL
 #include <network/stream/factory.h>
 #include <network/platforms/libev/libev.h>
 #include <network/tcp/listen/stream.h>
@@ -36,7 +40,7 @@ strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
     sck->init(param);
     return sck;
   }
-#endif
+#endif // WITH_SCTP_SSL
 #ifdef WITH_SCTP
   if (auto *param = dynamic_cast<sctp::listen::settings *>(stream_set); param) {
     auto sck = std::make_unique<sctp::listen::stream>();
@@ -48,7 +52,7 @@ strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
     sck->init(param);
     return sck;
   }
-#endif
+#endif // WITH_SCTP
 #ifdef WITH_SSL
   if (auto *param = dynamic_cast<tcp::ssl::listen::settings *>(stream_set); param) {
     auto sck = std::make_unique<tcp::ssl::listen::stream>();
@@ -60,7 +64,19 @@ strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
     sck->init(param);
     return sck;
   }
-#endif
+#endif // WITH_SSL
+#ifdef WITH_UDP_SSL
+  if (auto *param = dynamic_cast<udp::ssl::listen::settings *>(stream_set); param) {
+    auto sck = std::make_unique<udp::ssl::listen::stream>();
+    sck->init(param);
+    return sck;
+  }
+  if (auto *param = dynamic_cast<udp::ssl::send::settings *>(stream_set); param) {
+    auto sck = std::make_unique<udp::ssl::send::stream>();
+    sck->init(param);
+    return sck;
+  }
+#endif // WITH_UDP_SSL
   if (auto *param = dynamic_cast<udp::send::settings *>(stream_set); param) {
     auto sck = std::make_unique<udp::send::stream>();
     sck->init(param);
@@ -89,7 +105,7 @@ void factory::bind(strm::stream_ptr &stream) {
     st->assign_loop(_ev_loop);
     return;
   }
-#endif
+#endif // WITH_SCTP
   if (auto *st = dynamic_cast<tcp::send::stream *>(stream.get()); st) {
     st->assign_loop(_ev_loop);
     return;

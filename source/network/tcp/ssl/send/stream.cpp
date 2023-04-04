@@ -115,8 +115,10 @@ bool stream::init(settings *send_params) {
 }
 
 bool stream::connection_established() {
-  if (!tcp::send::stream::connection_established())
+  if (!tcp::send::stream::connection_established()) {
+    cleanup();
     return false;
+  }
   ERR_clear_error();
 
   _ctx = SSL_new(_client_ctx);
@@ -195,7 +197,7 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size) {
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec = -1;
   enable_send_cb();
-  while (SSL_get_shutdown(_ctx) != SSL_RECEIVED_SHUTDOWN) {
+  while (SSL_get_shutdown(_ctx)) {
     ERR_clear_error();
     rec = SSL_read(_ctx, buffer, buffer_size);
     if (rec > 0) {

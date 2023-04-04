@@ -1,18 +1,25 @@
 #pragma once
-#include <network/stream/send/stream.h>
+#include <openssl/types.h>
+#include <network/udp/send/stream.h>
 #include "settings.h"
 #include "statistic.h"
 
-namespace bro::net::udp::send {
-/** @defgroup udp_stream udp_stream
+namespace bro::net::udp::ssl::listen {
+class stream;
+} // namespace bro::net::udp::ssl::listen
+
+namespace bro::net::udp::ssl::send {
+/** @addtogroup udp_stream_stream
  *  @{
  */
 
 /**
  * \brief send stream
  */
-class stream : public net::send::stream {
+class stream : public udp::send::stream {
 public:
+  ~stream() override;
+
   /*! \brief This function receive data
    *  \param [in] data pointer on a buffer
    *  \param [in] data_size buffer lenght
@@ -33,11 +40,8 @@ public:
    */
   statistic const *get_statistic() const override { return &_statistic; }
 
-  /*! \brief reset actual statistic
-   */
-  void reset_statistic() override;
-
-  /*! \brief init send stream
+  /*!
+   *  \brief init send stream
    *  \param [in] send_params pointer on parameters
    *  \return true if inited. otherwise false (cause in get_error_description )
    */
@@ -54,14 +58,23 @@ protected:
    */
   ssize_t send_data(std::byte const *data, size_t data_size) override;
 
-  /*! \brief connect stream
-   *  \return true if inited. otherwise false (cause in get_error_description )
+  /*! \brief cleanup/free resources
    */
-  [[nodiscard]] bool connect();
+  void cleanup();
+
+  /*! \brief if connection established succesfully will prepare connection for receiving events
+   *  \return true if init complete successful
+   */
+  [[nodiscard]] bool connection_established() override;
 
 private:
-  settings _settings;   ///< current settings
-  statistic _statistic; ///< statistics
+  friend class ssl::listen::stream;
+
+  SSL_CTX *_client_ctx = nullptr; ///< pointer on ssl context
+  SSL *_ctx = nullptr;            ///< pointer on ssl session
+  BIO *_bio = nullptr;            ///< temporary pointer on bio. Need to set bio after connection established
+  settings _settings;             ///< current settings
+  statistic _statistic;           ///< statistics
 };
 
-} // namespace bro::net::udp::send
+} // namespace bro::net::udp::ssl::send

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14.0)
 project(network VERSION 0.0.2 DESCRIPTION "network library")
 
-# core cpp files
+# core h files
 set(H_FILES
     include/stream/stream.h
     include/stream/factory.h
@@ -44,8 +44,7 @@ set(CPP_FILES
     source/network/platforms/system.cpp
 )
 
-# SSL
-if(WITH_SCTP_SSL OR WITH_SSL)
+if(WITH_SCTP_SSL OR WITH_SSL OR WITH_DTLS)
     if(OPENSSL_DIR)
          set(OPENSSL_ROOT_DIR ${OPENSSL_DIR})
          set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
@@ -61,9 +60,8 @@ if(WITH_SCTP_SSL OR WITH_SSL)
         OpenSSL::SSL
         OpenSSL::Crypto
     )
-endif() # WITH_SCTP_SSL OR WITH_SSL
+endif() # WITH_SCTP_SSL OR WITH_SSL OR WITH_DTLS
 
-# SSL
 option(WITH_SSL       "Builds with ssl" OFF)
 if(WITH_SSL)
     add_definitions(-DWITH_SSL)    
@@ -85,8 +83,25 @@ if(WITH_SSL)
     )
 endif() #WITH_SSL
 
+option(WITH_UDP_SSL       "Builds with ssl" OFF)
+if(WITH_UDP_SSL)
+    add_definitions(-DWITH_UDP_SSL)
 
-# SCTP
+    set(H_FILES ${H_FILES}
+        include/network/udp/ssl/listen/settings.h
+        include/network/udp/ssl/listen/statistic.h
+        include/network/udp/ssl/listen/stream.h
+        include/network/udp/ssl/send/settings.h
+        include/network/udp/ssl/send/statistic.h
+        include/network/udp/ssl/send/stream.h
+    )
+
+    set(CPP_FILES ${CPP_FILES}
+        source/network/udp/ssl/listen/stream.cpp
+        source/network/udp/ssl/send/stream.cpp
+    )
+endif() #WITH_UDP_SSL
+
 option(WITH_SCTP       "Builds with ssl" OFF)
 if(WITH_SCTP)
 
@@ -122,7 +137,6 @@ if(WITH_SCTP)
 
 endif() #SCTP
 
-# WITH_SCTP_SSL
 option(WITH_SCTP_SSL       "Builds with ssl" OFF)
 if(WITH_SCTP_SSL)
     add_definitions(-DWITH_SCTP_SSL)
@@ -187,4 +201,4 @@ if(WITH_APP)
     add_subdirectory(app)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC network_protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS})
+target_link_libraries(${PROJECT_NAME} PUBLIC network_protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS} )

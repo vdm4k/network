@@ -1,10 +1,10 @@
-#include <network/sctp/ssl/send/stream.h>
+#include <network/udp/ssl/send/stream.h>
 #include <network/tcp/ssl/common.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-namespace bro::net::sctp::ssl::send {
+namespace bro::net::udp::ssl::send {
 
 stream::~stream() {
   cleanup();
@@ -26,7 +26,7 @@ void stream::cleanup() {
     BIO_free_all(_bio);
     _bio = nullptr;
   }
-  sctp::send::stream::cleanup();
+  net::send::stream::cleanup();
 }
 
 bool stream::init(settings *send_params) {
@@ -38,7 +38,7 @@ bool stream::init(settings *send_params) {
   }
   _settings = *send_params;
 
-  if (!create_socket(_settings._peer_addr.get_address().get_version(), socket_type::e_sctp))
+  if (!create_socket(_settings._peer_addr.get_address().get_version(), socket_type::e_udp))
     return false;
   ERR_clear_error();
 
@@ -96,7 +96,7 @@ bool stream::init(settings *send_params) {
   }
 
   /* Create DTLS/SCTP BIO and connect */
-  _bio = BIO_new_dgram_sctp(get_fd(), BIO_CLOSE);
+  _bio = BIO_new_dgram(get_fd(), BIO_CLOSE);
 
   if (!_bio) {
     set_detailed_error("couldn't create bio: " + tcp::ssl::ssl_error());
@@ -114,11 +114,20 @@ bool stream::init(settings *send_params) {
 }
 
 bool stream::connection_established() {
-  if (!sctp::send::stream::connection_established()) {
+  if (!net::send::stream::connection_established()) {
     cleanup();
     return false;
   }
   ERR_clear_error();
+
+  auto remote_addr = _settings._peer_addr.get_address().to_native_v4();
+
+  if (0 >= BIO_ctrl(_bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &remote_addr)) {
+    set_detailed_error("Bio ctrl call failed with error for BIO_CTRL_DGRAM_SET_CONNECTED: " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
 
   // SSL_set_bio() takes ownership of _bio
   SSL_set_bio(_ctx, _bio, _bio);
@@ -128,6 +137,19 @@ bool stream::connection_established() {
     retval = SSL_get_error(_ctx, retval);
     if (retval != SSL_ERROR_WANT_READ) {
       set_detailed_error("SSL_connect call: " + tcp::ssl::ssl_error());
+      set_connection_state(state::e_failed);
+      cleanup();
+      return false;
+    }
+  }
+
+  if (_settings._recieve_timeout) {
+    struct timeval timeout;
+    timeout.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(*_settings._recieve_timeout).count();
+    timeout.tv_usec = std::chrono::microseconds(*_settings._recieve_timeout).count();
+    if (0 >= BIO_ctrl(_bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout)) {
+      set_detailed_error("Bio ctrl call failed with error for BIO_CTRL_DGRAM_SET_RECV_TIMEOUT: "
+                         + tcp::ssl::ssl_error());
       set_connection_state(state::e_failed);
       cleanup();
       return false;
@@ -234,4 +256,4 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   return rec;
 }
 
-} // namespace bro::net::sctp::ssl::send
+} // namespace bro::net::udp::ssl::send

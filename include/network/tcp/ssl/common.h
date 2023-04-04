@@ -40,4 +40,11 @@ std::string ssl_error();
  */
 bool disable_sig_pipe();
 
+/*! \brief get salt generated in init phase
+ *  \return pointer on salt and salt size
+ *
+ *  \note we don't check is openSSL library inited for simplifying
+ */
+std::pair<unsigned char *, size_t> get_salt();
+
 } // namespace bro::net::tcp::ssl

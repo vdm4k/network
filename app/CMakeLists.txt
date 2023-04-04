@@ -8,13 +8,17 @@ add_subdirectory(tcp_server)
 if(WITH_SSL)
     add_subdirectory(tcp_ssl_client)
     add_subdirectory(tcp_ssl_server)
-endif()
+endif() # WITH_SSL
 if(WITH_SCTP)
     add_subdirectory(sctp_client)
     add_subdirectory(sctp_server)
-endif()
+endif() # WITH_SCTP
 if(WITH_SCTP_SSL)
     add_subdirectory(sctp_ssl_client)
     add_subdirectory(sctp_ssl_server)
-endif()
+endif() # WITH_SCTP_SSL
+if(WITH_UDP_SSL)
+    add_subdirectory(udp_ssl_client)
+    add_subdirectory(udp_ssl_server)
+endif() # WITH_UDP_SSL
 

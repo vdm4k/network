@@ -51,7 +51,7 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
 }
 
 bool stream::connect() {
-  if (connect_stream(_settings._peer_addr, get_fd(), get_error_description()))
+  if (connect_stream(get_settings()->_peer_addr, get_fd(), get_error_description()))
     return true;
   set_connection_state(state::e_failed);
   return false;
