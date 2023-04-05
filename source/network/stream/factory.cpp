@@ -106,6 +106,16 @@ void factory::bind(strm::stream_ptr &stream) {
     return;
   }
 #endif // WITH_SCTP
+#ifdef WITH_UDP_SSL
+  if (auto *st = dynamic_cast<udp::ssl::listen::stream *>(stream.get()); st) {
+    st->assign_loop(_ev_loop);
+    return;
+  }
+  if (auto *st = dynamic_cast<udp::ssl::send::stream *>(stream.get()); st) {
+    st->assign_loop(_ev_loop);
+    return;
+  }
+#endif // WITH_UDP_SSL
   if (auto *st = dynamic_cast<tcp::send::stream *>(stream.get()); st) {
     st->assign_loop(_ev_loop);
     return;

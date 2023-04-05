@@ -100,8 +100,8 @@ private:
    */
   void send_buffered_data();
 
-  ev_io _read_io;                           ///< wait read event
-  ev_io _write_io;                          ///< wait write event
+  ev_io _read_io{0, 0, 0, 0, 0, 0, 0, 0};   ///< wait read event
+  ev_io _write_io{0, 0, 0, 0, 0, 0, 0, 0};  ///< wait write event
   struct ev_loop *_loop = nullptr;          ///< pointer on base event loop
   strm::received_data_cb _received_data_cb; ///< receive data callback
   std::any _param_received_data_cb;         ///< user data for receive data callback

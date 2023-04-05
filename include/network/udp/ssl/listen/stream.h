@@ -48,11 +48,20 @@ protected:
    */
   void cleanup();
 
+  /*! \brief process new incomming connection
+   */
+  void handle_incoming_connection() override;
+
 private:
   /*! \brief create listen udp socket
    *  \return true if init complete successful
    */
   bool create_listen_socket();
+
+/*! \brief generate new dtls context for incomming connection
+   *  \return true if inited. otherwise false (cause in get_error_description )
+   */
+  bool generate_new_dtls_context();
 
   SSL_CTX *_server_ctx = nullptr; ///< pointer on ssl context
   SSL *_dtls_ctx = nullptr;       ///< pointer on inited dtls context. We need this only for init dtls in ssl

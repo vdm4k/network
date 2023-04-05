@@ -185,7 +185,7 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size) {
 ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   ssize_t rec = -1;
   enable_send_cb();
-  while (SSL_get_shutdown(_ctx)) {
+  while (SSL_get_shutdown(_ctx) == 0) {
     ERR_clear_error();
     rec = SSL_read(_ctx, buffer, buffer_size);
     if (rec > 0) {

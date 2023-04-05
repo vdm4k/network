@@ -82,9 +82,9 @@ protected:
 private:
   friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/);
 
-  statistic _statistic;            ///< statistics
-  ev_io _connect_io;               ///< wait connection event
-  struct ev_loop *_loop = nullptr; ///< pointer on base event loop
+  statistic _statistic;                      ///< statistics
+  ev_io _connect_io{0, 0, 0, 0, 0, 0, 0, 0}; ///< wait connection event
+  struct ev_loop *_loop = nullptr;           ///< pointer on base event loop
 };
 
 } // namespace bro::net::listen

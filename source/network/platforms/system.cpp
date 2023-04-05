@@ -414,18 +414,6 @@ bool set_socket_buffer_size(int file_descr, int buffer_size, std::string &err) {
   return true;
 }
 
-bool close_socket(int &file_descr, std::string &err) {
-  bool res = true;
-  if (-1 != file_descr) {
-    if (-1 == ::close(file_descr)) {
-      res = false;
-      append_error(err, "close socket return an error");
-    }
-    file_descr = -1;
-  }
-  return res;
-}
-
 std::optional<int> create_socket(proto::ip::address::version ver, socket_type s_type, std::string &err) {
   int af_type = proto::ip::address::version::e_v6 == ver ? AF_INET6 : AF_INET;
   int protocol = 0;
@@ -454,6 +442,18 @@ std::optional<int> create_socket(proto::ip::address::version ver, socket_type s_
     return std::nullopt;
   }
   return file_des;
+}
+
+bool close_socket(int &file_descr, std::string &err) {
+  bool res = true;
+  if (-1 != file_descr) {
+    if (-1 == ::close(file_descr)) {
+      res = false;
+      append_error(err, "close socket return an error");
+    }
+    file_descr = -1;
+  }
+  return res;
 }
 
 accept_connection_res accept_connection(proto::ip::address::version ver, int server_fd, std::string &err) {

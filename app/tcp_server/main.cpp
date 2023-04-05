@@ -31,22 +31,20 @@ void received_data_cb(stream *stream, std::any data_com) {
   data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
   cdata->_count++;
   ssize_t size = stream->receive(data, data_size);
-  if (size == 0)
-    return;
   if (size > 0) {
     if (print_debug_info)
       std::cout << "receive message - " << std::string((char *) data, size) << std::endl;
+    ssize_t const sent = stream->send(data, size);
+    if (sent <= 0) {
+      if (print_debug_info)
+        std::cout << "send error - " << stream->get_error_description() << std::endl;
+      cdata->_need_to_handle.insert(stream);
+    }
   } else {
     if (print_debug_info)
       std::cout << "error message - " << stream->get_error_description() << std::endl;
     cdata->_need_to_handle.insert(stream);
     return;
-  }
-  ssize_t const sent = stream->send(data, size);
-  if (sent <= 0) {
-    if (print_debug_info)
-      std::cout << "send error - " << stream->get_error_description() << std::endl;
-    cdata->_need_to_handle.insert(stream);
   }
 }
 

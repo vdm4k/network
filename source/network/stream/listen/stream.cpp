@@ -54,7 +54,7 @@ void stream::handle_incoming_connection() {
   auto *set = (bro::net::listen::settings *) get_settings();
   if (!set->_proc_in_conn)
     return;
-  auto addr_t = ((bro::net::listen::settings *) get_settings())->_listen_address.get_address().get_version();
+  auto addr_t = set->_listen_address.get_address().get_version();
   auto sck{generate_send_stream()};
   (void) fill_send_stream(accept_connection(addr_t, _file_descr, get_error_description()), sck);
   set->_proc_in_conn(std::move(sck), set->_in_conn_handler_data);

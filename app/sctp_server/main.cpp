@@ -34,16 +34,15 @@ void received_data_cb(stream *stream, std::any data_com) {
   if (size > 0) {
     if (print_debug_info)
       std::cout << "receive message - " << std::string((char *) data, size) << std::endl;
+    ssize_t const sent = stream->send(data, size);
+    if (sent <= 0) {
+      if (print_debug_info)
+        std::cout << "send error - " << stream->get_error_description() << std::endl;
+      cdata->_need_to_handle.insert(stream);
+    }
   } else {
     if (print_debug_info)
       std::cout << "error message - " << stream->get_error_description() << std::endl;
-    cdata->_need_to_handle.insert(stream);
-    return;
-  }
-  ssize_t const sent = stream->send(data, size);
-  if (sent <= 0) {
-    if (print_debug_info)
-      std::cout << "send error - " << stream->get_error_description() << std::endl;
     cdata->_need_to_handle.insert(stream);
   }
 }

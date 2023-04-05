@@ -3,13 +3,9 @@
 #include <network/udp/ssl/send/stream.h>
 #include <network/tcp/ssl/common.h>
 
-//#include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
-//#include <openssl/pem.h>
-//#include <openssl/x509.h>
-//#include <openssl/x509_vfy.h>
 
 typedef uint64_t ctx_option_t;
 
@@ -156,7 +152,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
     s->cleanup();
     return false;
   }
-  auto *bio = BIO_new_dgram_sctp(s->get_fd(), BIO_NOCLOSE);
+  auto *bio = BIO_new_dgram(s->get_fd(), BIO_NOCLOSE);
   if (!bio) {
     s->set_detailed_error("couldn't create new bio " + tcp::ssl::ssl_error());
     s->set_connection_state(state::e_failed);
@@ -184,6 +180,122 @@ bool stream::create_listen_socket() {
   return create_socket(_settings._listen_address.get_address().get_version(), socket_type::e_udp)
          && reuse_address(get_fd(), get_error_description())
          && bind_on_address(_settings._listen_address, get_fd(), get_error_description());
+}
+
+union ssl_addrs {
+  struct sockaddr_storage ss;
+  struct sockaddr_in s4;
+  struct sockaddr_in6 s6;
+};
+
+void stream::handle_incoming_connection() {
+  ssl_addrs client_addr;
+  if (DTLSv1_listen(_dtls_ctx, (BIO_ADDR *) &client_addr) > 0) {
+    if (!_settings._proc_in_conn)
+      return;
+
+    auto sck = std::make_unique<bro::net::udp::ssl::send::stream>();
+    sck->_settings._self_addr = _settings._listen_address;
+    sck->_ctx = _dtls_ctx;
+
+    auto init_stream = [&]() {
+      proto::ip::full_address peer_addr;
+      switch (client_addr.ss.ss_family) {
+      case AF_INET:
+        peer_addr = client_addr.s4;
+        break;
+      case AF_INET6:
+        peer_addr = client_addr.s6;
+        break;
+      default:
+        //NOTE: maybe error ?
+        return false;
+      }
+      sck->_settings._peer_addr = peer_addr;
+
+      if (sck->create_socket(_settings._listen_address.get_address().get_version(), socket_type::e_udp)
+          && reuse_address(sck->get_fd(), get_error_description())
+          && bind_on_address(_settings._listen_address, sck->get_fd(), get_error_description())
+          && connect_stream(peer_addr, sck->get_fd(), get_error_description())) {
+        /* Set new fd and set BIO to connected */
+        BIO_set_fd(SSL_get_rbio(sck->_ctx), sck->get_fd(), BIO_NOCLOSE);
+        BIO_ctrl(SSL_get_rbio(sck->_ctx), BIO_CTRL_DGRAM_SET_CONNECTED, 0, &client_addr.ss);
+
+        int acc_res = 0;
+        for (acc_res = SSL_accept(sck->_ctx); acc_res == 0; acc_res = SSL_accept(sck->_ctx))
+          ;
+        if (acc_res < 0) {
+          acc_res = SSL_get_error(sck->_ctx, acc_res);
+          if (acc_res != SSL_ERROR_WANT_READ) {
+            sck->set_detailed_error("SSL_accept failed with " + tcp::ssl::ssl_error());
+            sck->set_connection_state(state::e_failed);
+            sck->cleanup();
+            return false;
+          }
+        }
+
+        if (_settings._recieve_timeout) {
+          struct timeval timeout;
+          timeout.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(*_settings._recieve_timeout).count();
+          timeout.tv_usec = std::chrono::microseconds(*_settings._recieve_timeout).count();
+          if (0 >= BIO_ctrl(SSL_get_rbio(sck->_ctx), BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout)) {
+            sck->set_detailed_error("Bio ctrl call failed with error for BIO_CTRL_DGRAM_SET_RECV_TIMEOUT: "
+                                    + tcp::ssl::ssl_error());
+            sck->set_connection_state(state::e_failed);
+            sck->cleanup();
+            return false;
+          }
+        }
+
+        sck->set_connection_state(state::e_established);
+        return true;
+      }
+      return false;
+    };
+
+    if (init_stream())
+      _statistic._success_accept_connections++;
+    else
+      _statistic._failed_to_accept_connections++;
+    _settings._proc_in_conn(std::move(sck), _settings._in_conn_handler_data);
+    generate_new_dtls_context();
+  }
+}
+
+bool stream::generate_new_dtls_context() {
+  _dtls_ctx = SSL_new(_server_ctx);
+  if (!_dtls_ctx) {
+    set_detailed_error("couldn't create ssl ctx: " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
+
+  /* Create DTLS/SCTP BIO. Init support dtls in ssl*/
+  auto *bio = BIO_new_dgram(get_fd(), BIO_CLOSE);
+  if (!bio) {
+    set_detailed_error("couldn't create bio: " + tcp::ssl::ssl_error());
+    set_connection_state(state::e_failed);
+    cleanup();
+    return false;
+  }
+
+  if (_settings._recieve_timeout) {
+    struct timeval timeout;
+    timeout.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(*_settings._recieve_timeout).count();
+    timeout.tv_usec = std::chrono::microseconds(*_settings._recieve_timeout).count();
+    if (0 >= BIO_ctrl(bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout)) {
+      set_detailed_error("Bio ctrl call failed with error for BIO_CTRL_DGRAM_SET_RECV_TIMEOUT: "
+                         + tcp::ssl::ssl_error());
+      set_connection_state(state::e_failed);
+      cleanup();
+      return false;
+    }
+  }
+
+  SSL_set_bio(_dtls_ctx, bio, bio);
+  SSL_set_options(_dtls_ctx, SSL_OP_COOKIE_EXCHANGE);
+  return true;
 }
 
 bool stream::init(settings *listen_params) {
@@ -258,66 +370,7 @@ bool stream::init(settings *listen_params) {
     SSL_CTX_set_verify(_server_ctx, SSL_VERIFY_NONE, nullptr);
   }
 
-  _dtls_ctx = SSL_new(_server_ctx);
-  if (!_dtls_ctx) {
-    set_detailed_error("couldn't create ssl ctx: " + tcp::ssl::ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
-    return false;
-  }
-
-  /* Create DTLS/SCTP BIO. Init support dtls in ssl*/
-  auto *bio = BIO_new_dgram_sctp(get_fd(), BIO_CLOSE);
-
-  if (!bio) {
-    set_detailed_error("couldn't create bio: " + tcp::ssl::ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
-    return false;
-  }
-
-  // _dtls_ctx is a fake context. use this only for managering bio memory
-  SSL_set_bio(_dtls_ctx, bio, bio);
-
-  SSL_set_options(_dtls_ctx, SSL_OP_COOKIE_EXCHANGE);
-
-  //  while (1) {
-  //    memset(&client_addr, 0, sizeof(struct sockaddr_storage));
-
-  //    /* Create BIO */
-  //    bio = BIO_new_dgram(fd, BIO_NOCLOSE);
-
-  //    /* Set and activate timeouts */
-  //    timeout.tv_sec = 5;
-  //    timeout.tv_usec = 0;
-  //    BIO_ctrl(bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
-
-  //    ssl = SSL_new(ctx);
-
-  //    SSL_set_bio(ssl, bio, bio);
-  //    SSL_set_options(ssl, SSL_OP_COOKIE_EXCHANGE);
-
-  //    while (DTLSv1_listen(ssl, (BIO_ADDR *) &client_addr) <= 0)
-  //      ;
-
-  //    info = (struct pass_info *) malloc(sizeof(struct pass_info));
-  //    memcpy(&info->server_addr, &server_addr, sizeof(struct sockaddr_storage));
-  //    memcpy(&info->client_addr, &client_addr, sizeof(struct sockaddr_storage));
-  //    info->ssl = ssl;
-
-  //#ifdef WIN32
-  //    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) connection_handle, info, 0, &tid) == NULL) {
-  //      exit(-1);
-  //    }
-  //#else
-  //    if (pthread_create(&tid, NULL, connection_handle, info) != 0) {
-  //      perror("pthread_create");
-  //      exit(-1);
-  //    }
-  //#endif
-  //  }
-
-  return true;
+  return generate_new_dtls_context();
 }
 
 void stream::cleanup() {
