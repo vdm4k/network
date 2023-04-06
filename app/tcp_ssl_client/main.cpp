@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "CLI/CLI.hpp"
+#include "network/tcp/ssl/common.h"
 
 bool print_debug_info = false;
 
@@ -119,6 +120,8 @@ int main(int argc, char **argv) {
   app.add_option("-t,--test_time", test_time, "test time in seconds");
   app.add_option("-c,--connecions", connections_per_thread, "connections per thread");
   CLI11_PARSE(app, argc, argv);
+
+  bro::net::tcp::ssl::disable_sig_pipe();
 
   proto::ip::address server_address(server_address_string);
   if (server_address.get_version() == proto::ip::address::version::e_none) {

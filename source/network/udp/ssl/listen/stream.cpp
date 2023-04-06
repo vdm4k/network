@@ -182,10 +182,13 @@ bool stream::create_listen_socket() {
          && bind_on_address(_settings._listen_address, get_fd(), get_error_description());
 }
 
+/**
+ * \brief universal address for openSSL
+ */
 union ssl_addrs {
-  struct sockaddr_storage ss;
-  struct sockaddr_in s4;
-  struct sockaddr_in6 s6;
+  struct sockaddr_storage ss; ///< using for get address family
+  struct sockaddr_in s4;      ///< ipv4
+  struct sockaddr_in6 s6;     ///< ipv6
 };
 
 void stream::handle_incoming_connection() {
@@ -272,7 +275,7 @@ bool stream::generate_new_dtls_context() {
   }
 
   /* Create DTLS/SCTP BIO. Init support dtls in ssl*/
-  auto *bio = BIO_new_dgram(get_fd(), BIO_CLOSE);
+  auto *bio = BIO_new_dgram(get_fd(), BIO_NOCLOSE);
   if (!bio) {
     set_detailed_error("couldn't create bio: " + tcp::ssl::ssl_error());
     set_connection_state(state::e_failed);

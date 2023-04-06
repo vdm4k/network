@@ -121,7 +121,7 @@ bool stream::init(settings *listen_params) {
   }
 
   /* Create DTLS/SCTP BIO. Init support dtls in ssl*/
-  auto *bio = BIO_new_dgram_sctp(get_fd(), BIO_CLOSE);
+  auto *bio = BIO_new_dgram_sctp(get_fd(), BIO_NOCLOSE);
 
   if (!bio) {
     set_detailed_error("couldn't create bio: " + tcp::ssl::ssl_error());
