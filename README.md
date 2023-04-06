@@ -3,12 +3,12 @@ Network is a easy scalable labrary for simplifying working with socket API (non 
 TCP, SCTP, SSL + TCP, SSL + SCTP, DTLS
 
 ## ***Why?***
-1. I want small proxy labrary to write server/client fast enought. By default it is using non blocking sockets
-2. Library doesn't use exceptions. To handle errors you can send your callback function *stream->set_state_changed_cb(cb_function)*
+1. Small and proxy labrary to write server/client. By default it is using non blocking sockets
+2. Doesn't use exceptions. To handle errors you can set your callback function *stream->set_state_changed_cb(cb_function)* and check when a socket will become inactive *!stream->is_active()*. we can get error description *stream->get_error_description()*
 3. It has minimal dependecies. 
-4. Easy to test apps. You need only to implement stream interface and check what message your application send.
-5. It is easy to change socket type - you need only send specific struct settings. Hence it is easy to move from tcp to ssl+tcp
-6. If socket fails we can easy recreate it *failed_stream = manager.create_stream(failed_stream->get_settings());* Hence we can have pool of stream and recreate if some of them failed.
+4. Easy to test apps. You need only to implement stream interface and check what data your application send.
+5. It's easy to change socket type hence it's easy to move from tcp to ssl+tcp and vice versa
+6. If socket fails we can easily recreate it *failed_stream = manager.create_stream(failed_stream->get_settings());* Hence we can have pool of streams and recreate if some of them fails.
 
 
 ## ***Build***
