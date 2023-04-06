@@ -104,7 +104,7 @@ protected:
 
   /*! \brief cleanup current stream
    */
-  void cleanup();
+  virtual void cleanup();
 
   /*! \brief return actual file descriptor
    *  \return file descriptor

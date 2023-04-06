@@ -37,12 +37,12 @@ void received_data_cb(stream *stream, std::any data_com) {
 }
 
 void state_changed_cb(stream *stream, std::any data_com) {
-  if (print_debug_info)
-    std::cout << "state_changed_cb " << stream->get_state() << ", " << stream->get_error_description() << std::endl;
   if (!stream->is_active()) {
+    std::cout << "state_changed_cb " << stream->get_state() << ", " << stream->get_error_description() << std::endl;
     auto *need_to_handle = std::any_cast<std::unordered_set<bro::strm::stream *> *>(data_com);
     need_to_handle->insert(stream);
-  }
+  } else
+    std::cout << "state_changed_cb " << stream->get_state() << std::endl;
 }
 
 void fillTestData(int thread_number, std::vector<std::byte> &data_to_send, size_t data_size) {
@@ -86,6 +86,8 @@ void thread_fun(proto::ip::address const &server_addr,
         new_stream->set_state_changed_cb(::state_changed_cb, &need_to_handle);
         new_stream->send(initial_data.data(), initial_data.size());
         stream_pool[new_stream.get()] = std::move(new_stream);
+      } else {
+        std::cout << "couldn't create stream cause " << new_stream->get_error_description() << std::endl;
       }
     }
 

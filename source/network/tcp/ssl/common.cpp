@@ -11,18 +11,17 @@ namespace bro::net::tcp::ssl {
 bool set_check_ceritficate(SSL_CTX *ctx, std::string const &cert_path, std::string const &key_path, std::string &err) {
   /* Set the key and cert */
   if (SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM) <= 0) {
-    err = ("server certificate not found. " + ssl_error());
+    err = fill_error("server certificate not found");
     return false;
   }
 
   if (SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM) <= 0) {
-    std::string err_str(ssl_error());
-    err = ("key certificate not found. " + ssl_error());
+    err = fill_error("key certificate not found");
     return false;
   }
 
   if (!SSL_CTX_check_private_key(ctx)) {
-    err = "invalid private key. " + ssl_error();
+    err = fill_error("nvalid private key");
     return false;
   }
 
@@ -99,6 +98,9 @@ bool init_openSSL() {
   return res;
 }
 
+/*! \brief This function genereate string representation from openssl library
+ *  \return filled string if error exist. empty string otherwise
+ */
 std::string ssl_error() {
   std::string error;
   for (auto err = ERR_get_error(); err != 0; err = ERR_get_error()) {
@@ -108,4 +110,48 @@ std::string ssl_error() {
   }
   return error;
 }
+
+/*! \brief Do the same as ssl_error but add human readable ssl_error_code
+  * \param [in] ssl_error_code error code from openSSL
+ *  \return filled string if error exist. empty string otherwise
+ */
+std::string ssl_error(int ssl_error_code) {
+  auto res(ssl_error());
+  char const *lib = ERR_lib_error_string((unsigned long) ssl_error_code);
+  char const *reason = ERR_reason_error_string((unsigned long) ssl_error_code);
+  if (lib) {
+    if (!res.empty())
+      res += ", ";
+    res = res + "lib is - " + lib;
+  }
+  if (reason) {
+    if (!res.empty())
+      res += ", ";
+    res = res + "and the reason is - " + reason;
+  }
+  return res;
+}
+
+std::string fill_error(char const *const err, int ssl_error_code) {
+  std::string res;
+  if (ssl_error_code) {
+    res = ssl_error(ssl_error_code);
+  }
+  if (!res.empty()) {
+    return std::string(err) + ", errors from openSSL " + res;
+  }
+  return err;
+}
+
+std::string fill_error(std::string const &err, int ssl_error_code) {
+  std::string res;
+  if (ssl_error_code) {
+    res = ssl_error(ssl_error_code);
+  }
+  if (!res.empty()) {
+    return std::string(err) + ", errors from openSSL " + res;
+  }
+  return err;
+}
+
 } // namespace bro::net::tcp::ssl

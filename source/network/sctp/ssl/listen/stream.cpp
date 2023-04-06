@@ -14,42 +14,36 @@ typedef uint64_t ctx_option_t;
 namespace bro::net::sctp::ssl::listen {
 
 stream::~stream() {
-  cleanup();
+  stream::cleanup();
 }
 
-std::unique_ptr<strm::stream> stream::generate_send_stream() {
+std::unique_ptr<net::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::sctp::ssl::send::stream>();
 }
 
-bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) {
+bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<net::stream> &sck) {
   if (!sctp::listen::stream::fill_send_stream(result, sck))
     return false;
 
   ssl::send::stream *s = (ssl::send::stream *) sck.get();
   s->_ctx = SSL_new(_server_ctx);
   if (!s->_ctx) {
-    s->set_detailed_error("couldn't create new ssl context " + tcp::ssl::ssl_error());
-    s->set_connection_state(state::e_failed);
-    s->cleanup();
+    s->set_detailed_error(tcp::ssl::fill_error("couldn't create ssl context"));
     return false;
   }
   auto *bio = BIO_new_dgram_sctp(s->get_fd(), BIO_NOCLOSE);
   if (!bio) {
-    s->set_detailed_error("couldn't create new bio " + tcp::ssl::ssl_error());
-    s->set_connection_state(state::e_failed);
-    s->cleanup();
+    s->set_detailed_error(tcp::ssl::fill_error("couldn't create bio"));
     return false;
   }
 
   SSL_set_bio(s->_ctx, bio, bio);
 
-  int res = SSL_accept(s->_ctx);
-  if (res <= 0) {
-    res = SSL_get_error(s->_ctx, res);
-    if (res != SSL_ERROR_WANT_READ) {
-      s->set_detailed_error("SSL_accept failed with " + tcp::ssl::ssl_error());
-      s->set_connection_state(state::e_failed);
-      s->cleanup();
+  int err_c = SSL_accept(s->_ctx);
+  if (err_c <= 0) {
+    err_c = SSL_get_error(s->_ctx, err_c);
+    if (err_c != SSL_ERROR_WANT_READ) {
+      s->set_detailed_error(tcp::ssl::fill_error("SSL_accept failed", err_c));
       return false;
     }
   }
@@ -59,9 +53,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
 
 bool stream::init(settings *listen_params) {
   if (!tcp::ssl::init_openSSL()) {
-    set_detailed_error("coulnd't init ssl library " + tcp::ssl::ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
+    set_detailed_error(tcp::ssl::fill_error("coulnd't init ssl library"));
     return false;
   }
 
@@ -72,9 +64,7 @@ bool stream::init(settings *listen_params) {
   _server_ctx = SSL_CTX_new(DTLS_server_method());
 
   if (!_server_ctx) {
-    set_detailed_error("couldn't create ssl server context " + tcp::ssl::ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
+    set_detailed_error(tcp::ssl::fill_error("couldn't create ssl server context"));
   }
 
   ctx_option_t ctx_options = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
@@ -107,16 +97,13 @@ bool stream::init(settings *listen_params) {
                                          _settings._key_path,
                                          get_error_description())) {
       set_connection_state(state::e_failed);
-      cleanup();
       return false;
     }
   }
 
   _dtls_ctx = SSL_new(_server_ctx);
   if (!_dtls_ctx) {
-    set_detailed_error("couldn't create ssl ctx: " + tcp::ssl::ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
+    set_detailed_error(tcp::ssl::fill_error("couldn't create dtls context"));
     return false;
   }
 
@@ -124,9 +111,7 @@ bool stream::init(settings *listen_params) {
   auto *bio = BIO_new_dgram_sctp(get_fd(), BIO_NOCLOSE);
 
   if (!bio) {
-    set_detailed_error("couldn't create bio: " + tcp::ssl::ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
+    set_detailed_error(tcp::ssl::fill_error("couldn't create bio"));
     return false;
   }
 

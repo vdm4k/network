@@ -4,7 +4,7 @@
 namespace bro::net::send {
 
 stream::~stream() {
-  stop_events();
+  stream::cleanup();
 }
 
 void receive_data_cb(struct ev_loop *, ev_io *w, int) {
@@ -51,7 +51,6 @@ bool stream::connection_established() {
     set_detailed_error(std::string("connection established, but tcp state not in "
                                    "listen state. state is - ")
                        + state_to_string(get_state()));
-    set_connection_state(state::e_failed);
     return false;
   }
 

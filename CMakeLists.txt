@@ -60,6 +60,14 @@ if(WITH_SCTP_SSL OR WITH_TCP_SSL OR WITH_DTLS)
         OpenSSL::SSL
         OpenSSL::Crypto
     )
+    set(H_FILES ${H_FILES}
+        include/network/tcp/ssl/common.h
+    )
+
+    set(CPP_FILES ${CPP_FILES}
+        source/network/tcp/ssl/common.cpp
+    )
+
 endif() # WITH_SCTP_SSL OR WITH_TCP_SSL OR WITH_DTLS
 
 option(WITH_TCP_SSL       "Builds with tcp-ssl" OFF)
@@ -73,13 +81,11 @@ if(WITH_TCP_SSL)
         include/network/tcp/ssl/send/settings.h
         include/network/tcp/ssl/send/statistic.h
         include/network/tcp/ssl/send/stream.h
-        include/network/tcp/ssl/common.h
     )
 
     set(CPP_FILES ${CPP_FILES}
         source/network/tcp/ssl/listen/stream.cpp
         source/network/tcp/ssl/send/stream.cpp
-        source/network/tcp/ssl/common.cpp
     )
 endif() #WITH_TCP_SSL
 

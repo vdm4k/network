@@ -14,7 +14,7 @@ bool stream::init(settings *send_params) {
   if (res) {
     set_connection_state(state::e_wait);
   } else {
-    cleanup();
+    set_connection_state(state::e_failed);
   }
   return res;
 }
@@ -39,7 +39,6 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
       break;
 
     set_detailed_error("recv return error");
-    set_connection_state(state::e_failed);
     ++_statistic._failed_recv_data;
     rec = -1;
     break;
@@ -75,7 +74,6 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size) {
       break;
 
     set_detailed_error("send return error");
-    set_connection_state(state::e_failed);
     ++_statistic._failed_send_data;
     sent = -1;
     break;
@@ -92,7 +90,7 @@ bool stream::create_socket(proto::ip::address::version version, socket_type s_ty
     return false;
   }
   if (!set_tcp_options(get_fd(), get_error_description())) {
-    cleanup();
+    set_connection_state(state::e_failed);
     return false;
   }
   return true;

@@ -68,7 +68,7 @@ protected:
   /*!
    *  \brief cleanup/free resources (except error message)
    */
-  void cleanup();
+  void cleanup() override;
 
   /*!
    *  \brief turn OFF trigger on ready to send

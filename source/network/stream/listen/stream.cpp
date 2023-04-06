@@ -10,7 +10,7 @@ void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/
 }
 
 stream::~stream() {
-  cleanup();
+  stream::cleanup();
 }
 
 ssize_t stream::send(std::byte const * /*data*/, size_t /*data_size*/) {
@@ -29,7 +29,7 @@ bool stream::is_active() const {
   return get_state() == state::e_wait;
 }
 
-bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &new_stream) {
+bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<net::stream> &new_stream) {
   auto *n_stream = (bro::net::stream *) (new_stream.get());
   if (!result) {
     _statistic._failed_to_accept_connections++;
@@ -56,7 +56,7 @@ void stream::handle_incoming_connection() {
     return;
   auto addr_t = set->_listen_address.get_address().get_version();
   auto sck{generate_send_stream()};
-  (void) fill_send_stream(accept_connection(addr_t, _file_descr, get_error_description()), sck);
+  (void) fill_send_stream(accept_connection(addr_t, _file_descr, sck->get_error_description()), sck);
   set->_proc_in_conn(std::move(sck), set->_in_conn_handler_data);
 }
 

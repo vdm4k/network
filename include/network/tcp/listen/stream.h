@@ -14,8 +14,6 @@ namespace bro::net::tcp::listen {
  */
 class stream : public net::listen::stream {
 public:
-  ~stream();
-
   /*! \brief get actual stream settings
    *  \return settings
    */
@@ -37,15 +35,11 @@ protected:
   /*! \brief generate send tcp stream
    *  \return generated send stream
    */
-  std::unique_ptr<strm::stream> generate_send_stream() override;
+  std::unique_ptr<net::stream> generate_send_stream() override;
 
   /*! \brief create new tcp listen socket and set sctp parammeters
    */
   bool create_socket(proto::ip::address::version version, socket_type s_type) override;
-
-  /*! \brief cleanup/free resources
-   */
-  void cleanup();
 
 private:
   /*! \brief create and set settings socket

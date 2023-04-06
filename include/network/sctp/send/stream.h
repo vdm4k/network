@@ -13,8 +13,6 @@ namespace bro::net::sctp::send {
  */
 class stream : public bro::net::send::stream {
 public:
-  ~stream() override;
-
   /*! \brief This function receive data
    *  \param [in] data pointer on a buffer
    *  \param [in] data_size buffer lenght
@@ -65,10 +63,6 @@ protected:
    *  3. Zero - only if pass zero data_size
    */
   ssize_t send_data(std::byte const *data, size_t data_size) override;
-
-  /*! \brief cleanup/free resources
-   */
-  void cleanup();
 
 private:
   /*! \brief parse sctp notification and handle if needed

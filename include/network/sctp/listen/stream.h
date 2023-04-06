@@ -13,8 +13,6 @@ namespace bro::net::sctp::listen {
  */
 class stream : public net::listen::stream {
 public:
-  ~stream();
-
   /*! \brief get actual stream settings
    *  \return settings
    */
@@ -36,15 +34,11 @@ protected:
   /*! \brief generate send sctp stream
    *  \return generated send stream
    */
-  std::unique_ptr<strm::stream> generate_send_stream() override;
+  std::unique_ptr<net::stream> generate_send_stream() override;
 
   /*! \brief fill/set send stream with specific parameters
    */
-  [[nodiscard]] bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) override;
-
-  /*! \brief cleanup/free resources
-   */
-  void cleanup();
+  [[nodiscard]] bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<net::stream> &sck) override;
 
   /*! \brief create new sctp socket and set sctp parammeters
    */

@@ -11,13 +11,10 @@ bool stream::init(settings *send_params) {
           && bind_on_address(*_settings._self_addr, get_fd(), get_error_description());
   }
   // connect only afer bind
-  if (res)
-    res = connect();
-
-  if (res) {
+  if (res && connect()) {
     set_connection_state(state::e_established);
   } else {
-    cleanup();
+    set_connection_state(state::e_failed);
   }
   return res;
 }
@@ -42,7 +39,6 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
       break;
 
     set_detailed_error("recv return error");
-    set_connection_state(state::e_failed);
     ++_statistic._failed_recv_data;
     rec = -1;
     break;
@@ -78,7 +74,6 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size) {
       break;
 
     set_detailed_error("send return error");
-    set_connection_state(state::e_failed);
     ++_statistic._failed_send_data;
     sent = -1;
     break;

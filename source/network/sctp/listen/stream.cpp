@@ -4,19 +4,18 @@
 
 namespace bro::net::sctp::listen {
 
-stream::~stream() {
-  cleanup();
-}
-
 bool stream::create_listen_socket() {
-  return create_socket(_settings._listen_address.get_address().get_version(), socket_type::e_sctp)
-         && reuse_address(get_fd(), get_error_description())
-         && bind_on_sctp_address(_settings._listen_address, get_fd(), get_error_description())
-         && asconf_on(get_fd(), get_error_description())
-         && start_listen(get_fd(), _settings._listen_backlog, get_error_description());
+  if (create_socket(_settings._listen_address.get_address().get_version(), socket_type::e_sctp)
+      && reuse_address(get_fd(), get_error_description())
+      && bind_on_sctp_address(_settings._listen_address, get_fd(), get_error_description())
+      && asconf_on(get_fd(), get_error_description())
+      && start_listen(get_fd(), _settings._listen_backlog, get_error_description()))
+    return true;
+  set_connection_state(state::e_failed);
+  return false;
 }
 
-bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) {
+bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<net::stream> &sck) {
   if (!net::listen::stream::fill_send_stream(result, sck))
     return false;
 
@@ -25,7 +24,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
   return true;
 }
 
-std::unique_ptr<strm::stream> stream::generate_send_stream() {
+std::unique_ptr<net::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::sctp::send::stream>();
 }
 
@@ -34,20 +33,12 @@ proto::ip::full_address const &stream::get_self_address() const {
 }
 
 bool stream::init(settings *listen_params) {
-  bool res{false};
   _settings = *listen_params;
   if (create_listen_socket()) {
     set_connection_state(state::e_wait);
-    res = true;
-  } else {
-    set_connection_state(state::e_failed);
-    cleanup();
+    return true;
   }
-  return res;
-}
-
-void stream::cleanup() {
-  net::listen::stream::cleanup();
+  return false;
 }
 
 bool stream::create_socket(proto::ip::address::version version, socket_type s_type) {
@@ -55,7 +46,7 @@ bool stream::create_socket(proto::ip::address::version version, socket_type s_ty
     return false;
   }
   if (!set_sctp_options(version, (settings *) get_settings(), get_fd(), get_error_description())) {
-    cleanup();
+    set_connection_state(state::e_failed);
     return false;
   }
   return true;

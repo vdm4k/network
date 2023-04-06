@@ -28,10 +28,19 @@ namespace bro::net::tcp::ssl {
  */
 [[nodiscard]] bool init_openSSL();
 
-/*! \brief This function genereate string representation from openssl library
- *  \return filled string if error exist. empty string otherwise
+/*! \brief This function creates a string containing an error message from err and openSSL ( if set )
+ * \param [in] err A pointer to a null-terminated string containing the error message.
+ * \param [in] ssl_error_code error code from openSSL
+ * \result A string containing the error message
  */
-std::string ssl_error();
+std::string fill_error(char const *const err, int ssl_error_code = 0);
+
+/*! \brief This function creates a string containing an error message from err and openSSL ( if set )
+ * \param [in] err A string with error message.
+ * \param [in] ssl_error_code error code from openSSL
+ * \result A string containing the error message
+ */
+std::string fill_error(std::string const &err, int ssl_error_code = 0);
 
 /*! \brief This function disable sigpipe generation for whole process
  *  \return  true on succes. false otherwise and err will filled with error

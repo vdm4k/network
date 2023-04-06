@@ -49,12 +49,12 @@ void received_data_cb(stream *stream, std::any data_com) {
 }
 
 void state_changed_cb(stream *stream, std::any data_com) {
-  if (print_debug_info)
-    std::cout << "state_changed_cb " << stream->get_state() << std::endl;
   if (!stream->is_active()) {
+    std::cout << "state_changed_cb " << stream->get_state() << ", " << stream->get_error_description() << std::endl;
     data_per_thread *cdata = std::any_cast<data_per_thread *>(data_com);
     cdata->_need_to_handle.insert(stream);
-  }
+  } else
+    std::cout << "state_changed_cb " << stream->get_state() << std::endl;
 }
 
 auto in_connections = [](stream_ptr &&stream, tcp::listen::settings::in_conn_handler_data_cb data) {

@@ -50,7 +50,7 @@ public:
 protected:
   /*! \brief cleanup/free resources
    */
-  void cleanup();
+  void cleanup() override;
 
   /*! \brief if connection established succesfully will prepare connection for receiving events
    *  \return true if init complete successful

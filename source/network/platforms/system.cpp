@@ -492,6 +492,7 @@ accept_connection_res accept_connection(proto::ip::address::version ver, int ser
     break;
   }
   default:
+    append_error(err, "incorrect address version");
     break;
   }
   if (-1 != res._client_fd) {

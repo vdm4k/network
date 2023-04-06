@@ -18,39 +18,33 @@ typedef long ctx_option_t;
 namespace bro::net::tcp::ssl::listen {
 
 stream::~stream() {
-  cleanup();
+  stream::cleanup();
 }
 
-std::unique_ptr<strm::stream> stream::generate_send_stream() {
+std::unique_ptr<net::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::tcp::ssl::send::stream>();
 }
 
-bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) {
+bool stream::fill_send_stream(accept_connection_res const &result, std::unique_ptr<net::stream> &sck) {
   if (!tcp::listen::stream::fill_send_stream(result, sck))
     return false;
 
   ssl::send::stream *s = (ssl::send::stream *) sck.get();
   s->_ctx = SSL_new(_ctx);
   if (!s->_ctx) {
-    s->set_detailed_error("couldn't create new ssl context " + tcp::ssl::ssl_error());
-    s->set_connection_state(state::e_failed);
-    s->cleanup();
+    s->set_detailed_error(tcp::ssl::fill_error("couldn't create ssl context"));
     return false;
   }
 
   if (!SSL_set_fd(s->_ctx, s->get_fd())) {
-    s->set_detailed_error("couldn't set file descriptor " + tcp::ssl::ssl_error());
-    s->set_connection_state(state::e_failed);
-    s->cleanup();
+    s->set_detailed_error(tcp::ssl::fill_error("couldn't set file descriptor to context"));
     return false;
   }
-  int res = SSL_accept(s->_ctx);
-  if (res <= 0) {
-    res = SSL_get_error(s->_ctx, res);
-    if (res != SSL_ERROR_WANT_READ) {
-      s->set_detailed_error("SSL_accept failed with " + tcp::ssl::ssl_error());
-      s->set_connection_state(state::e_failed);
-      s->cleanup();
+  int err_c = SSL_accept(s->_ctx);
+  if (err_c <= 0) {
+    err_c = SSL_get_error(s->_ctx, err_c);
+    if (err_c != SSL_ERROR_WANT_READ) {
+      s->set_detailed_error(tcp::ssl::fill_error("SSL_accept failed", err_c));
       return false;
     }
   }
@@ -70,9 +64,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
     if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
       auto st = SSL_get_state(s->_ctx);
       if (TLS_ST_BEFORE != st) {
-        s->set_detailed_error("h2 isn't negotiated. ssl state is " + std::to_string(uint32_t(st)));
-        s->set_connection_state(state::e_failed);
-        s->cleanup();
+        s->set_detailed_error(tcp::ssl::fill_error("h2 isn't negotiated (need for http2)"));
         return false;
       }
     }
@@ -83,9 +75,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
 
 bool stream::init(settings *listen_params) {
   if (!tcp::ssl::init_openSSL()) {
-    set_detailed_error("coulnd't init ssl library " + tcp::ssl::ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
+    set_detailed_error(tcp::ssl::fill_error("coulnd't init ssl library"));
     return false;
   }
   if (!tcp::listen::stream::init(listen_params))
@@ -94,9 +84,7 @@ bool stream::init(settings *listen_params) {
 
   _ctx = SSL_CTX_new(TLS_server_method());
   if (!_ctx) {
-    set_detailed_error("couldn't create server ssl context: " + tcp::ssl::ssl_error());
-    set_connection_state(state::e_failed);
-    cleanup();
+    set_detailed_error(tcp::ssl::fill_error("couldn't create server context"));
     return false;
   }
 
@@ -146,7 +134,6 @@ bool stream::init(settings *listen_params) {
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
     if (!set_check_ceritficate(_ctx, _settings._certificate_path, _settings._key_path, get_error_description())) {
       set_connection_state(state::e_failed);
-      cleanup();
       return false;
     }
   }

@@ -39,15 +39,15 @@ protected:
   /*! \brief generate send tcp ssl stream
    *  \return generated send stream
    */
-  std::unique_ptr<strm::stream> generate_send_stream() override;
+  std::unique_ptr<net::stream> generate_send_stream() override;
 
   /*! \brief fill/set send stream with specific parameters
    */
-  [[nodiscard]] bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<strm::stream> &sck) override;
+  [[nodiscard]] bool fill_send_stream(accept_connection_res const &result, std::unique_ptr<net::stream> &sck) override;
 
   /*! \brief cleanup/free resources
    */
-  void cleanup();
+  void cleanup() override;
 
 private:
   settings _settings;      ///< current settings

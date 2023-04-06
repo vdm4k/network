@@ -64,7 +64,7 @@ protected:
   /*! \brief generate send stream of specific type
    *  \return generated send stream
    */
-  virtual std::unique_ptr<strm::stream> generate_send_stream() = 0;
+  virtual std::unique_ptr<net::stream> generate_send_stream() = 0;
 
   /*! \brief process new incomming connection
    */
@@ -73,11 +73,11 @@ protected:
   /*! \brief fill/set send stream with specific parameters
    */
   [[nodiscard]] virtual bool fill_send_stream(accept_connection_res const &result,
-                                              std::unique_ptr<strm::stream> &new_stream);
+                                              std::unique_ptr<net::stream> &new_stream);
 
   /*! \brief cleanup/free resources
    */
-  void cleanup();
+  void cleanup() override;
 
 private:
   friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/);

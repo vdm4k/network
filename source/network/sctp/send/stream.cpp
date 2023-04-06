@@ -4,17 +4,11 @@
 
 namespace bro::net::sctp::send {
 
-stream::~stream() {
-  cleanup();
-}
-
 bool stream::init(settings *send_params) {
   _settings = *send_params;
   bool res = create_socket(_settings._peer_addr.get_address().get_version(), socket_type::e_sctp) && connect();
   if (res) {
     set_connection_state(state::e_wait);
-  } else {
-    cleanup();
   }
   return res;
 }
@@ -41,7 +35,6 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size) {
       break;
 
     set_detailed_error("send return error");
-    set_connection_state(state::e_failed);
     sent = -1;
     break;
   }
@@ -75,7 +68,6 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
       break;
 
     set_detailed_error("recv return error");
-    set_connection_state(state::e_failed);
     ++_statistic._failed_recv_data;
     rec = -1;
     break;
@@ -94,10 +86,6 @@ void stream::reset_statistic() {
   _statistic.reset();
 }
 
-void stream::cleanup() {
-  net::send::stream::cleanup();
-}
-
 bool stream::is_notification_ok(std::byte *buffer) {
   union sctp_notification *notif = (union sctp_notification *) buffer;
   switch (notif->sn_header.sn_type) {
@@ -106,14 +94,12 @@ bool stream::is_notification_ok(std::byte *buffer) {
   //  SCTP_SNDINFO that was used in sending this message
   case SCTP_SEND_FAILED: {
     set_detailed_error("receive send failed notification");
-    set_connection_state(state::e_failed);
     return false; // error
   }
   //  The peer has sent a SHUTDOWN.  No further
   //  data should be sent on this socket.
   case SCTP_SHUTDOWN_EVENT: {
     set_detailed_error("receive shutdown notification");
-    set_connection_state(state::e_failed);
     return false; // error
   }
   //  This notification is used to tell a
@@ -121,7 +107,6 @@ bool stream::is_notification_ok(std::byte *buffer) {
   //  indicate that the association is about to be aborted.
   case SCTP_PARTIAL_DELIVERY_EVENT: {
     set_detailed_error("receive partial delivery notification");
-    set_connection_state(state::e_failed);
     return false; // error
   }
   // This notification is used to tell a
@@ -177,7 +162,7 @@ bool stream::create_socket(proto::ip::address::version version, socket_type s_ty
     return false;
   }
   if (!set_sctp_options(version, (settings *) get_settings(), get_fd(), get_error_description())) {
-    cleanup();
+    set_connection_state(state::e_failed);
     return false;
   }
   return true;
