@@ -121,12 +121,12 @@ std::string ssl_error(int ssl_error_code) {
   char const *reason = ERR_reason_error_string((unsigned long) ssl_error_code);
   if (lib) {
     if (!res.empty())
-      res += ", ";
+      res += "; ";
     res = res + "lib is - " + lib;
   }
   if (reason) {
     if (!res.empty())
-      res += ", ";
+      res += "; ";
     res = res + "and the reason is - " + reason;
   }
   return res;
@@ -138,7 +138,7 @@ std::string fill_error(char const *const err, int ssl_error_code) {
     res = ssl_error(ssl_error_code);
   }
   if (!res.empty()) {
-    return std::string(err) + ", errors from openSSL " + res;
+    return std::string(err) + "; errors from openSSL " + res;
   }
   return err;
 }
@@ -149,7 +149,7 @@ std::string fill_error(std::string const &err, int ssl_error_code) {
     res = ssl_error(ssl_error_code);
   }
   if (!res.empty()) {
-    return std::string(err) + ", errors from openSSL " + res;
+    return std::string(err) + "; errors from openSSL " + res;
   }
   return err;
 }

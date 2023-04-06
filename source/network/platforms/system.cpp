@@ -14,7 +14,7 @@ namespace bro::net {
 std::string fill_error(char const *const err) {
   if (errno) {
     std::string status(err);
-    status = status + ", errno - " + strerror(errno);
+    status = status + "; errno - " + strerror(errno);
     errno = 0;
     return status;
   }
@@ -24,7 +24,7 @@ std::string fill_error(char const *const err) {
 std::string fill_error(std::string const &err) {
   if (errno) {
     std::string status(err);
-    status = status + ", errno - " + strerror(errno);
+    status = status + "; errno - " + strerror(errno);
     errno = 0;
     return status;
   }
