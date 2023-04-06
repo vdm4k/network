@@ -69,7 +69,6 @@ void thread_fun(proto::ip::address const &server_addr,
   ev::factory manager;
   udp::ssl::send::settings settings;
   settings._peer_addr = {server_addr, server_port};
-  settings._non_blocking_socket = false;
   std::vector<std::byte> initial_data;
   fillTestData(thread_number, initial_data, data_size);
   std::unordered_set<stream *> need_to_handle;

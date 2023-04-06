@@ -5,10 +5,10 @@ include("${PROJECT_SOURCE_DIR}/third_party/cli11.cmake")
 add_subdirectory(tcp_client)
 add_subdirectory(udp_client)
 add_subdirectory(tcp_server)
-if(WITH_SSL)
+if(WITH_TCP_SSL)
     add_subdirectory(tcp_ssl_client)
     add_subdirectory(tcp_ssl_server)
-endif() # WITH_SSL
+endif() # WITH_TCP_SSL
 if(WITH_SCTP)
     add_subdirectory(sctp_client)
     add_subdirectory(sctp_server)

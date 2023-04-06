@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14.0)
-project(network VERSION 0.0.2 DESCRIPTION "network library")
+project(network VERSION 0.9.0 DESCRIPTION "network library")
 
 # core h files
 set(H_FILES
@@ -44,7 +44,7 @@ set(CPP_FILES
     source/network/platforms/system.cpp
 )
 
-if(WITH_SCTP_SSL OR WITH_SSL OR WITH_DTLS)
+if(WITH_SCTP_SSL OR WITH_TCP_SSL OR WITH_DTLS)
     if(OPENSSL_DIR)
          set(OPENSSL_ROOT_DIR ${OPENSSL_DIR})
          set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
@@ -60,11 +60,11 @@ if(WITH_SCTP_SSL OR WITH_SSL OR WITH_DTLS)
         OpenSSL::SSL
         OpenSSL::Crypto
     )
-endif() # WITH_SCTP_SSL OR WITH_SSL OR WITH_DTLS
+endif() # WITH_SCTP_SSL OR WITH_TCP_SSL OR WITH_DTLS
 
-option(WITH_SSL       "Builds with ssl" OFF)
-if(WITH_SSL)
-    add_definitions(-DWITH_SSL)    
+option(WITH_TCP_SSL       "Builds with tcp-ssl" OFF)
+if(WITH_TCP_SSL)
+    add_definitions(-DWITH_TCP_SSL)
 
     set(H_FILES ${H_FILES}
         include/network/tcp/ssl/listen/settings.h
@@ -81,11 +81,21 @@ if(WITH_SSL)
         source/network/tcp/ssl/send/stream.cpp
         source/network/tcp/ssl/common.cpp
     )
-endif() #WITH_SSL
+endif() #WITH_TCP_SSL
 
-option(WITH_UDP_SSL       "Builds with ssl" OFF)
+option(WITH_UDP_SSL       "Builds with udp-ssl" OFF)
 if(WITH_UDP_SSL)
     add_definitions(-DWITH_UDP_SSL)
+
+    include(CheckSymbolExists)
+    # Check for macro SEEK_SET
+    list(APPEND CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
+    check_symbol_exists(BIO_new_dgram "openssl/bio.h" HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
+    if(NOT HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
+        message(FATAL_ERROR "Can't find BIO_new_dgram needed for dtls.
+                             Probably cmake can't find right version or you
+                             need to build openssl with DTLS support")
+    endif()
 
     set(H_FILES ${H_FILES}
         include/network/udp/ssl/listen/settings.h
@@ -102,7 +112,7 @@ if(WITH_UDP_SSL)
     )
 endif() #WITH_UDP_SSL
 
-option(WITH_SCTP       "Builds with ssl" OFF)
+option(WITH_SCTP       "Builds with sctp" OFF)
 if(WITH_SCTP)
 
     add_definitions(-DWITH_SCTP)
@@ -137,7 +147,7 @@ if(WITH_SCTP)
 
 endif() #SCTP
 
-option(WITH_SCTP_SSL       "Builds with ssl" OFF)
+option(WITH_SCTP_SSL       "Builds with sctp-ssl" OFF)
 if(WITH_SCTP_SSL)
     add_definitions(-DWITH_SCTP_SSL)
 
@@ -148,7 +158,7 @@ if(WITH_SCTP_SSL)
     if(NOT HAVE_SUPPORT_FROM_OPENSSL_LIBRARY)
         message(FATAL_ERROR "Can't find BIO_new_dgram_sctp needed for sctp-dtls.
                              Probably cmake can't find right version or you
-                             need build openssl with SCTP support.
+                             need to build openssl with DTLS/SCTP support.
                              You can do something like that -
                              git clone git://git.openssl.org/openssl.git
                              ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install")

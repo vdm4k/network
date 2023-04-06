@@ -18,14 +18,15 @@ You need cmake
 1. mkdir build
 2. cd build
 3. cmake ../
-   1. cmake build options (by default build only with TCP support)
-      1. with SSL support *-DWITH_SSL=ON*
-      2. with SCTP support *-DWITH_SCTP=ON*
-      3. with SSL support (only for tcp) *-DWITH_SSL=ON*
-      4. buid apps (examples) *-DWITH_APP=ON*
-      5. custom open ssl build (actual for SCTP + SSL and dtls) *-DOPENSSL_DIR=/path/to/build/my-openssl*
-      6. use sanitizer *-DWITH_SANITIZER=ON*
-      7. build all *cmake -DWITH_SANITIZER=ON -DWITH_SCTP=ON -DWITH_SCTP_SSL=ON -DWITH_SSL=ON -DOPENSSL_DIR=/home/vdm4k/libs/my-openssl -DWITH_APP=ON ../*
+   1. cmake build options (by default build only plain TCP/UDP support)
+      1. with TCP SSL support *-DWITH_TCP_SSL=ON* 
+      2. with UDP SSL support *-DWITH_UDP_SSL=ON* 
+      3. with SCTP support *-DWITH_SCTP=ON*
+      4. with SCTP SSL support *-DWITH_SCTP_SSL=ON*
+      5. buid apps (examples) *-DWITH_APP=ON*
+      6. use custom open ssl build (actual for SCTP + SSL and dtls) *-DOPENSSL_DIR=/path/to/build/my-openssl*
+      7. use sanitizer *-DWITH_SANITIZER=ON*
+      8. build all *cmake -DWITH_SANITIZER=ON -DWITH_SCTP=ON -DWITH_SCTP_SSL=ON -DWITH_TCP_SSL=ON -DOPENSSL_DIR=/path/to/build/my-openssl -DWITH_APP=ON -DWITH_UDP_SSL=ON ../*
 4. make 
 
 ## TCP
@@ -47,6 +48,22 @@ Server works as expected. No special preconditions. By default using non blockin
 ### Client
 
 Client works as expected. No special preconditions. By default using non blocking mode.Using openSSL for secure connections
+
+## UDP
+
+### Client
+
+Simple client with non blocking sockets. Oriented only on one connection hence we need to set bind ip/port
+
+## SSL + UDP
+
+### Server
+
+Server works as expected. No special preconditions. By default using non blocking mode. Using openSSL for secure connections
+
+### Client
+
+Client works as expected. No special preconditions. By default using non blocking mode. Using openSSL for secure connections
 
 ## SCTP
 
@@ -72,11 +89,13 @@ Unfortunately openssl is ready only for blocking mode.
 
 #### Problems
 
-There are some problems with openSSL implementation for SCTP
+There are many problems with SCTP implementation in openSSL
 
 1. First off all it is disabled by default. Hence you need to download it and build with SCTP support
 You can do it like this 
 ***git clone git://git.openssl.org/openssl.git
 ./config sctp --prefix=$HOME/my-openssl/ && make -j8 && make -j8 install***
 2. Enable support in linux ***sudo sysctl -w net.sctp.auth_enable=1***
+3. It is slow (maybe need to discove why) ~50 messages per second
+4. Actual version of openSSL consist bug (https://github.com/openssl/openssl/issues/20643)
 

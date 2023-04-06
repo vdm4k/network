@@ -1,7 +1,7 @@
-#ifdef WITH_SSL
+#ifdef WITH_TCP_SSL
 #include <network/tcp/ssl/listen/stream.h>
 #include <network/tcp/ssl/send/stream.h>
-#endif // WITH_SSL
+#endif // WITH_TCP_SSL
 #ifdef WITH_SCTP
 #include <network/sctp/listen/stream.h>
 #include <network/sctp/send/stream.h>
@@ -53,7 +53,7 @@ strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
     return sck;
   }
 #endif // WITH_SCTP
-#ifdef WITH_SSL
+#ifdef WITH_TCP_SSL
   if (auto *param = dynamic_cast<tcp::ssl::listen::settings *>(stream_set); param) {
     auto sck = std::make_unique<tcp::ssl::listen::stream>();
     sck->init(param);
@@ -64,7 +64,7 @@ strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
     sck->init(param);
     return sck;
   }
-#endif // WITH_SSL
+#endif // WITH_TCP_SSL
 #ifdef WITH_UDP_SSL
   if (auto *param = dynamic_cast<udp::ssl::listen::settings *>(stream_set); param) {
     auto sck = std::make_unique<udp::ssl::listen::stream>();
