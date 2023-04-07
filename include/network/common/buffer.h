@@ -29,7 +29,7 @@ public:
     if (!is_empty()) {
       return {_buffer.data(), _buffer.size()};
     }
-    return {};
+    return {nullptr, 0};
   }
 
   /*! \brief Appends data to the end of the buffer.

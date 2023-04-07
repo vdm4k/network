@@ -1,7 +1,7 @@
 #include <atomic>
 #include <network/udp/ssl/listen/stream.h>
 #include <network/udp/ssl/send/stream.h>
-#include <network/tcp/ssl/common.h>
+#include <network/common/ssl.h>
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -57,7 +57,7 @@ int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len) {
     break;
   }
 
-  auto [salt, salt_size] = tcp::ssl::get_salt();
+  auto [salt, salt_size] = net::ssl::get_salt();
 
   /* Calculate HMAC of buffer using the secret */
   HMAC(EVP_sha1(), (void const *) salt, salt_size, (unsigned char const *) buffer, length, result, &resultlength);
@@ -115,7 +115,7 @@ int verify_cookie(SSL *ssl, unsigned char const *cookie, unsigned int cookie_len
   }
 
   /* Calculate HMAC of buffer using the secret */
-  auto [salt, salt_size] = tcp::ssl::get_salt();
+  auto [salt, salt_size] = net::ssl::get_salt();
   HMAC(EVP_sha1(), (void const *) salt, salt_size, (unsigned char const *) buffer, length, result, &resultlength);
   OPENSSL_free(buffer);
   if (cookie_len == resultlength && memcmp(result, cookie, resultlength) == 0)
@@ -147,12 +147,12 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
   ssl::send::stream *s = (ssl::send::stream *) sck.get();
   s->_ctx = SSL_new(_server_ctx);
   if (!s->_ctx) {
-    s->set_detailed_error(tcp::ssl::fill_error("couldn't create ssl context"));
+    s->set_detailed_error(net::ssl::fill_error("couldn't create ssl context"));
     return false;
   }
   auto *bio = BIO_new_dgram(s->get_fd(), BIO_NOCLOSE);
   if (!bio) {
-    s->set_detailed_error(tcp::ssl::fill_error("couldn't create bio"));
+    s->set_detailed_error(net::ssl::fill_error("couldn't create bio"));
     return false;
   }
 
@@ -162,7 +162,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
   if (err_c <= 0) {
     err_c = SSL_get_error(s->_ctx, err_c);
     if (err_c != SSL_ERROR_WANT_READ) {
-      s->set_detailed_error(tcp::ssl::fill_error("SSL_accept failed", err_c));
+      s->set_detailed_error(net::ssl::fill_error("SSL_accept failed", err_c));
       return false;
     }
   }
@@ -222,7 +222,7 @@ void stream::handle_incoming_connection() {
         if (int err_c = BIO_ctrl(SSL_get_rbio(sck->_ctx), BIO_CTRL_DGRAM_SET_CONNECTED, 0, &client_addr.ss);
             0 >= err_c) {
           sck->set_detailed_error(
-            tcp::ssl::fill_error("bio ctrl call failed with error for BIO_CTRL_DGRAM_SET_CONNECTED", err_c));
+            net::ssl::fill_error("bio ctrl call failed with error for BIO_CTRL_DGRAM_SET_CONNECTED", err_c));
           return false;
         }
 
@@ -232,7 +232,7 @@ void stream::handle_incoming_connection() {
         if (err_c < 0) {
           err_c = SSL_get_error(sck->_ctx, err_c);
           if (err_c != SSL_ERROR_WANT_READ) {
-            sck->set_detailed_error(tcp::ssl::fill_error("SSL_accept failed", err_c));
+            sck->set_detailed_error(net::ssl::fill_error("SSL_accept failed", err_c));
             return false;
           }
         }
@@ -256,14 +256,14 @@ void stream::handle_incoming_connection() {
 bool stream::generate_new_dtls_context() {
   _dtls_ctx = SSL_new(_server_ctx);
   if (!_dtls_ctx) {
-    set_detailed_error(tcp::ssl::fill_error("couldn't create ssl ctx"));
+    set_detailed_error(net::ssl::fill_error("couldn't create ssl ctx"));
     return false;
   }
 
   /* Create DTLS/SCTP BIO. Init support dtls in ssl*/
   auto *bio = BIO_new_dgram(get_fd(), BIO_NOCLOSE);
   if (!bio) {
-    set_detailed_error(tcp::ssl::fill_error("couldn't create bio"));
+    set_detailed_error(net::ssl::fill_error("couldn't create bio"));
     return false;
   }
 
@@ -273,8 +273,8 @@ bool stream::generate_new_dtls_context() {
 }
 
 bool stream::init(settings *listen_params) {
-  if (!tcp::ssl::init_openSSL()) {
-    set_detailed_error(tcp::ssl::fill_error("coulnd't init ssl library"));
+  if (!net::ssl::init_openSSL()) {
+    set_detailed_error(net::ssl::fill_error("coulnd't init ssl library"));
     return false;
   }
   _settings = *listen_params;
@@ -288,7 +288,8 @@ bool stream::init(settings *listen_params) {
   _server_ctx = SSL_CTX_new(DTLS_server_method());
 
   if (!_server_ctx) {
-    set_detailed_error(tcp::ssl::fill_error("couldn't create ssl server context"));
+    set_detailed_error(net::ssl::fill_error("couldn't create ssl server context"));
+    return false;
   }
 
   ctx_option_t ctx_options = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
@@ -316,7 +317,7 @@ bool stream::init(settings *listen_params) {
   //    but I don't see why we need it and how to handle it SSL_CTX_set_options(_server_ctx, ctx_options);
 
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
-    if (!tcp::ssl::set_check_ceritficate(_server_ctx,
+    if (!net::ssl::set_check_ceritficate(_server_ctx,
                                          _settings._certificate_path,
                                          _settings._key_path,
                                          get_error_description())) {

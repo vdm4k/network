@@ -48,7 +48,7 @@ bool stream::connection_established() {
   }
 
   if (get_state() != state::e_wait) {
-    set_detailed_error(std::string("connection established, but tcp state not in "
+    set_detailed_error(std::string("connection established, but stream not in "
                                    "listen state. state is - ")
                        + state_to_string(get_state()));
     return false;

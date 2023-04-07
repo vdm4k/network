@@ -3,7 +3,7 @@
 #include <network/tcp/ssl/send/settings.h>
 #include <network/tcp/ssl/send/statistic.h>
 #include <network/stream/factory.h>
-#include <protocols/ip/full_address.h>
+#include <network/platforms/system.h>
 
 #include <atomic>
 #include <iostream>
@@ -13,7 +13,6 @@
 #include <csignal>
 
 #include "CLI/CLI.hpp"
-#include "network/tcp/ssl/common.h"
 
 bool print_debug_info = false;
 size_t data_size = 65000;
@@ -91,7 +90,7 @@ int main(int argc, char **argv) {
   app.add_option("-k,--key_path", key_path, "key path");
   CLI11_PARSE(app, argc, argv);
 
-  bro::net::tcp::ssl::disable_sig_pipe();
+  disable_sig_pipe();
 
   proto::ip::address server_address(server_address_s);
   if (server_address.get_version() == proto::ip::address::version::e_none) {

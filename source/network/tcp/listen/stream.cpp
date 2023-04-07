@@ -18,10 +18,6 @@ std::unique_ptr<net::stream> stream::generate_send_stream() {
   return std::make_unique<tcp::send::stream>();
 }
 
-proto::ip::full_address const &stream::get_self_address() const {
-  return _settings._listen_address;
-}
-
 bool stream::init(settings *listen_params) {
   _settings = *listen_params;
   if (create_listen_socket()) {

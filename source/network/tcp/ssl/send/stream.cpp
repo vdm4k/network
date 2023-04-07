@@ -1,4 +1,4 @@
-#include <network/tcp/ssl/common.h>
+#include <network/common/ssl.h>
 #include <network/tcp/ssl/send/stream.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -24,8 +24,8 @@ void stream::cleanup() {
 }
 
 bool stream::init(settings *send_params) {
-  if (!tcp::ssl::init_openSSL()) {
-    set_detailed_error(tcp::ssl::fill_error("coulnd't init ssl library"));
+  if (!net::ssl::init_openSSL()) {
+    set_detailed_error(net::ssl::fill_error("coulnd't init ssl library"));
     return false;
   }
 
@@ -36,7 +36,7 @@ bool stream::init(settings *send_params) {
 
   _client_ctx = SSL_CTX_new(TLS_client_method());
   if (!_client_ctx) {
-    set_detailed_error(tcp::ssl::fill_error("coulnd't create ssl client context"));
+    set_detailed_error(net::ssl::fill_error("coulnd't create ssl client context"));
     return false;
   }
 
@@ -100,7 +100,10 @@ bool stream::init(settings *send_params) {
   SSL_CTX_set_options(_client_ctx, ctx_options);
 
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
-    if (!set_check_ceritficate(_client_ctx, _settings._certificate_path, _settings._key_path, get_error_description())) {
+    if (!net::ssl::set_check_ceritficate(_client_ctx,
+                                         _settings._certificate_path,
+                                         _settings._key_path,
+                                         get_error_description())) {
       set_connection_state(state::e_failed);
       return false;
     }
@@ -117,19 +120,19 @@ bool stream::connection_established() {
 
   _ctx = SSL_new(_client_ctx);
   if (!_ctx) {
-    set_detailed_error(tcp::ssl::fill_error("couldn't create new ssl context"));
+    set_detailed_error(net::ssl::fill_error("couldn't create new ssl context"));
     return false;
   }
 
   if (!SSL_set_fd(_ctx, get_fd())) {
-    set_detailed_error(tcp::ssl::fill_error("couldn't set file decriptor to bio"));
+    set_detailed_error(net::ssl::fill_error("couldn't set file decriptor to bio"));
     return false;
   }
   int err_c = SSL_connect(_ctx);
   if (err_c <= 0) {
     err_c = SSL_get_error(_ctx, err_c);
     if (err_c != SSL_ERROR_WANT_READ) {
-      set_detailed_error(tcp::ssl::fill_error("SSL_connect failed", err_c));
+      set_detailed_error(net::ssl::fill_error("SSL_connect failed", err_c));
       return false;
     }
   }
@@ -162,7 +165,7 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size) {
 
     case SSL_ERROR_SYSCALL: {
       if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
-        set_detailed_error(tcp::ssl::fill_error("error occured while send data", err_c));
+        set_detailed_error(net::ssl::fill_error("error occured while send data", err_c));
       } else {
         ++_statistic._retry_send_data;
         continue;
@@ -170,7 +173,7 @@ ssize_t stream::send_data(std::byte const *data, size_t data_size) {
       break;
     }
     default: {
-      set_detailed_error(tcp::ssl::fill_error("SSL_write failed", err_c));
+      set_detailed_error(net::ssl::fill_error("SSL_write failed", err_c));
       break;
     }
     }
@@ -194,12 +197,12 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
     int err_c = SSL_get_error(_ctx, rec);
     switch (err_c) {
     case SSL_ERROR_ZERO_RETURN: { /* Received a close_notify alert. */
-      set_detailed_error(tcp::ssl::fill_error("ssl read return 0 bytes", err_c));
+      set_detailed_error(net::ssl::fill_error("ssl read return 0 bytes", err_c));
       break;
     }
     case SSL_ERROR_SYSCALL: {
       if (EAGAIN != errno && EWOULDBLOCK != errno && EINTR != errno) {
-        set_detailed_error(tcp::ssl::fill_error("error occured while receive ssl data", err_c));
+        set_detailed_error(net::ssl::fill_error("error occured while receive ssl data", err_c));
       } else {
         ++_statistic._retry_recv_data;
         continue;
@@ -210,11 +213,11 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
       return 0;
     case SSL_ERROR_WANT_WRITE: {
       // TODO: Same as in grpc. need to check, maybe it is actual only for boringSSL
-      set_detailed_error(tcp::ssl::fill_error("Peer tried to renegotiate SSL connection", err_c));
+      set_detailed_error(net::ssl::fill_error("Peer tried to renegotiate SSL connection", err_c));
       break;
     }
     default:
-      set_detailed_error(tcp::ssl::fill_error("SSL_read failed", err_c));
+      set_detailed_error(net::ssl::fill_error("SSL_read failed", err_c));
       break;
     }
     ++_statistic._failed_recv_data;

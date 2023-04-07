@@ -2,7 +2,7 @@
 #include <openssl/types.h>
 #include <string>
 
-namespace bro::net::tcp::ssl {
+namespace bro::net::ssl {
 
 /** @defgroup tcp_ssl_stream tcp_ssl_stream
  *  @{
@@ -42,13 +42,6 @@ std::string fill_error(char const *const err, int ssl_error_code = 0);
  */
 std::string fill_error(std::string const &err, int ssl_error_code = 0);
 
-/*! \brief This function disable sigpipe generation for whole process
- *  \return  true on succes. false otherwise and err will filled with error
- *
- *  \note better to call before start other threads ( from main thread )
- */
-bool disable_sig_pipe();
-
 /*! \brief get salt generated in init phase
  *  \return pointer on salt and salt size
  *
@@ -56,4 +49,4 @@ bool disable_sig_pipe();
  */
 std::pair<unsigned char *, size_t> get_salt();
 
-} // namespace bro::net::tcp::ssl
+} // namespace bro::net::ssl

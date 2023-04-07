@@ -19,11 +19,6 @@ public:
    */
   settings const *get_settings() const override { return &_settings; }
 
-  /*! \brief get self address
-   *  \return return self address
-   */
-  proto::ip::full_address const &get_self_address() const;
-
   /*!
    *  \brief init listen stream
    *  \param [in] listen_params pointer on parameters

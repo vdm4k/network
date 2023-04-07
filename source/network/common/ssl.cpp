@@ -1,12 +1,12 @@
 #include "openssl/rand.h"
 #include <array>
 #include <atomic>
-#include <csignal>
-#include <network/tcp/ssl/common.h>
+#include <network/common/ssl.h>
+#include <network/platforms/system.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-namespace bro::net::tcp::ssl {
+namespace bro::net::ssl {
 
 bool set_check_ceritficate(SSL_CTX *ctx, std::string const &cert_path, std::string const &key_path, std::string &err) {
   /* Set the key and cert */
@@ -39,17 +39,6 @@ enum init_state : int {
   e_in_progress,
   e_init,
 };
-
-bool disable_sig_pipe() {
-  // We need this only for openSSL because openSSL send data directly to socket
-  // and it doesn't set MSG_NOSIGNAL
-  // unfortunately signal(SIGPIPE, SIG_IGN); doesn't work on my Ubuntu 22
-  sigset_t sigpipe_mask;
-  sigemptyset(&sigpipe_mask);
-  sigaddset(&sigpipe_mask, SIGPIPE);
-  sigset_t saved_mask;
-  return sigprocmask(SIG_BLOCK, &sigpipe_mask, &saved_mask) == 0;
-}
 
 enum class cookie_secret : size_t { e_lenght = 16 };
 
@@ -154,4 +143,4 @@ std::string fill_error(std::string const &err, int ssl_error_code) {
   return err;
 }
 
-} // namespace bro::net::tcp::ssl
+} // namespace bro::net::ssl

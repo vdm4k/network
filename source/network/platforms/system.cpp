@@ -4,12 +4,24 @@
 #include <ifaddrs.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <csignal>
 
 #include <string.h>
 #ifdef WITH_SCTP
 #include <netinet/sctp.h>
 #endif
 namespace bro::net {
+
+bool disable_sig_pipe() {
+  // We need this only for openSSL because openSSL send data directly to socket
+  // and it doesn't set MSG_NOSIGNAL
+  // unfortunately signal(SIGPIPE, SIG_IGN); doesn't work on my Ubuntu 22
+  sigset_t sigpipe_mask;
+  sigemptyset(&sigpipe_mask);
+  sigaddset(&sigpipe_mask, SIGPIPE);
+  sigset_t saved_mask;
+  return sigprocmask(SIG_BLOCK, &sigpipe_mask, &saved_mask) == 0;
+}
 
 std::string fill_error(char const *const err) {
   if (errno) {
@@ -169,13 +181,13 @@ bool bind_on_sctp_address(proto::ip::full_address &self_address, int file_descr,
   return false;
 }
 
-bool asconf_on(int /*file_descr*/, std::string & /*err*/) {
+bool asconf_on(int file_descr, std::string &err) {
 #ifdef SCTP_AUTO_ASCONF
-//  int optval = 1;
-//  if (setsockopt(file_descr, IPPROTO_SCTP, SCTP_AUTO_ASCONF, &optval, sizeof(optval)) < 0) {
-//    err.append(std::string("couldn't set option asconf for sctp, errno - ") + strerror(errno));
-//    return false;
-//  }
+  int optval = 1;
+  if (setsockopt(file_descr, IPPROTO_SCTP, SCTP_AUTO_ASCONF, &optval, sizeof(optval)) < 0) {
+    append_error(err, "couldn't set option asconf for sctp");
+    return false;
+  }
 #endif /* SCTP_AUTO_ASCONF */
   return true;
 }

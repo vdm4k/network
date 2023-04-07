@@ -8,7 +8,6 @@ bool stream::create_listen_socket() {
   if (create_socket(_settings._listen_address.get_address().get_version(), socket_type::e_sctp)
       && reuse_address(get_fd(), get_error_description())
       && bind_on_sctp_address(_settings._listen_address, get_fd(), get_error_description())
-      && asconf_on(get_fd(), get_error_description())
       && start_listen(get_fd(), _settings._listen_backlog, get_error_description()))
     return true;
   set_connection_state(state::e_failed);
@@ -26,10 +25,6 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
 
 std::unique_ptr<net::stream> stream::generate_send_stream() {
   return std::make_unique<bro::net::sctp::send::stream>();
-}
-
-proto::ip::full_address const &stream::get_self_address() const {
-  return _settings._listen_address;
 }
 
 bool stream::init(settings *listen_params) {

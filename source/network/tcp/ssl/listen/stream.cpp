@@ -1,4 +1,4 @@
-#include <network/tcp/ssl/common.h>
+#include <network/common/ssl.h>
 #include <network/tcp/ssl/listen/stream.h>
 #include <network/tcp/ssl/send/stream.h>
 
@@ -32,19 +32,19 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
   ssl::send::stream *s = (ssl::send::stream *) sck.get();
   s->_ctx = SSL_new(_ctx);
   if (!s->_ctx) {
-    s->set_detailed_error(tcp::ssl::fill_error("couldn't create ssl context"));
+    s->set_detailed_error(net::ssl::fill_error("couldn't create ssl context"));
     return false;
   }
 
   if (!SSL_set_fd(s->_ctx, s->get_fd())) {
-    s->set_detailed_error(tcp::ssl::fill_error("couldn't set file descriptor to context"));
+    s->set_detailed_error(net::ssl::fill_error("couldn't set file descriptor to context"));
     return false;
   }
   int err_c = SSL_accept(s->_ctx);
   if (err_c <= 0) {
     err_c = SSL_get_error(s->_ctx, err_c);
     if (err_c != SSL_ERROR_WANT_READ) {
-      s->set_detailed_error(tcp::ssl::fill_error("SSL_accept failed", err_c));
+      s->set_detailed_error(net::ssl::fill_error("SSL_accept failed", err_c));
       return false;
     }
   }
@@ -64,7 +64,7 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
     if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
       auto st = SSL_get_state(s->_ctx);
       if (TLS_ST_BEFORE != st) {
-        s->set_detailed_error(tcp::ssl::fill_error("h2 isn't negotiated (need for http2)"));
+        s->set_detailed_error(net::ssl::fill_error("h2 isn't negotiated (need for http2)"));
         return false;
       }
     }
@@ -74,8 +74,8 @@ bool stream::fill_send_stream(accept_connection_res const &result, std::unique_p
 }
 
 bool stream::init(settings *listen_params) {
-  if (!tcp::ssl::init_openSSL()) {
-    set_detailed_error(tcp::ssl::fill_error("coulnd't init ssl library"));
+  if (!net::ssl::init_openSSL()) {
+    set_detailed_error(net::ssl::fill_error("coulnd't init ssl library"));
     return false;
   }
   if (!tcp::listen::stream::init(listen_params))
@@ -84,7 +84,7 @@ bool stream::init(settings *listen_params) {
 
   _ctx = SSL_CTX_new(TLS_server_method());
   if (!_ctx) {
-    set_detailed_error(tcp::ssl::fill_error("couldn't create server context"));
+    set_detailed_error(net::ssl::fill_error("couldn't create server context"));
     return false;
   }
 
@@ -132,7 +132,10 @@ bool stream::init(settings *listen_params) {
   SSL_CTX_set_options(_ctx, ctx_options);
 
   if (!_settings._certificate_path.empty() && !_settings._key_path.empty()) {
-    if (!set_check_ceritficate(_ctx, _settings._certificate_path, _settings._key_path, get_error_description())) {
+    if (!net::ssl::set_check_ceritficate(_ctx,
+                                         _settings._certificate_path,
+                                         _settings._key_path,
+                                         get_error_description())) {
       set_connection_state(state::e_failed);
       return false;
     }

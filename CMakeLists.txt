@@ -61,11 +61,11 @@ if(WITH_SCTP_SSL OR WITH_TCP_SSL OR WITH_DTLS)
         OpenSSL::Crypto
     )
     set(H_FILES ${H_FILES}
-        include/network/tcp/ssl/common.h
+        include/network/common/ssl.h
     )
 
     set(CPP_FILES ${CPP_FILES}
-        source/network/tcp/ssl/common.cpp
+        source/network/common/ssl.cpp
     )
 
 endif() # WITH_SCTP_SSL OR WITH_TCP_SSL OR WITH_DTLS

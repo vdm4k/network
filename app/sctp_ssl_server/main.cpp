@@ -2,8 +2,8 @@
 #include <network/sctp/ssl/listen/statistic.h>
 #include <network/sctp/ssl/send/settings.h>
 #include <network/sctp/ssl/send/statistic.h>
+#include <network/platforms/system.h>
 #include <network/stream/factory.h>
-#include <protocols/ip/full_address.h>
 
 #include <atomic>
 #include <iostream>
@@ -12,7 +12,6 @@
 #include <unordered_set>
 
 #include "CLI/CLI.hpp"
-#include "network/tcp/ssl/common.h"
 
 using namespace bro::net;
 using namespace bro::strm;
@@ -94,7 +93,7 @@ int main(int argc, char **argv) {
   app.add_option("-k,--key_path", key_path, "key path");
   CLI11_PARSE(app, argc, argv);
 
-  bro::net::tcp::ssl::disable_sig_pipe();
+  disable_sig_pipe();
 
   proto::ip::address server_address(server_address_s);
   if (server_address.get_version() == proto::ip::address::version::e_none) {

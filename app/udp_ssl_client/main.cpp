@@ -1,8 +1,7 @@
 #include <network/stream/factory.h>
 #include <network/udp/ssl/send/settings.h>
 #include <network/udp/ssl/send/statistic.h>
-#include <network/tcp/ssl/common.h>
-#include <protocols/ip/full_address.h>
+#include <network/platforms/system.h>
 
 #include <atomic>
 #include <iostream>
@@ -123,7 +122,7 @@ int main(int argc, char **argv) {
   app.add_option("-c,--connecions", connections_per_thread, "connections per thread");
   CLI11_PARSE(app, argc, argv);
 
-  bro::net::tcp::ssl::disable_sig_pipe();
+  disable_sig_pipe();
 
   proto::ip::address server_address(server_address_string);
   if (server_address.get_version() == proto::ip::address::version::e_none) {

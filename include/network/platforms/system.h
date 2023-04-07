@@ -10,6 +10,13 @@ namespace bro::net {
  *  @{
  */
 
+/*! \brief This function disable sigpipe generation for whole process
+ *  \return  true on succes. false otherwise and err will filled with error
+ *
+ *  \note better to call before start other threads ( from main thread )
+ */
+bool disable_sig_pipe();
+
 /*!
    * @brief stream type
    */
