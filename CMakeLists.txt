@@ -211,10 +211,10 @@ if(WITH_SANITIZER)
     target_link_options(${PROJECT_NAME} INTERFACE -fsanitize=address)
 endif()
 
-#app
-option(WITH_APP "Build application" OFF)
-if(WITH_APP)
-    add_subdirectory(app)
+#examples
+option(WITH_EXAMPLES "Build examples" OFF)
+if(WITH_EXAMPLES)
+    add_subdirectory(examples)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC network_protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS} )

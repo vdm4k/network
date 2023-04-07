@@ -6,7 +6,7 @@ TCP, SCTP, SSL + TCP, SSL + SCTP, DTLS
 1. Small and proxy labrary to write server/client. By default it is using non blocking sockets
 2. Doesn't use exceptions. To handle errors you can set your callback function *stream->set_state_changed_cb(cb_function)* and check when a socket will become inactive *!stream->is_active()*. we can get error description *stream->get_error_description()*
 3. It has minimal dependecies. 
-4. Easy to test apps. You need only to implement stream interface and check what data your application send.
+4. Easy to test application. You need only to implement stream interface and check what data your application send.
 5. It's easy to change socket type hence it's easy to move from tcp to ssl+tcp and vice versa
 6. If socket fails we can easily recreate it *failed_stream = manager.create_stream(failed_stream->get_settings());* Hence we can have pool of streams and recreate if some of them fails.
 
@@ -23,10 +23,10 @@ You need cmake
       2. with UDP SSL support *-DWITH_UDP_SSL=ON* 
       3. with SCTP support *-DWITH_SCTP=ON*
       4. with SCTP SSL support *-DWITH_SCTP_SSL=ON*
-      5. buid apps (examples) *-DWITH_APP=ON*
+      5. buid examples *-DWITH_EXAMPLES=ON*
       6. use custom open ssl build (actual for SCTP + SSL and dtls) *-DOPENSSL_DIR=/path/to/build/my-openssl*
       7. use sanitizer *-DWITH_SANITIZER=ON*
-      8. build all *cmake -DWITH_SANITIZER=ON -DWITH_SCTP=ON -DWITH_SCTP_SSL=ON -DWITH_TCP_SSL=ON -DOPENSSL_DIR=/path/to/build/my-openssl -DWITH_APP=ON -DWITH_UDP_SSL=ON ../*
+      8. build all *cmake -DWITH_SANITIZER=ON -DWITH_SCTP=ON -DWITH_SCTP_SSL=ON -DWITH_TCP_SSL=ON -DOPENSSL_DIR=/path/to/build/my-openssl -DWITH_EXAMPLES=ON -DWITH_UDP_SSL=ON ../*
 4. make 
 
 ## TCP
