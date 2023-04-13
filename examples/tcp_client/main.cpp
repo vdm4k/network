@@ -24,6 +24,8 @@ struct per_thread_data {
 void received_data_cb(stream *stream, std::any data_com) {
   const size_t data_size = 1500;
   std::byte data[data_size];
+  size_t *count = std::any_cast<size_t *>(data_com);
+  (*count)++;
   ssize_t size = stream->receive(data, data_size);
   if (size > 0) {
     if (print_debug_info)
@@ -73,13 +75,13 @@ void thread_fun(proto::ip::address const &server_addr,
   fillTestData(thread_number, initial_data, data_size);
   std::unordered_set<stream *> need_to_handle;
   std::unordered_map<stream *, stream_ptr> stream_pool;
-
+  size_t count = 0;
   while (work.load(std::memory_order_acquire)) {
     if (stream_pool.size() < connections_per_thread) {
       auto new_stream = manager.create_stream(&settings);
       if (new_stream->is_active()) {
         manager.bind(new_stream);
-        new_stream->set_received_data_cb(::received_data_cb, nullptr);
+        new_stream->set_received_data_cb(::received_data_cb, &count);
         new_stream->set_state_changed_cb(::state_changed_cb, &need_to_handle);
         new_stream->send(initial_data.data(), initial_data.size());
         stream_pool[new_stream.get()] = std::move(new_stream);
@@ -89,6 +91,7 @@ void thread_fun(proto::ip::address const &server_addr,
     }
 
     if (!need_to_handle.empty()) {
+      count++;
       auto it = need_to_handle.begin();
       if (!(*it)->is_active()) {
         stat += *static_cast<tcp::send::statistic const *>((*it)->get_statistic());
@@ -96,6 +99,10 @@ void thread_fun(proto::ip::address const &server_addr,
         need_to_handle.erase(it);
       }
     }
+    if (!count) {
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
+    count = 0;
 
     manager.proceed();
   }

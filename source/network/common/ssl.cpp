@@ -34,6 +34,14 @@ bool set_check_ceritficate(SSL_CTX *ctx, std::string const &cert_path, std::stri
   return true;
 }
 
+bool set_cipher_list(SSL_CTX *ctx, std::string const &ciphers, std::string &err) {
+  if (SSL_CTX_set_cipher_list(ctx, ciphers.c_str()) <= 0) {
+    err = fill_error("set cipher list failed");
+    return false;
+  }
+  return true;
+}
+
 enum init_state : int {
   e_not_init = 0,
   e_in_progress,

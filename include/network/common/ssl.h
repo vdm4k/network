@@ -21,6 +21,15 @@ namespace bro::net::ssl {
                                          std::string const &key_path,
                                          std::string &err);
 
+/*!
+ * \brief Set cipher list for context
+ * \param [in] ctx The SSL context to check the certificate and key paths for.
+ * \param [in] ciphers all ciphers
+ * \param [out] err - will fill with error if something go wrong
+ * \return  true on succes. false otherwise and err will filled with error
+ */
+[[nodiscard]] bool set_cipher_list(SSL_CTX *ctx, std::string const &ciphers, std::string &err);
+
 /*! \brief This function init openSSL library. (safe to call simultaniously from different threads)
  *  \return  true on succes. false otherwise and err will filled with error
  *

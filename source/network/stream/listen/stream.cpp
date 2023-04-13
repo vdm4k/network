@@ -4,11 +4,6 @@
 
 namespace bro::net::listen {
 
-void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/) {
-  auto *c_stream = reinterpret_cast<stream *>(w->data);
-  c_stream->handle_incoming_connection();
-}
-
 stream::~stream() {
   stream::cleanup();
 }
@@ -60,14 +55,14 @@ void stream::handle_incoming_connection() {
   set->_proc_in_conn(std::move(sck), set->_in_conn_handler_data);
 }
 
-void stream::assign_loop(struct ev_loop *loop) {
-  _loop = loop;
-  ev::init_io(_connect_io, incoming_connection_cb, get_fd(), EV_READ, this);
-  ev::start(_connect_io, _loop);
+void stream::assign_event(std::unique_ptr<bro::ev::event> &&in_conn) {
+  _in_connections = std::move(in_conn);
+  _in_connections->start(get_fd(), std::function<void()>(std::bind(&stream::handle_incoming_connection, this)));
 }
 
 void stream::cleanup() {
-  ev::stop(_connect_io, _loop);
+  if (_in_connections)
+    _in_connections->stop();
   net::stream::cleanup();
 }
 

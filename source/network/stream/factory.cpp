@@ -15,18 +15,11 @@
 #include <network/udp/ssl/send/stream.h>
 #endif // WITH_UDP_SSL
 #include <network/stream/factory.h>
-#include <network/platforms/libev/libev.h>
 #include <network/tcp/listen/stream.h>
 #include <network/tcp/send/stream.h>
 #include <network/udp/send/stream.h>
 
 namespace bro::net::ev {
-factory::factory() noexcept
-  : _ev_loop{ev::init()} {}
-
-factory::~factory() {
-  ev::clean_up(_ev_loop);
-}
 
 strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
 #ifdef WITH_SCTP_SSL
@@ -96,42 +89,16 @@ strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
 }
 
 void factory::bind(strm::stream_ptr &stream) {
-#ifdef WITH_SCTP
-  if (auto *st = dynamic_cast<sctp::send::stream *>(stream.get()); st) {
-    st->assign_loop(_ev_loop);
-    return;
-  }
-  if (auto *st = dynamic_cast<sctp::listen::stream *>(stream.get()); st) {
-    st->assign_loop(_ev_loop);
-    return;
-  }
-#endif // WITH_SCTP
-#ifdef WITH_UDP_SSL
-  if (auto *st = dynamic_cast<udp::ssl::listen::stream *>(stream.get()); st) {
-    st->assign_loop(_ev_loop);
-    return;
-  }
-  if (auto *st = dynamic_cast<udp::ssl::send::stream *>(stream.get()); st) {
-    st->assign_loop(_ev_loop);
-    return;
-  }
-#endif // WITH_UDP_SSL
-  if (auto *st = dynamic_cast<tcp::send::stream *>(stream.get()); st) {
-    st->assign_loop(_ev_loop);
-    return;
-  }
-  if (auto *st = dynamic_cast<tcp::listen::stream *>(stream.get()); st) {
-    st->assign_loop(_ev_loop);
-    return;
-  }
-  if (auto *st = dynamic_cast<udp::send::stream *>(stream.get()); st) {
-    st->assign_loop(_ev_loop);
-    return;
+  if (auto *st = dynamic_cast<bro::net::send::stream *>(stream.get()); st) {
+    st->assign_events(_factory.generate_new_event(::bro::ev::event::type::e_read),
+                      _factory.generate_new_event(::bro::ev::event::type::e_write));
+  } else if (auto *st = dynamic_cast<bro::net::listen::stream *>(stream.get()); st) {
+    st->assign_event(_factory.generate_new_event(::bro::ev::event::type::e_read));
   }
 }
 
 void factory::proceed() {
-  ev::proceed(_ev_loop);
+  _factory.proceed();
 }
 
 } // namespace bro::net::ev

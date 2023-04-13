@@ -1,6 +1,6 @@
 #pragma once
+#include <libev_wrapper/event.h>
 #include <network/common/buffer.h>
-#include <network/platforms/libev/libev.h>
 #include <network/stream/stream.h>
 
 namespace bro::net::listen {
@@ -47,7 +47,7 @@ public:
    *  \brief assign event loop to current stream
    *  \param [in] loop pointer on loop
    */
-  void assign_loop(struct ev_loop *loop);
+  void assign_events(bro::ev::event_t &&read_ev, bro::ev::event_t &&write_ev);
 
 protected:
   /*! \brief send data using underlying protocol
@@ -81,10 +81,6 @@ protected:
   void enable_send_cb();
 
 private:
-  friend void connection_established_cb(struct ev_loop *, ev_io *w, int);
-  friend void receive_data_cb(struct ev_loop *, ev_io *w, int);
-  friend void send_data_cb(struct ev_loop *, ev_io *w, int);
-
   /*!
    *  \brief stop all events
    */
@@ -100,9 +96,8 @@ private:
    */
   void send_buffered_data();
 
-  ev_io _read_io{0, 0, 0, 0, 0, 0, 0, 0};   ///< wait read event
-  ev_io _write_io{0, 0, 0, 0, 0, 0, 0, 0};  ///< wait write event
-  struct ev_loop *_loop = nullptr;          ///< pointer on base event loop
+  bro::ev::event_t _read_ev;                ///< wait read event
+  bro::ev::event_t _write_ev;               ///< wait write event
   strm::received_data_cb _received_data_cb; ///< receive data callback
   std::any _param_received_data_cb;         ///< user data for receive data callback
   strm::state_changed_cb _state_changed_cb; ///< state change callback

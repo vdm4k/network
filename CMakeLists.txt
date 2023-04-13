@@ -28,7 +28,6 @@ set(H_FILES
     include/network/udp/send/stream.h
     include/network/common/buffer.h
     include/network/platforms/system.h
-    include/network/platforms/libev/libev.h
 )
 
 # core cpp files
@@ -40,7 +39,6 @@ set(CPP_FILES
     source/network/stream/listen/stream.cpp
     source/network/stream/factory.cpp
     source/network/stream/stream.cpp
-    source/network/platforms/libev/libev.cpp
     source/network/platforms/system.cpp
 )
 
@@ -188,15 +186,15 @@ if(WITH_SCTP_SSL)
 
 endif() # WITH_SCTP_SSL
 
-include("${CMAKE_SOURCE_DIR}/third_party/libev.cmake")
+include("${PROJECT_SOURCE_DIR}/third_party/libev_wrapper.cmake")
+include("${PROJECT_SOURCE_DIR}/third_party/protocols.cmake")
 find_package(Threads REQUIRED)
-add_subdirectory("third_party/protocols/")
 
 add_library(${PROJECT_NAME} ${CPP_FILES} ${H_FILES})
 add_library(bro::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_compile_options(${PROJECT_NAME} PRIVATE  -Wall -Wextra -Wpedantic -Wno-vla -Wno-unused-local-typedefs)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Wno-vla -Wno-unused-local-typedefs)
 
 # TODO: maybe we need to add only not secure (without SSL)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
@@ -217,4 +215,4 @@ if(WITH_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC network_protocols Threads::Threads ev::ev ${ADDITIONAL_DEPS} )
+target_link_libraries(${PROJECT_NAME} PUBLIC bro::network_protocols Threads::Threads bro::libev_wrapper ${ADDITIONAL_DEPS} )

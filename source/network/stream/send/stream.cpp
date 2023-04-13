@@ -7,37 +7,22 @@ stream::~stream() {
   stream::cleanup();
 }
 
-void receive_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<stream *>(w->data);
-  conn->receive_data();
-}
-
-void send_data_cb(struct ev_loop *, ev_io *w, int) {
-  auto *conn = reinterpret_cast<stream *>(w->data);
-  conn->send_buffered_data();
-}
-
-void connection_established_cb(struct ev_loop *, ev_io *w, int) {
-  auto *tr = reinterpret_cast<stream *>(w->data);
-  tr->connection_established();
-}
-
 void stream::stop_events() {
-  ev::stop(_read_io, _loop);
-  ev::stop(_write_io, _loop);
+  if (_read_ev) 
+    _read_ev->stop();
+  if (_write_ev) 
+    _write_ev->stop();
+  
 }
 
-void stream::assign_loop(struct ev_loop *loop) {
-  stop_events();
-  _loop = loop;
-  ev::init_io(_read_io, receive_data_cb, get_fd(), EV_READ, this);
+void stream::assign_events(bro::ev::event_t &&read_ev, bro::ev::event_t &&write_ev) {
+  _read_ev = std::move(read_ev);
+  _write_ev = std::move(write_ev);
   if (state::e_established == get_state()) {
-    ev::init_io(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
-    ev::start(_read_io, _loop);
+    _read_ev->start(get_fd(), std::function<void()>(std::bind(&stream::receive_data, this)));
     enable_send_cb();
   } else {
-    ev::init_io(_write_io, connection_established_cb, get_fd(), EV_WRITE, this);
-    ev::start(_write_io, _loop);
+    _write_ev->start(get_fd(), std::function<void()>(std::bind(&stream::connection_established, this)));
   }
 }
 
@@ -54,10 +39,8 @@ bool stream::connection_established() {
     return false;
   }
 
-  ev::stop(_write_io, _loop);
-  ev::init_io(_write_io, send_data_cb, get_fd(), EV_WRITE, this);
-  ev::start(_read_io, _loop);
   enable_send_cb();
+  _read_ev->start(get_fd(), std::function<void()>(std::bind(&stream::receive_data, this)));
   set_connection_state(state::e_established);
   return true;
 }
@@ -69,7 +52,6 @@ ssize_t stream::send(std::byte const *data, size_t data_size) {
     break;
   case state::e_wait: {
     _send_buffer.append(data, data_size);
-    enable_send_cb();
     return data_size;
   }
   case state::e_failed:
@@ -146,12 +128,12 @@ void stream::send_buffered_data() {
 }
 
 void stream::disable_send_cb() {
-  ev::stop(_write_io, _loop);
+  _write_ev->stop();
 }
 
 void stream::enable_send_cb() {
   if (!_send_buffer.is_empty())
-    ev::start(_write_io, _loop);
+    _write_ev->start(get_fd(), std::function<void()>(std::bind(&stream::send_buffered_data, this)));
 }
 
 void stream::cleanup() {

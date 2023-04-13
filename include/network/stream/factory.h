@@ -1,6 +1,6 @@
 #pragma once
 #include <stream/factory.h>
-struct ev_loop;
+#include <libev_wrapper/factory.h>
 
 namespace bro::net::ev {
 /** @addtogroup network_stream
@@ -15,7 +15,7 @@ public:
   /**
    * default constructor
    */
-  factory() noexcept;
+  factory() noexcept = default;
 
   /**
    * \brief disabled copy ctor
@@ -46,7 +46,6 @@ public:
    * We can't copy and handle event loop
    */
   factory &operator=(factory const &) = delete;
-  ~factory();
 
   /*! \brief create stream
    *  [in] stream_set pointer on settings
@@ -76,7 +75,7 @@ public:
   void proceed() override;
 
 private:
-  struct ev_loop *_ev_loop = nullptr; ///< pointer on main loop
+  bro::ev::factory _factory; ///< factory for events and loop proceeding
 };
 
 } // namespace bro::net::ev
