@@ -1,5 +1,5 @@
 #pragma once
-#include <libev_wrapper/event.h>
+#include <libev_wrapper/io.h>
 #include <network/platforms/system.h>
 #include <network/stream/stream.h>
 
@@ -58,7 +58,7 @@ public:
   /*! \brief assign event loop to current stream
    *  \param [in] loop pointer on loop
    */
-  void assign_event(std::unique_ptr<bro::ev::event> &&in_conn);
+  void assign_event(bro::ev::io_t &&in_conn);
 
 protected:
   /*! \brief generate send stream of specific type
@@ -80,10 +80,8 @@ protected:
   void cleanup() override;
 
 private:
-  friend void incoming_connection_cb(struct ev_loop * /*loop*/, ev_io *w, int /*revents*/);
-
-  statistic _statistic;             ///< statistics
-  bro::ev::event_t _in_connections; ///< wait connection event
+  statistic _statistic;          ///< statistics
+  bro::ev::io_t _in_connections; ///< wait connection event
 };
 
 } // namespace bro::net::listen

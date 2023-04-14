@@ -1,5 +1,5 @@
 #pragma once
-#include <libev_wrapper/event.h>
+#include <libev_wrapper/io.h>
 #include <network/common/buffer.h>
 #include <network/stream/stream.h>
 
@@ -47,7 +47,7 @@ public:
    *  \brief assign event loop to current stream
    *  \param [in] loop pointer on loop
    */
-  void assign_events(bro::ev::event_t &&read_ev, bro::ev::event_t &&write_ev);
+  void assign_events(bro::ev::io_t &&read, bro::ev::io_t &&write);
 
 protected:
   /*! \brief send data using underlying protocol
@@ -96,8 +96,8 @@ private:
    */
   void send_buffered_data();
 
-  bro::ev::event_t _read_ev;                ///< wait read event
-  bro::ev::event_t _write_ev;               ///< wait write event
+  bro::ev::io_t _read;                      ///< wait read event
+  bro::ev::io_t _write;                     ///< wait write event
   strm::received_data_cb _received_data_cb; ///< receive data callback
   std::any _param_received_data_cb;         ///< user data for receive data callback
   strm::state_changed_cb _state_changed_cb; ///< state change callback

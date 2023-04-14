@@ -90,10 +90,10 @@ strm::stream_ptr factory::create_stream(strm::settings *stream_set) {
 
 void factory::bind(strm::stream_ptr &stream) {
   if (auto *st = dynamic_cast<bro::net::send::stream *>(stream.get()); st) {
-    st->assign_events(_factory.generate_new_event(::bro::ev::event::type::e_read),
-                      _factory.generate_new_event(::bro::ev::event::type::e_write));
+    st->assign_events(_factory.generate_io(::bro::ev::io::type::e_read),
+                      _factory.generate_io(::bro::ev::io::type::e_write));
   } else if (auto *st = dynamic_cast<bro::net::listen::stream *>(stream.get()); st) {
-    st->assign_event(_factory.generate_new_event(::bro::ev::event::type::e_read));
+    st->assign_event(_factory.generate_io(::bro::ev::io::type::e_read));
   }
 }
 

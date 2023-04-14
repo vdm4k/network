@@ -55,7 +55,7 @@ void stream::handle_incoming_connection() {
   set->_proc_in_conn(std::move(sck), set->_in_conn_handler_data);
 }
 
-void stream::assign_event(std::unique_ptr<bro::ev::event> &&in_conn) {
+void stream::assign_event(bro::ev::io_t &&in_conn) {
   _in_connections = std::move(in_conn);
   _in_connections->start(get_fd(), std::function<void()>(std::bind(&stream::handle_incoming_connection, this)));
 }

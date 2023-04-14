@@ -8,21 +8,20 @@ stream::~stream() {
 }
 
 void stream::stop_events() {
-  if (_read_ev) 
-    _read_ev->stop();
-  if (_write_ev) 
-    _write_ev->stop();
-  
+  if (_read)
+    _read->stop();
+  if (_write)
+    _write->stop();
 }
 
-void stream::assign_events(bro::ev::event_t &&read_ev, bro::ev::event_t &&write_ev) {
-  _read_ev = std::move(read_ev);
-  _write_ev = std::move(write_ev);
+void stream::assign_events(bro::ev::io_t &&read, bro::ev::io_t &&write) {
+  _read = std::move(read);
+  _write = std::move(write);
   if (state::e_established == get_state()) {
-    _read_ev->start(get_fd(), std::function<void()>(std::bind(&stream::receive_data, this)));
+    _read->start(get_fd(), std::function<void()>(std::bind(&stream::receive_data, this)));
     enable_send_cb();
   } else {
-    _write_ev->start(get_fd(), std::function<void()>(std::bind(&stream::connection_established, this)));
+    _write->start(get_fd(), std::function<void()>(std::bind(&stream::connection_established, this)));
   }
 }
 
@@ -39,8 +38,9 @@ bool stream::connection_established() {
     return false;
   }
 
+  disable_send_cb();
   enable_send_cb();
-  _read_ev->start(get_fd(), std::function<void()>(std::bind(&stream::receive_data, this)));
+  _read->start(get_fd(), std::function<void()>(std::bind(&stream::receive_data, this)));
   set_connection_state(state::e_established);
   return true;
 }
@@ -128,12 +128,12 @@ void stream::send_buffered_data() {
 }
 
 void stream::disable_send_cb() {
-  _write_ev->stop();
+  _write->stop();
 }
 
 void stream::enable_send_cb() {
   if (!_send_buffer.is_empty())
-    _write_ev->start(get_fd(), std::function<void()>(std::bind(&stream::send_buffered_data, this)));
+    _write->start(get_fd(), std::function<void()>(std::bind(&stream::send_buffered_data, this)));
 }
 
 void stream::cleanup() {
