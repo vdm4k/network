@@ -187,7 +187,7 @@ if(WITH_SCTP_SSL)
 endif() # WITH_SCTP_SSL
 
 include("${PROJECT_SOURCE_DIR}/third_party/libev_wrapper.cmake")
-include("${PROJECT_SOURCE_DIR}/third_party/protocols.cmake")
+include("${PROJECT_SOURCE_DIR}/third_party/network_protocols.cmake")
 find_package(Threads REQUIRED)
 
 add_library(${PROJECT_NAME} ${CPP_FILES} ${H_FILES})
