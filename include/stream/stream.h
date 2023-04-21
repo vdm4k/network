@@ -81,7 +81,7 @@ public:
   virtual bool is_active() const = 0;
 
   /*! \brief set callback on data receive
-   *  \param [in] cb pointer on callback function.
+   *  \param [in] cb callback function.
    *  \param [in] param parameter for callback function
    *
    *  \note If we want to switch off, we will send nullptr as cb
@@ -89,12 +89,20 @@ public:
   virtual void set_received_data_cb(received_data_cb cb, std::any param) = 0;
 
   /*! \brief set callback on state change
-   *  \param [in] cb pointer on callback function.
+   *  \param [in] cb callback function.
    *  \param [in] param parameter for callback function
    *
    *  \note If we want to switch off, we will send nullptr as cb
    */
   virtual void set_state_changed_cb(state_changed_cb cb, std::any param) = 0;
+
+  /*! \brief set callback on data send
+   *  \param [in] cb callback function.
+   *  \param [in] param parameter for callback function
+   *
+   *  \note Need set only if using external buffer for sending
+   */
+  virtual void set_send_data_cb(received_data_cb cb, std::any param) = 0;
 
   /*! \brief get actual stream settings
    *  \return pointer on actual settings

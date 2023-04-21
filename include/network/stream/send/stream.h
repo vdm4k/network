@@ -38,6 +38,12 @@ public:
    */
   void set_received_data_cb(strm::received_data_cb cb, std::any param) override;
 
+  /*! \brief set callback on data send ( don't do anything here )
+   *  \param [in] cb callback function.
+   *  \param [in] param parameter for callback function
+   */
+  void set_send_data_cb(strm::received_data_cb cb, std::any param) override;
+
   /*! brief check if stream in active state
    *  \return bool
    */
@@ -45,7 +51,8 @@ public:
 
   /*!
    *  \brief assign event loop to current stream
-   *  \param [in] loop pointer on loop
+   *  \param [in] read event controller
+   *  \param [in] write event controller
    */
   void assign_events(bro::ev::io_t &&read, bro::ev::io_t &&write);
 
@@ -102,7 +109,10 @@ private:
   std::any _param_received_data_cb;         ///< user data for receive data callback
   strm::state_changed_cb _state_changed_cb; ///< state change callback
   std::any _param_state_changed_cb;         ///< user data for state change callback
+  strm::send_data_cb _send_data_cb;         ///< send data callback
+  std::any _param_send_data_cb;             ///< user data for send data callback
   buffer _send_buffer;                      ///< send buffer
+  bool _buffer_send{true};                  ///< need to buffer send data
 };
 
 } // namespace bro::net::send
