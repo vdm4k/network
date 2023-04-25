@@ -128,6 +128,7 @@ bool stream::connection_established() {
     }
   }
 
+  set_connection_state(state::e_established);
   return true;
 }
 

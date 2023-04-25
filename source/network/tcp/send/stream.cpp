@@ -46,6 +46,14 @@ ssize_t stream::receive(std::byte *buffer, size_t buffer_size) {
   return rec;
 }
 
+bool stream::connection_established() {
+  if (!net::send::stream::connection_established()) {
+    return false;
+  }
+  set_connection_state(state::e_established);
+  return true;
+}
+
 bool stream::connect() {
   if (connect_stream(_settings._peer_addr, get_fd(), get_error_description()))
     return true;

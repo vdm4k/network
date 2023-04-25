@@ -59,6 +59,11 @@ protected:
    */
   [[nodiscard]] bool create_socket(proto::ip::address::version version, socket_type s_type) override;
 
+  /*! \brief if connection established succesfully will prepare connection for receiving events
+   *  \return true if init complete successful
+   */
+  [[nodiscard]] bool connection_established() override;
+
 private:
   /*! \brief connect stream
    *  \return true if inited. otherwise false (cause in get_error_description )

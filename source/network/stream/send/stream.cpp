@@ -45,7 +45,6 @@ bool stream::connection_established() {
   _write->set_callback(std::function<void()>(std::bind(&stream::send_buffered_data, this)));
   enable_send_cb();
   _read->start(get_fd(), std::function<void()>(std::bind(&stream::receive_data, this)));
-  set_connection_state(state::e_established);
   return true;
 }
 

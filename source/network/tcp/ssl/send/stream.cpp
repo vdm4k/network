@@ -113,7 +113,7 @@ bool stream::init(settings *send_params) {
 }
 
 bool stream::connection_established() {
-  if (!tcp::send::stream::connection_established()) {
+  if (!net::send::stream::connection_established()) {
     return false;
   }
   ERR_clear_error();
@@ -136,6 +136,7 @@ bool stream::connection_established() {
       return false;
     }
   }
+  set_connection_state(state::e_established);
   return true;
 }
 

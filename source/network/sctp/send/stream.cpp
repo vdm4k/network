@@ -82,6 +82,14 @@ bool stream::connect() {
   return false;
 }
 
+bool stream::connection_established() {
+  if (!net::send::stream::connection_established()) {
+    return false;
+  }
+  set_connection_state(state::e_established);
+  return true;
+}
+
 void stream::reset_statistic() {
   _statistic.reset();
 }

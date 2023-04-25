@@ -64,6 +64,11 @@ protected:
    */
   ssize_t send_data(std::byte const *data, size_t data_size) override;
 
+  /*! \brief if connection established succesfully will prepare connection for receiving events
+   *  \return true if init complete successful
+   */
+  [[nodiscard]] bool connection_established() override;
+
 private:
   /*! \brief parse sctp notification and handle if needed
    */
