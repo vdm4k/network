@@ -23,6 +23,22 @@ void stream::cleanup() {
   tcp::send::stream::cleanup();
 }
 
+int to_ssl_version(ssl_version ssl_ver) {
+  switch (ssl_ver) {
+  case ssl_version::e_ssl_3_0:
+    return SSL3_VERSION;
+  case ssl_version::e_tls_1_0:
+    return TLS1_VERSION;
+  case ssl_version::e_tls_1_1:
+    return TLS1_1_VERSION;
+  case ssl_version::e_tls_1_2:
+    return TLS1_2_VERSION;
+  case ssl_version::e_tls_1_3:
+    return TLS1_3_VERSION;
+  }
+  return TLS1_3_VERSION;
+}
+
 bool stream::init(settings *send_params) {
   if (!net::ssl::init_openSSL()) {
     set_detailed_error(net::ssl::fill_error("coulnd't init ssl library"));
@@ -40,7 +56,12 @@ bool stream::init(settings *send_params) {
     return false;
   }
 
-  /*When we no longer need a read buffer or a write buffer for a given SSL, then
+  if (_settings._min_version)
+    SSL_CTX_set_min_proto_version(_client_ctx, to_ssl_version(*_settings._min_version));
+  if (_settings._max_version)
+    SSL_CTX_set_max_proto_version(_client_ctx, to_ssl_version(*_settings._max_version));
+
+    /*When we no longer need a read buffer or a write buffer for a given SSL, then
    * release the memory we were using to hold it. Using this flag can save
    * around 34k per idle SSL connection. This flag has no effect on SSL v2
    * connections, or on DTLS connections.*/
@@ -117,6 +138,9 @@ bool stream::connection_established() {
     return false;
   }
   ERR_clear_error();
+
+  if (!_settings._host_name.empty())
+    SSL_set_tlsext_host_name(_ctx, _settings._host_name.c_str());
 
   _ctx = SSL_new(_client_ctx);
   if (!_ctx) {
