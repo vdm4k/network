@@ -139,14 +139,14 @@ bool stream::connection_established() {
   }
   ERR_clear_error();
 
-  if (!_settings._host_name.empty())
-    SSL_set_tlsext_host_name(_ctx, _settings._host_name.c_str());
-
   _ctx = SSL_new(_client_ctx);
   if (!_ctx) {
     set_detailed_error(net::ssl::fill_error("couldn't create new ssl context"));
     return false;
   }
+
+  if (!_settings._host_name.empty())
+    SSL_set_tlsext_host_name(_ctx, _settings._host_name.c_str());
 
   if (!SSL_set_fd(_ctx, get_fd())) {
     set_detailed_error(net::ssl::fill_error("couldn't set file decriptor to bio"));
