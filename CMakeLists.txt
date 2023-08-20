@@ -195,6 +195,7 @@ add_library(bro::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Wno-vla -Wno-unused-local-typedefs)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # TODO: maybe we need to add only not secure (without SSL)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
