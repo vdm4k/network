@@ -80,7 +80,7 @@ bool is_connection_established(int file_descr, std::string &err) {
     return false;
   }
   if (0 != optval) {
-    append_error(err, "connection not established");
+    append_error(err, std::string("connection not established, cause - ") + strerror(optval));
     return false;
   }
   return true;
