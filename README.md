@@ -3,12 +3,13 @@ Network is a easy scalable labrary for simplifying working with socket API (non 
 TCP, SCTP, SSL + TCP, SSL + SCTP, DTLS
 
 ## ***Why?***
-1. Small and proxy labrary to write server/client. By default it is using non blocking sockets
-2. Doesn't use exceptions. To handle errors you can set your callback function *stream->set_state_changed_cb(cb_function)* and check when a socket will become inactive *!stream->is_active()*. we can get error description *stream->get_error_description()*
-3. It has minimal dependecies. 
-4. Easy to test application. You need only to implement stream interface and check what data your application send.
-5. It's easy to change socket type hence it's easy to move from tcp to ssl+tcp and vice versa
-6. If socket fails we can easily recreate it *failed_stream = manager.create_stream(failed_stream->get_settings());* Hence we can have pool of streams and recreate if some of them fails.
+1. Small labrary. It's easy to write write server/client applications based on it. By default it is using non blocking sockets
+2. It has universal interface for many streaming protocols ( tcp (+ ssl), sctp (+ ssl), dtls )
+3. Doesn't use exceptions. To handle errors you can set your callback function *stream->set_state_changed_cb(cb_function)* and check when a socket will become inactive *!stream->is_active()*. we can get error description *stream->get_error_description()*
+4. It has minimal dependecies. 
+5. Easy to test application. You need only to implement stream interface and check what data your application send.
+6. It's easy to change socket type hence it's easy to move from tcp to ssl+tcp and vice versa
+7. If socket fails we can easily recreate it *failed_stream = manager.create_stream(failed_stream->get_settings());* Hence we can have pool of streams and recreate if some of them fails.
 
 
 ## ***Build***
